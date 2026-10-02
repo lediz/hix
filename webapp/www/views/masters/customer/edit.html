@@ -131,7 +131,7 @@
                      <div class="col-md-6">
                         <label class="form-label">Last</label>
                         <input type="text" name="last" class="form-control  {{ iif( !empty(hb_HGetDef(hErrors,'last','')), 'is-invalid', '' ) }}" autocomplete="off" 
-                               maxlength="20" {{ Iif( cAction == 'edit', 'value="' + HB_HGetDef( hRow, 'last' ) + '"', '' ) }} required>
+                               maxlength="20" value="{{ HB_HGetDef( hRow, 'last' ) }}" required>
                         @if !empty( hb_HGetDef( hErrors, 'last', '' ) )
                           <div class="invalid-feedback">{{ hb_HGetDef( hErrors, 'last', '' ) }}</div>
                         @endif                        

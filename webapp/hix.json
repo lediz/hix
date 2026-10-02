@@ -89,7 +89,7 @@
     "prefix": "sess_",
     "crypt": false,
     "seed": "",
-    "lifetime": 60,
+    "lifetime": 3600,
     "gc_days": 3
   },
   "monitor":

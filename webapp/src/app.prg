@@ -23,6 +23,7 @@ FUNCTION Main()
       // browser: http://localhost/test/index.html
       
          oServer:AllowDir( "test", .F. )
+         oServer:AllowDir( "customer", .T. )
          
       // ---------------------------------------------------------
 

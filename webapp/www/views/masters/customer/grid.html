@@ -1,4 +1,4 @@
-@args cAction := '', aGrid := {}, aPages := {}, nPage := 1, nTotalPages := 1, cSort := 'first', cDir := 'ASC', cSearch := '', hMessage := {=>}, hErrors := {=>}
+@args cAction := '', aGrid := {}, aPages := {}, nPage := 1, nTotalPages := 1, cSort := 'first', cDir := 'ASC', cSearch := '', hSearch := {=>}, hMessage := {=>}, hErrors := {=>}, cSearchParams := ''
 
 <!DOCTYPE html>
 <html lang="en">
@@ -79,9 +79,14 @@
       <!-- Search + Create -->
       <div class="row mb-3">
          <div class="col-md-6">
-            <form class="d-flex" action="/customer/grid" method="GET">
-               <input class="form-control me-2" type="search" name="q" placeholder="Search customers..." value="{{ cSearch }}">
-               <button class="btn btn-outline-primary" type="submit"><i class="bi bi-search"></i></button>
+            <form class="d-flex flex-wrap gap-2 align-items-center" action="/customer/grid" method="GET">
+               <input class="form-control form-control-sm" type="search" name="q_first" placeholder="First" value="{{ HB_HGetDef( hSearch, 'first', '' ) }}">
+               <input class="form-control form-control-sm" type="search" name="q_last" placeholder="Last" value="{{ HB_HGetDef( hSearch, 'last', '' ) }}">
+               <input class="form-control form-control-sm" type="search" name="q_address" placeholder="Address" value="{{ HB_HGetDef( hSearch, 'address', '' ) }}">
+               <input class="form-control form-control-sm" type="search" name="q_country" placeholder="Country" value="{{ HB_HGetDef( hSearch, 'country', '' ) }}">
+               <input class="form-control form-control-sm" type="search" name="q_zip" placeholder="Zip" value="{{ HB_HGetDef( hSearch, 'zip', '' ) }}">
+               <button class="btn btn-sm btn-outline-primary" type="submit"><i class="bi bi-search"></i></button>
+               <a class="btn btn-sm btn-outline-secondary" href="/customer/grid"><i class="bi bi-x-circle"></i> Clear</a>
             </form>
          </div>
          <div class="col-md-6 text-end">
@@ -163,17 +168,17 @@
                <ul class="pagination mb-0 justify-content-center">
                   @if nPage > 1
                   <li class="page-item">
-                     <a class="page-link" href="/customer/grid?page={{ nPage - 1 }}&sort={{ cSort }}&dir={{ cDir }}&q={{ cSearch }}">Previous</a>
+                     <a class="page-link" href="/customer/grid?page={{ nPage - 1 }}&sort={{ cSort }}&dir={{ cDir }}{{ cSearchParams }}">Previous</a>
                   </li>
                   @endif
                   @foreach n IN aPages
                   <li class="page-item {{ if( n == nPage, 'active', '' ) }}">
-                     <a class="page-link" href="/customer/grid?page={{ n }}&sort={{ cSort }}&dir={{ cDir }}&q={{ cSearch }}">{{ n }}</a>
+                     <a class="page-link" href="/customer/grid?page={{ n }}&sort={{ cSort }}&dir={{ cDir }}{{ cSearchParams }}">{{ n }}</a>
                   </li>
                   @endforeach
                   @if nPage < nTotalPages
                   <li class="page-item">
-                     <a class="page-link" href="/customer/grid?page={{ nPage + 1 }}&sort={{ cSort }}&dir={{ cDir }}&q={{ cSearch }}">Next</a>
+                     <a class="page-link" href="/customer/grid?page={{ nPage + 1 }}&sort={{ cSort }}&dir={{ cDir }}{{ cSearchParams }}">Next</a>
                   </li>
                   @endif
                </ul>
