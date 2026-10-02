@@ -215,7 +215,7 @@ RETURN nLoaded
 // ============================================================
 STATIC FUNCTION _MwApplySession( hSetup )
 
-   LOCAL hSess, cCookie, nTtl, nMax, cStorage
+   LOCAL hSess, cCookie, nTtl, nMax, cStorage, cPath
 
    hSess := _MwHGet( hSetup, "session", NIL )
 
@@ -229,7 +229,12 @@ STATIC FUNCTION _MwApplySession( hSetup )
    nTtl     := _MwHGet( hSess, "ttl",     0  )
    nMax     := _MwHGet( hSess, "max",     0  )
    cStorage := _MwHGet( hSess, "storage", "" )
-   HIX_MwSessionSetup( cCookie, nTtl, nMax, cStorage )
+   cPath := UConfig( "paths", "session", "" )
+   IF !Empty( cPath )
+      HIX_MwSessionSetup( cCookie, nTtl, nMax, cStorage, cPath )
+   ELSE
+      HIX_MwSessionSetup( cCookie, nTtl, nMax, cStorage )
+   ENDIF
    HIX_BootLogAdd( "middlewares", "config", .T., ;
       "session: cookie=" + cCookie + " ttl=" + hb_NToS( nTtl ) + " storage=" + cStorage )
 

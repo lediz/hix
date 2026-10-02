@@ -104,7 +104,7 @@ FUNCTION UParam( cKey, xDef )
 
    LOCAL o      := HIX_GetRequest()
    LOCAL lDef   := ( PCount() >= 2 )
-   LOCAL cLabel, hCopy
+   LOCAL cLabel, hCopy, cVal
 
    IF PCount() == 0
 
@@ -135,6 +135,14 @@ FUNCTION UParam( cKey, xDef )
       IF hb_HHasKey( o:hParam, cKey )
 
          RETURN o:hParam[ cKey ]
+
+      ENDIF
+
+      cVal := o:QueryParam( cKey, xDef )
+
+      IF cVal != xDef
+
+         RETURN cVal
 
       ENDIF
 
