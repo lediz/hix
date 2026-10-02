@@ -1,0 +1,176 @@
+@args lFound := .t., hRow := {=>}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+	@view 'common/header.html' 
+
+   @css 'crud.css'
+   
+</head>
+
+<body>
+
+	<!-- Navbar -->	
+	
+	@view 'common/navbar.html'
+
+
+	<!-- Offcanvas Sidebar -->	
+	
+	@view 'common/sidebar.html', 'customer'
+
+	
+	<!-- Main Content -->
+	
+	<main class="container-fluid" >
+		
+		<!-- Breadcrumb... -->
+	
+		<div class="row">
+			<nav  aria-label="breadcrumb">
+			  <ol class="breadcrumb fs-5">
+				<li class="breadcrumb-item"><a href="/main"><i class="bi bi-house-door-fill"></i></a></li>
+				<li class="breadcrumb-item"><a href="{{ URoute( 'customer.search' ) }}">Customers</a></li>				
+				<li class="breadcrumb-item">Delete Customer</li>				
+			  </ol>
+			</nav>	
+		</div>
+      
+		@if ! lFound
+		
+			<div class="row mb-3">
+				<div class="col">
+               <div class="alert alert-danger" role="alert">
+                 <b><i class="bi bi-exclamation-triangle"></i>&nbsp;Customer not found</b>
+               </div>								
+
+				</div>
+			</div>
+			
+		@endif 	
+
+      @if lFound
+			<!-- Delete card -->
+			
+			<div class="card border-danger">
+            <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
+               <h4 class="m-0 fw-bold">
+                     <i class="bi bi-exclamation-triangle-fill"></i> 
+                     &nbsp;Delete Customer #{{ HB_HGetDef( hRow, '_recno', 0 ) }}
+               </h4>
+            </div>	
+			
+				<div class="card-body">
+
+					<p class="text-danger fs-5"><b>Warning: This action cannot be undone.</b></p>
+
+					<div class="row g-3">
+						<div class="col-md-6">
+							<label class="form-label">First</label>
+							<p class="form-control-plaintext border-bottom">{{ HB_HGetDef( hRow, 'first' ) }}</p>
+						</div>	
+						
+						<div class="col-md-6">
+							<label class="form-label">Last</label>
+							<p class="form-control-plaintext border-bottom">{{ HB_HGetDef( hRow, 'last' ) }}</p>
+						</div>	
+
+						<div class="col-md-6">
+							<label class="form-label">Street</label>
+							<p class="form-control-plaintext border-bottom">{{ HB_HGetDef( hRow, 'street' ) }}</p>
+						</div>						
+						
+						<div class="col-md-4">
+							<label class="form-label">City</label>
+							<p class="form-control-plaintext border-bottom">{{ HB_HGetDef( hRow, 'city' ) }}</p>
+						</div>
+
+						<div class="col-md-2">
+							<label class="form-label">State</label>
+							<p class="form-control-plaintext border-bottom">{{ HB_HGetDef( hRow, 'state_txt' ) }}</p>
+						</div>						
+
+						<div class="col-md-2">
+							<label class="form-label">Zip</label>
+							<p class="form-control-plaintext border-bottom">{{ HB_HGetDef( hRow, 'zip' ) }}</p>
+						</div>
+					
+						<div class="col-md-2">
+							<label class="form-label">Hiredate</label>
+							<p class="form-control-plaintext border-bottom">{{ HB_HGetDef( hRow, 'hiredate' ) }}</p>
+						</div>
+					
+
+						<div class="col-md-2">
+							<label class="form-label">Edad</label>
+							<p class="form-control-plaintext border-bottom">{{ HB_HGetDef( hRow, 'age' ) }}</p>
+						</div>	
+							
+						<div class="col-12">
+							<div class="form-check form-switch">
+								<input class="form-check-input" type="checkbox" name="married" id="married" {{ HB_HGetDef( hRow, 'married' )  }} disabled>
+								<label class="form-check-label" for="married">Married ?</label>
+							</div>
+						</div>	
+
+						<div class="col-12">
+							<label class="form-label">Notes</label>
+							<textarea class="form-control" rows="2" readonly>{{ HB_HGetDef( hRow, 'notes' ) }}</textarea>
+						</div>					
+								
+					</div>
+					
+				</div>
+            
+			</div>
+         
+         <!-- Buttons -->
+         <div class="mt-3 d-flex gap-2">
+            <!-- Delete Customer button -->
+            <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteConfirmModal">
+               <i class="bi bi-trash"></i> Delete Customer
+            </button>
+
+            <!-- Close button -->
+            <a href="{{ URoute( 'customer.grid' ) }}" class="btn btn-outline-secondary">
+               <i class="bi bi-x-lg"></i> Close
+            </a>
+         </div>
+         
+      @endif 
+				
+      
+	</main> 
+
+	<!-- Delete Confirmation Modal -->
+	<div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalLabel" aria-hidden="true">
+		<div class="modal-dialog">
+			<div class="modal-content">
+				<div class="modal-header bg-danger text-white">
+					<h5 class="modal-title" id="deleteConfirmModalLabel">
+						<i class="bi bi-exclamation-triangle"></i> Confirm Deletion
+					</h5>
+					<button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+				</div>
+				<div class="modal-body">
+					<p>Are you sure you want to delete customer <b>{{ HB_HGetDef( hRow, 'first', '' ) }} {{ HB_HGetDef( hRow, 'last', '' ) }}</b>?</p>
+					<p class="text-danger"><b>This action cannot be undone.</b></p>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+					<form id="deleteForm" method="POST" action="{{ URoute( 'customer.delete', HB_HGetDef( hRow, '_recno', 0 ) ) }}">
+						@CSRF
+						<button type="submit" class="btn btn-danger">
+							<i class="bi bi-trash"></i> Yes, Delete
+						</button>
+					</form>
+				</div>
+			</div>
+		</div>
+	</div>
+	
+</body>
+
+</html>
