@@ -387,7 +387,7 @@ METHOD Grid() CLASS Customer
    LOCAL hSearch := { => }
    LOCAL cSearchUpper
    LOCAL nTotal, nStart, nEnd, nI
-   LOCAL aFiltered
+   LOCAL aFiltered, lMatch
    LOCAL aFields := {'first','last','address','zip','country','notes'}
    LOCAL cAlias, nRecCount, hRec, nJ, cSearchParams
 
@@ -399,30 +399,30 @@ METHOD Grid() CLASS Customer
    cSearch  := Trim( UParam( 'q', '' ) )
    cSearchUpper := Upper( cSearch )
    // --- Per-field search params ---
-   hSearch[ 'first' ] := Trim( UParam( 'q_first', '' ) )
-   hSearch[ 'last' ]  := Trim( UParam( 'q_last', '' ) )
-   hSearch[ 'address' ] := Trim( UParam( 'q_address', '' ) )
-   hSearch[ 'country' ] := Trim( UParam( 'q_country', '' ) )
-   hSearch[ 'zip' ] := Trim( UParam( 'q_zip', '' ) )
+   hSearch[ 'first' ] := Trim( UParam( '_q_first', '' ) )
+   hSearch[ 'last' ]  := Trim( UParam( '_q_last', '' ) )
+   hSearch[ 'address' ] := Trim( UParam( '_q_address', '' ) )
+   hSearch[ 'country' ] := Trim( UParam( '_q_country', '' ) )
+   hSearch[ 'zip' ] := Trim( UParam( '_q_zip', '' ) )
    // --- Build query string for pagination links ---
    cSearchParams := ''
    IF !empty( cSearch )
       cSearchParams += '&q=' + cSearch
    ENDIF
    IF !empty( hSearch[ 'first' ] )
-      cSearchParams += '&q_first=' + hSearch[ 'first' ]
+      cSearchParams += '&_q_first=' + hSearch[ 'first' ]
    ENDIF
    IF !empty( hSearch[ 'last' ] )
-      cSearchParams += '&q_last=' + hSearch[ 'last' ]
+      cSearchParams += '&_q_last=' + hSearch[ 'last' ]
    ENDIF
    IF !empty( hSearch[ 'address' ] )
-      cSearchParams += '&q_address=' + hSearch[ 'address' ]
+      cSearchParams += '&_q_address=' + hSearch[ 'address' ]
    ENDIF
    IF !empty( hSearch[ 'country' ] )
-      cSearchParams += '&q_country=' + hSearch[ 'country' ]
+      cSearchParams += '&_q_country=' + hSearch[ 'country' ]
    ENDIF
    IF !empty( hSearch[ 'zip' ] )
-      cSearchParams += '&q_zip=' + hSearch[ 'zip' ]
+      cSearchParams += '&_q_zip=' + hSearch[ 'zip' ]
    ENDIF
 
    // --- Recover flash messages (only show on grid, clear after reading) ---
@@ -470,30 +470,50 @@ METHOD Grid() CLASS Customer
       nJ++
    ENDDO
 
-   // --- FR-READ-3: Per-field search (if any search term provided) ---
+   // --- FR-READ-3: Per-field search (AND logic between fields) ---
    IF !empty( cSearch ) .OR. !empty( hSearch[ 'first' ] ) .OR. ;
       !empty( hSearch[ 'last' ] ) .OR. !empty( hSearch[ 'address' ] ) .OR. ;
       !empty( hSearch[ 'country' ] ) .OR. !empty( hSearch[ 'zip' ] )
       cSearchUpper := Upper( cSearch )
       aFiltered := {}
       FOR nI := 1 TO Len( aGrid )
-         IF ( !empty( cSearch ) .AND. ;
-            ( Upper( HB_HGetDef( aGrid[ nI ], 'first', '' ) ) $ cSearchUpper .OR. ;
-              Upper( HB_HGetDef( aGrid[ nI ], 'last', '' ) ) $ cSearchUpper .OR. ;
-              Upper( HB_HGetDef( aGrid[ nI ], 'zip', '' ) ) $ cSearchUpper .OR. ;
-              Upper( HB_HGetDef( aGrid[ nI ], 'notes', '' ) ) $ cSearchUpper .OR. ;
-              Upper( HB_HGetDef( aGrid[ nI ], 'address', '' ) ) $ cSearchUpper .OR. ;
-              Upper( HB_HGetDef( aGrid[ nI ], 'country', '' ) ) $ cSearchUpper ) ) .OR. ;
-            ( !empty( hSearch[ 'first' ] ) .AND. ;
-              Upper( HB_HGetDef( aGrid[ nI ], 'first', '' ) ) $ Upper( hSearch[ 'first' ] ) ) .OR. ;
-            ( !empty( hSearch[ 'last' ] ) .AND. ;
-              Upper( HB_HGetDef( aGrid[ nI ], 'last', '' ) ) $ Upper( hSearch[ 'last' ] ) ) .OR. ;
-            ( !empty( hSearch[ 'address' ] ) .AND. ;
-              Upper( HB_HGetDef( aGrid[ nI ], 'address', '' ) ) $ Upper( hSearch[ 'address' ] ) ) .OR. ;
-            ( !empty( hSearch[ 'country' ] ) .AND. ;
-              Upper( HB_HGetDef( aGrid[ nI ], 'country', '' ) ) $ Upper( hSearch[ 'country' ] ) ) .OR. ;
-            ( !empty( hSearch[ 'zip' ] ) .AND. ;
-              Upper( HB_HGetDef( aGrid[ nI ], 'zip', '' ) ) $ Upper( hSearch[ 'zip' ] ) )
+         lMatch := .T.
+         IF !empty( cSearch )
+            IF ! ( Upper( HB_HGetDef( aGrid[ nI ], 'first', '' ) ) $ cSearchUpper .OR. ;
+               Upper( HB_HGetDef( aGrid[ nI ], 'last', '' ) ) $ cSearchUpper .OR. ;
+               Upper( HB_HGetDef( aGrid[ nI ], 'zip', '' ) ) $ cSearchUpper .OR. ;
+               Upper( HB_HGetDef( aGrid[ nI ], 'notes', '' ) ) $ cSearchUpper .OR. ;
+               Upper( HB_HGetDef( aGrid[ nI ], 'address', '' ) ) $ cSearchUpper .OR. ;
+               Upper( HB_HGetDef( aGrid[ nI ], 'country', '' ) ) $ cSearchUpper )
+               lMatch := .F.
+            ENDIF
+         ENDIF
+         IF !empty( hSearch[ 'first' ] )
+            IF ! ( Upper( HB_HGetDef( aGrid[ nI ], 'first', '' ) ) $ Upper( hSearch[ 'first' ] ) )
+               lMatch := .F.
+            ENDIF
+         ENDIF
+         IF !empty( hSearch[ 'last' ] )
+            IF ! ( Upper( HB_HGetDef( aGrid[ nI ], 'last', '' ) ) $ Upper( hSearch[ 'last' ] ) )
+               lMatch := .F.
+            ENDIF
+         ENDIF
+         IF !empty( hSearch[ 'address' ] )
+            IF ! ( Upper( HB_HGetDef( aGrid[ nI ], 'address', '' ) ) $ Upper( hSearch[ 'address' ] ) )
+               lMatch := .F.
+            ENDIF
+         ENDIF
+         IF !empty( hSearch[ 'country' ] )
+            IF ! ( Upper( HB_HGetDef( aGrid[ nI ], 'country', '' ) ) $ Upper( hSearch[ 'country' ] ) )
+               lMatch := .F.
+            ENDIF
+         ENDIF
+         IF !empty( hSearch[ 'zip' ] )
+            IF ! ( Upper( HB_HGetDef( aGrid[ nI ], 'zip', '' ) ) $ Upper( hSearch[ 'zip' ] ) )
+               lMatch := .F.
+            ENDIF
+         ENDIF
+         IF lMatch
             aAdd( aFiltered, aGrid[ nI ] )
          ENDIF
       NEXT

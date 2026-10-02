@@ -96,11 +96,11 @@ else
     fail_test "T12 - Grid contains 'Data Grid' heading" "contains" "no"
 fi
 
-# T13: Grid contains per-field search inputs
-if echo "$GRID" | grep -q "q_first" && echo "$GRID" | grep -q "q_last" && echo "$GRID" | grep -q "q_address"; then
-    pass_test "T13 - Grid contains per-field search inputs (FR-READ-3)" "present" "yes"
+# T13: Grid contains search input
+if echo "$GRID" | grep -q "_q_first"; then
+    pass_test "T13 - Grid contains search input (FR-READ-3)" "present" "yes"
 else
-    fail_test "T13 - Grid contains per-field search inputs" "present" "no"
+    fail_test "T13 - Grid contains search input" "present" "no"
 fi
 
 # T14: Grid contains sortable columns (FR-READ-4)

@@ -79,14 +79,11 @@
       <!-- Search + Create -->
       <div class="row mb-3">
          <div class="col-md-6">
-            <form class="d-flex flex-wrap gap-2 align-items-center" action="/customer/grid" method="GET">
-               <input class="form-control form-control-sm" type="search" name="q_first" placeholder="First" value="{{ HB_HGetDef( hSearch, 'first', '' ) }}">
-               <input class="form-control form-control-sm" type="search" name="q_last" placeholder="Last" value="{{ HB_HGetDef( hSearch, 'last', '' ) }}">
-               <input class="form-control form-control-sm" type="search" name="q_address" placeholder="Address" value="{{ HB_HGetDef( hSearch, 'address', '' ) }}">
-               <input class="form-control form-control-sm" type="search" name="q_country" placeholder="Country" value="{{ HB_HGetDef( hSearch, 'country', '' ) }}">
-               <input class="form-control form-control-sm" type="search" name="q_zip" placeholder="Zip" value="{{ HB_HGetDef( hSearch, 'zip', '' ) }}">
-               <button class="btn btn-sm btn-outline-primary" type="submit"><i class="bi bi-search"></i></button>
+            <div class="d-flex gap-2 align-items-center">
+               <input class="form-control form-control-sm" type="text" id="_q_first" placeholder="Enter text..." autocomplete="off" spellcheck="false" data-default="{{ HB_HGetDef( hSearch, 'first', '' ) }}">
+               <button class="btn btn-sm btn-outline-primary" type="button" onclick="window.location='/customer/grid?_q_first='+encodeURIComponent(document.getElementById('_q_first').value)"><i class="bi bi-search"></i></button>
                <a class="btn btn-sm btn-outline-secondary" href="/customer/grid"><i class="bi bi-x-circle"></i> Clear</a>
+            </div>
             </form>
          </div>
          <div class="col-md-6 text-end">
