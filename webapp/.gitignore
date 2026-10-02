@@ -1,0 +1,19 @@
+# Build artifacts
+.hbmk/
+app
+.hbmk/gcc/app/*.o
+.hbmk/gcc/app/*.c
+
+# Session files
+sessions/
+
+# Logs
+.logs/
+trace.log
+
+# Compiled views
+.cached/
+
+# OS files
+.DS_Store
+Thumbs.db

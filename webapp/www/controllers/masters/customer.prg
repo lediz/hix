@@ -425,7 +425,7 @@ METHOD Grid() CLASS Customer
    aGrid := {}
    ( cAlias )->( DbGoTop() )
    IF nStart > 1
-      ( cAlias )->( DbGoTo( nStart ) )
+      ( cAlias )->( DbSkip( nStart - 1 ) )
    ENDIF
    nJ := 0
    DO WHILE nJ < nRows .AND. ( cAlias )->( !Eof() )
