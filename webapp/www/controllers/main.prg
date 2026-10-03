@@ -5,9 +5,14 @@ PROCEDURE Main(...)
    LOCAL cName := hUser['name']
    LOCAL cKey, cRoles := '' 
    
-   FOR EACH cKey IN hUser["roles"]
-      cRoles += cKey:__enumKey() + " "
-   NEXT
+   // Handle numeric ROLES (backward compat with old session data)
+   IF ValType( hUser["roles"] ) == "N"
+      cRoles := ltrim(str(hUser["roles"]))
+   ELSE
+      FOR EACH cKey IN hUser["roles"]
+         cRoles += cKey:__enumKey() + " "
+      NEXT
+   ENDIF
    
    IF Empty( cRoles ) ; cRoles := "(none)" ; ENDIF  
    

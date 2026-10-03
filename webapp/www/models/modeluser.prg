@@ -6,6 +6,28 @@
 
 #include "hbclass.ch"
 
+// Parse ROLES string into hash matching CRUD example format
+// Input:  "customers:search;show;edit"
+// Output: { "customers" => "search;show;edit" }
+STATIC FUNCTION _ParseRoles( cRolesStr )
+   LOCAL hRoles := hb_Hash()
+   LOCAL aParts
+   
+   IF Empty( cRolesStr )
+      RETURN hRoles
+   ENDIF
+   
+   // Trim trailing spaces (DBF C field padding) before parsing
+   cRolesStr := ALLTRIM( cRolesStr )
+   
+   // Split on ":" to get role name and ops
+   aParts := hb_ATokens( cRolesStr, ":" )
+   IF Len( aParts ) >= 2
+      hRoles[ aParts[1] ] := aParts[2]
+   ENDIF
+   
+RETURN hRoles
+
 FUNCTION ModelUser( cUser, cPass )
    LOCAL hEntry
    LOCAL cData
@@ -32,7 +54,11 @@ FUNCTION ModelUser( cUser, cPass )
    hEntry[ "id" ] := ( "USR" )->( FieldGet( FieldPos( "ID" ) ) )
    hEntry[ "name" ] := ( "USR" )->( FieldGet( FieldPos( "NAME" ) ) )
    hEntry[ "pass" ] := ( "USR" )->( FieldGet( FieldPos( "PASS" ) ) )
-   hEntry[ "roles" ] := ( "USR" )->( FieldGet( FieldPos( "ROLES" ) ) )
+   
+   // Parse ROLES string into hash matching CRUD example format
+   // ROLES format: "role:ops" (e.g. "customers:search;show;edit")
+   // Result: { "customers" => "search;show;edit" }
+   hEntry[ "roles" ] := _ParseRoles( ( "USR" )->( FieldGet( FieldPos( "ROLES" ) ) ) )
    
    // Password comparison (case-sensitive)
    IF hEntry[ "pass" ] != cPass

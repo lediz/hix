@@ -50,7 +50,7 @@ fi
 
 # T08: POST /auth WITHOUT CSRF → rejected
 CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$API/auth" \
-    -d "username=demo&password=1234" \
+    -d "username=admin&password=1234" \
     -H "Content-Type: application/x-www-form-urlencoded" \
     --cookie-jar /tmp/test_cookies.txt)
 if [ "$CODE" = "302" ]; then
@@ -61,7 +61,7 @@ fi
 
 # T09: POST /auth WITH CSRF → authenticated
 CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$API/auth" \
-    -d "username=demo&password=1234&_csrf=$CSRF" \
+    -d "username=admin&password=1234&_csrf=$CSRF" \
     -H "Content-Type: application/x-www-form-urlencoded" \
     --cookie /tmp/test_cookies.txt)
 if [ "$CODE" = "302" ]; then

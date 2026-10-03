@@ -2,6 +2,7 @@
  * regenerate_users.prg - Regenerate users.dbf with test data
  * Uses Harbour core RDD functions (DBFCDX)
  * Complies with DEV-compliance.md: HIX framework only, no SQL, local git
+ * ROLES field: C(255) with "role:ops" format matching CRUD example
  */
 
 #include "hbclass.ch"
@@ -12,18 +13,25 @@ FUNCTION MAIN()
    LOCAL nI, nCount
    LOCAL aName := { "admin", "carles", "maria", "john", "jane" }
    LOCAL aPass := { "1234", "1234", "1234", "5678", "9012" }
-   LOCAL aRoles := { 1, 2, 3, 2, 3 }
+   // ROLES: "role:ops" format matching CRUD example (hStore roles hash)
+   // role name = first part, ops = semicolon-separated after ":"
+   LOCAL aRoles := { ;
+      "customers:search;show;edit;delete;recall;create", ;  // full customer access
+      "customers:search;show", ;                            // read-only
+      "customers:search;show;edit", ;                      // edit access
+      "customers:search;show", ;                           // read-only
+      "customers:search;show;edit" }                       // edit access
    
    rddSetDefault( "DBFCDX" )
    
    QOut( "Creating users.dbf with test data..." )
    
-   // Create new DBF with schema: id(N,10,0), name(C,40,0), pass(C,40,0), roles(N,1,0)
+   // Create new DBF with schema: id(N,10,0), name(C,40,0), pass(C,40,0), roles(C,255)
    DBCREATE( "/home/jack/Projects/pi-agent/webapp/data/users_new.dbf", ;
       { { "ID", "N", 10, 0 }, ;
         { "NAME", "C", 40, 0 }, ;
         { "PASS", "C", 40, 0 }, ;
-        { "ROLES", "N", 1, 0 } } )
+        { "ROLES", "C", 255, 0 } } )
    
    // Open EXCLUSIVE to create index
    USE "/home/jack/Projects/pi-agent/webapp/data/users_new" ALIAS "NEWDBF" EXCLUSIVE
@@ -54,7 +62,7 @@ FUNCTION MAIN()
    USE "/home/jack/Projects/pi-agent/webapp/data/users_new" ALIAS "NEWDBF2" SHARED
    ( "NEWDBF2" )->( DbGoTop() )
    DO WHILE ! ( "NEWDBF2" )->( Eof() )
-      QOut( "  " + ( "NEWDBF2" )->( FieldGet( FieldPos( "NAME" ) ) ) )
+      QOut( "  " + ( "NEWDBF2" )->( FieldGet( FieldPos( "NAME" ) ) ) + " roles=" + ( "NEWDBF2" )->( FieldGet( FieldPos( "ROLES" ) ) ) )
       ( "NEWDBF2" )->( DbSkip() )
    ENDDO
    ( "NEWDBF2" )->( DbCloseArea() )
@@ -84,13 +92,14 @@ FUNCTION MAIN()
    USE "/home/jack/Projects/pi-agent/webapp/data/users" ALIAS "USR" SHARED
    ( "USR" )->( DbGoTop() )
    DO WHILE ! ( "USR" )->( Eof() )
-      QOut( "  " + ( "USR" )->( FieldGet( FieldPos( "NAME" ) ) ) )
+      QOut( "  " + ( "USR" )->( FieldGet( FieldPos( "NAME" ) ) ) + " roles=" + ( "USR" )->( FieldGet( FieldPos( "ROLES" ) ) ) )
       ( "USR" )->( DbSkip() )
    ENDDO
    ( "USR" )->( DbCloseArea() )
    
    QOut( "Done. " + ltrim(str(nCount)) + " users created." )
-   QOut( "Fields: ID, NAME, PASS, ROLES" )
+   QOut( "Fields: ID, NAME, PASS, ROLES(C,255)" )
+   QOut( "ROLES format: role:ops (matching CRUD example)" )
    QOut( "Backup files: users.dbf.bak, users.cdb.bak, users.dbt.bak" )
    
 RETURN NIL
