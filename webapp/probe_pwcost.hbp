@@ -1,0 +1,11 @@
+-n
+-w1
+-es2
+-mt
+-workdir=.hbmk/${hb_compiler}/probe_pwcost
+-hbexe
+-oprobe_pwcost
+
+test/probe_pwcost.prg
+
+${hb_root}/include/harbour.hbx
