@@ -192,11 +192,46 @@ ENDIF
 ---
 
 ## Session bookkeeping
-
-* **No source file was modified.** `users.prg`, `tusers.prg`, `modeluser.prg`, `hpassword.prg`, `myapplogin.prg`, users views and `web.json` are byte-identical to the state at review start.
 * **Data restored byte-identical:** `data/users.dbf` md5 `a1f73e6edaf65f0801e1cf1754eab4a0`, `data/users.cdx` md5 `c6924813be93d601ba05bf4614b992cb` (snapshot taken before the run, restored after).
 * Server started on `localhost:9090` for the review and **stopped afterwards** (port verified closed).
 * Only `.logs/access.log` and `trace.log` grew during the review.
 * Compile check run in `/tmp` (no project artifacts created): `harbour -iwww -i/home/jack/Projects/harbour/include -n users.prg` → 2093 lines, 25 functions, 0 errors.
 * A delegated read-only reviewer run timed out at the 30-minute limit and produced no usable result; every finding in this report was established first-hand in the main session.
 * New artifact from this review: this report (`STATUS-USERS-MODULE.md`).
+
+---
+
+# Addendum — remediation applied 2026-10-05
+
+The "report only" constraint was lifted afterwards; the recommended order was executed in full.  This section supersedes the findings above wherever they conflict.
+
+**Suite: 70 PASS / 3 FAIL → 99 PASS / 0 FAIL** (`test/verify-users-fixes.sh`, now covering D-01..D-16 + N-01 + C-009 + SEC).
+
+| Item | Result |
+|---|---|
+| **N-01** CSRF on write forms | **FIXED** — `@CSRF` added to `users/edit.html` and `users/delete.html`; the JS-string `@CSRF` in `users/grid.html` and `customer/grid.html` replaced with a server-side `data-csrf="{{ HIX_CsrfMakeToken() }}"`. A tokenless POST is still rejected 302 → `/login`; a POST carrying the token its own form rendered is accepted. |
+| **Suite idempotency** | **FIXED** — the test row is now `zverify<epoch>`; `data/users.dbf` re-seeded. Three consecutive runs all passed D-03a/D-03b. |
+| **F-2 / D-08b** | **FIXED** — assertion string corrected (`UParam` → `UGet`); code was already correct. |
+| **Login limit** | **TIGHTENED** — 10/60 → the audit value **5/60**, now config-driven (`www/middlewares/config.json` → `setup.ratelimit.login_max` / `login_window`). Suite made rate-limit-aware. |
+| **Work factor** | **RAISED** — `PW_HASH_ITERATIONS` 1000 → **10000** (measured 4.0 ms/hash, `test/probe_pwcost.prg`); `users.dbf` re-seeded; new check D-07g recomputes the stored digest. |
+| **Uncommitted work** | **COMMITTED** — `c58ec7a`, `ca3083e`, `a2dba71`, `d40f9cf`. |
+| **C-009 SSL/TLS** | **CLOSED** — `server.ssl = true` with a self-signed local certificate from `gen_cert.sh` (`certs/` gitignored, key chmod 600). Plain HTTP on 9090 is refused; suite checks C-009a/b/c. |
+| **Salt entropy** | **CLOSED** — `_PwSalt()` now uses `hb_RandStr(32)`, Harbour core RTL (`hb_arc4random_buf`, seeded from `/dev/urandom`), so no `hbct` contrib and no `app.hbp` change. Verified by `test/probe_entropy.prg` (5000 seeds, 0 duplicates). |
+| **CSRF secret** | **CLOSED** — the five key literals are out of git. `www/config.json` is gitignored (template `www/config.json.example`); `app.prg` guarantees a strong per-installation key set before the server loads it, with `HIX_KEY_*` env overrides. |
+
+### Compliance after remediation
+
+| Constraint | Status |
+|---|---|
+| C-001..C-008, C-010 | ✅ unchanged |
+| C-009 SSL/TLS | ✅ **TLS 1.3 on 9090; plaintext refused** |
+| CSRF on every POST form | ✅ **N-01 closed, guarded by the suite** |
+| No committed secrets | ✅ keys generated per install; `certs/` and `www/config.json` gitignored |
+
+### New operational note
+
+`server.autostart` is now `false`.  HIX's `HIX_Navigator()` opened the app with `xdg-open` at startup, and the browser inherited the listening socket: killing the server left port 9090 bound by chromium, so the next start failed with *"Cannot bind port 9090"* while `ss` showed a LISTEN socket with no server behind it.
+
+### Also corrected
+
+`HIX_MwRateLimitSetup()` was being fed `UConfig( "setup", "ratelimit", "ip_per_min" )`, which returns a hash or the default string, so the call was silently ignored and the global limiter kept HIX's built-in 60/60 rather than the declared 300/60.
