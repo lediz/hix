@@ -32,6 +32,7 @@
 
 #DEFINE HIX_APP_CONFIG      "www/config.json"
 #DEFINE HIX_MW_CONFIG       "www/middlewares/config.json"
+#DEFINE HIX_SERVER_CONFIG   "hix.json"
 #DEFINE HIX_KEY_MIN_LEN     32
 #DEFINE HIX_KEY_NAMES       { "csrf", "jwt", "session", "token", "resource" }
 
@@ -41,6 +42,12 @@ FUNCTION Main()
 
    // Signing keys must exist before HIX loads www/config.json in Start().
    _AppKeysEnsure( HIX_APP_CONFIG )
+
+   // HIX only builds the SSL context per connection, so a missing certificate
+   // does not stop the server: it starts happily and then fails every request.
+   IF ! _TlsGuard()
+      RETURN NIL
+   ENDIF
 
    oServer := THixServer():New()
 
@@ -89,13 +96,34 @@ STATIC FUNCTION _JsonRead( cFile )
       RETURN NIL
    ENDIF
 
-   xVal := hb_jsonDecode( cJson )
+   // hix.json opens with a /* ... */ banner and Harbour's JSON decoder
+   // rejects it, so strip a leading block comment before decoding.
+   xVal := hb_jsonDecode( _StripLeadComment( cJson ) )
 
    IF ! ValType( xVal ) == 'H'
       RETURN NIL
    ENDIF
 
 RETURN xVal
+
+
+STATIC FUNCTION _StripLeadComment( cText )
+
+   LOCAL nPos
+
+   IF Left( cText, 2 ) == "//"
+      nPos := At( Chr( 10 ), cText )
+      IF nPos > 0
+         cText := SubStr( cText, nPos + 1 )
+      ENDIF
+   ELSEIF Left( cText, 2 ) == "/*"
+      nPos := At( "*/", cText )
+      IF nPos > 0
+         cText := SubStr( cText, nPos + 2 )
+      ENDIF
+   ENDIF
+
+RETURN cText
 
 
 STATIC FUNCTION _JsonWrite( cFile, hData )
@@ -184,6 +212,45 @@ STATIC FUNCTION _AppKeysEnsure( cFile )
    ENDIF
 
 RETURN nNew
+
+
+// ============================================================
+// _TlsGuard -- refuse to start when server.ssl is on but the certificate
+// pair is not there.  THixSocket:New() builds the SSL context per
+// connection, so without this check the server binds the port, prints its
+// banner, and then fails every single request.
+// ============================================================
+STATIC FUNCTION _TlsGuard()
+
+   LOCAL hCfg := _JsonRead( HIX_SERVER_CONFIG )
+   LOCAL hSrv, cCerts, cCert, cKey
+
+   IF hCfg == NIL
+      RETURN .T.
+   ENDIF
+
+   hSrv := hb_HGetDef( hCfg, "server", NIL )
+
+   IF ! ValType( hSrv ) == 'H' .OR. ! hb_HGetDef( hSrv, "ssl", .F. )
+      RETURN .T.
+   ENDIF
+
+   hCfg := hb_HGetDef( hCfg, "paths", NIL )
+   cCerts := hb_DirSepAdd( hb_HGetDef( hCfg, "certs", "certs" ) )
+
+   cCert := cCerts + hb_HGetDef( hSrv, "cert_public", "" )
+   cKey  := cCerts + hb_HGetDef( hSrv, "cert_private", "" )
+
+   IF File( cCert ) .AND. File( cKey )
+      RETURN .T.
+   ENDIF
+
+   ? "app.prg: server.ssl is true but the certificate pair is missing:"
+   ? "app.prg:   " + cCert
+   ? "app.prg:   " + cKey
+   ? "app.prg: run ./gen_cert.sh first (it is idempotent), then start the server."
+
+RETURN .F.
 
 
 // ============================================================

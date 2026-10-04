@@ -20,6 +20,15 @@ export HB_ROOT   # needed if app.hbp references ${HB_ROOT}/... paths
 
 HBMK2="$HB_ROOT/bin/linux/gcc/hbmk2"
 if [ ! -x "$HBMK2" ]; then
+    for cand in "$HOME/Projects/harbour" "$HOME/harbour" "/home/jack/Projects/harbour"; do
+        if [ -x "$cand/bin/linux/gcc/hbmk2" ]; then
+            export HB_ROOT="$cand"
+            HBMK2="$HB_ROOT/bin/linux/gcc/hbmk2"
+            break
+        fi
+    done
+fi
+if [ ! -x "$HBMK2" ]; then
     echo "ERROR: hbmk2 not found at $HBMK2" >&2
     echo "Set HB_ROOT to your Harbour build directory." >&2
     exit 1
@@ -41,6 +50,18 @@ fi
 # dynamic .prg files that use hbclass.ch / hbmemory.ch / etc. fail to
 # compile silently and the router returns 403 for their routes.
 export HB_INCLUDE="$HB_ROOT/include${HB_INCLUDE:+:$HB_INCLUDE}"
+
+# ${hix} in app.hbp expands from this env var.  The upstream script assumes
+# examples/web/crud/; this app lives in pi-agent/webapp/, so fall back to
+# sibling checkouts before giving up.
+if [ ! -f "$hix/hix_server.hbx" ]; then
+    for cand in "$HOME/Projects/hix" "$(cd ../../.. 2>/dev/null && pwd)/hix" "$(cd ../../../.. 2>/dev/null && pwd)/hix"; do
+        if [ -f "$cand/hix_server.hbx" ]; then
+            export hix="$cand"
+            break
+        fi
+    done
+fi
 
 # ------------------------------------------------------------
 # It is very important to validate the HBX files, otherwise it
@@ -76,6 +97,14 @@ BIN="./app"
 if [ ! -x "$BIN" ]; then
     echo "ERROR: $BIN not produced." >&2
     exit 1
+fi
+
+# hix.json has server.ssl = true, and HIX only builds the SSL context per
+# connection: without the certificate the server starts and then fails every
+# request.  gen_cert.sh is idempotent - it only renews a missing or
+# near-expiry certificate.
+if [ -x ./gen_cert.sh ]; then
+    ./gen_cert.sh
 fi
 
 echo
