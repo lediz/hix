@@ -354,7 +354,7 @@ METHOD Update() CLASS UsersController
    // D-07: hash with a fresh salt only when a new password was supplied
    cPass := oPost:Get( 'pass' )
    IF !empty( cPass )
-      cSalt            := _PwSalt( cName )
+      cSalt            := _PwSalt()
       hChanges[ 'salt' ] := cSalt
       hChanges[ 'pass' ] := _PwHash( AllTrim( cPass ), cSalt )
    ENDIF
@@ -409,7 +409,7 @@ METHOD Store() CLASS UsersController
 
    hData            := hb_HClone( oVal:DataFields() )
    hData[ 'id' ]    := Self:NextId()
-   hData[ 'salt' ]  := _PwSalt( cName )
+   hData[ 'salt' ]  := _PwSalt()
    hData[ 'pass' ]  := _PwHash( cPass, hData[ 'salt' ] )
 
    lSuccess := oUsers:Insert( hData, @cError, @nRecno )

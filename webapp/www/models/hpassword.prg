@@ -24,22 +24,25 @@
 // re-seed with regenerate_users.prg afterwards.
 #DEFINE PW_HASH_ITERATIONS 10000
 
-// Per-user salt.  Harbour core exposes no CSPRNG without the hbct contrib
-// (hb_rand), and app.hbp must not be changed, so the salt is derived from
-// per-request entropy instead.  That is acceptable: a salt is stored in the
-// clear next to the digest and does not have to be secret, it only has to be
-// unique per user so digests cannot be compared or precomputed.  The cost of
-// an offline attack is dominated by PW_HASH_ITERATIONS.
-STATIC FUNCTION _PwSalt( cName )
+// Per-user salt, from a CSPRNG.
+// hb_RandStr() is Harbour core RTL (src/rtl/hbrand.c -> hb_random_block ->
+// hb_arc4random_buf, arc4random seeded from /dev/urandom), so a real random
+// source is available without the hbct contrib (hb_rand) and without touching
+// app.hbp.  Verified by test/probe_entropy.prg: 5000 seeds, 0 duplicates,
+// uniform output.
+//
+// The previous version derived the salt from name + timestamp + Seconds() +
+// RecCount().  That was predictable: an attacker who knows roughly when an
+// account was created and can read the user list can reconstruct the salt,
+// which turns a per-user offline attack into a precomputable one.
+//
+// 32 random bytes -> SHA-256 -> 64 hex, truncated to PW_SALT_LEN (32 hex =
+// 128 bits of salt entropy).  A salt is stored in the clear next to the
+// digest and does not have to be secret; it only has to be unique and
+// unpredictable, so digests cannot be compared, batched or precomputed.
+STATIC FUNCTION _PwSalt()
 
-   LOCAL cSeed
-
-   cSeed := 'pw.salt|' + AllTrim( cName ) + '|' + ;
-            hb_TToS( hb_DateTime() ) + '|' + ;
-            hb_NTOS( Seconds() )     + '|' + ;
-            hb_NTOS( RecCount() )
-
-RETURN SubStr( hb_sha256( cSeed ), 1, PW_SALT_LEN )
+RETURN SubStr( hb_sha256( hb_RandStr( 32 ) ), 1, PW_SALT_LEN )
 
 
 // Salted, iterated SHA-256.  Returns 64 hex characters.

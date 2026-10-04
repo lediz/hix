@@ -46,7 +46,7 @@ FUNCTION MAIN()
    
    nCount := 5
    FOR nI := 1 TO nCount
-      cSalt := _PwSalt( aName[ nI ] )
+      cSalt := _PwSalt()
       ( "NEWDBF" )->( DbAppend() )
       ( "NEWDBF" )->( FieldPut( FieldPos( "ID" ), nI ) )
       ( "NEWDBF" )->( FieldPut( FieldPos( "NAME" ), aName[ nI ] ) )
