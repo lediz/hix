@@ -78,20 +78,26 @@
                </div>
                <div class="card-body">
                   <form method="POST" action="{{ if( cMode == 'create', URoute( 'users.store' ), URoute( 'users.update', HB_HGetDef( hRow, '_recno', 0 ) ) ) }}">
-                     
+
+                     <!-- N-01: this form posts to users.store / users.update, both guarded by
+                          MyAppAuthRoleEdit -> HIX_MwCsrfCheck.  Without @CSRF every write from a
+                          real browser is rejected with 302 -> /login. -->
+                     @CSRF
+
                      <!-- Name -->
                      <div class="mb-3">
                         <label for="name" class="form-label required">Name</label>
-                        <input type="text" name="name" id="name" class="form-control {{ if( !empty( hb_HGetDef( hErrors, 'name', '' ) ), 'is-invalid', '' ) }}" value="{{ HB_HGetDef( hRow, 'name', '' ) }}">
+                        <input type="text" name="name" id="name" class="form-control {{ if( !empty( hb_HGetDef( hErrors, 'name', '' ) ), 'is-invalid', '' ) }}" value="{{ HB_HGetDef( hRow, 'name', '' ) }}" autocomplete="off">
                         @if !empty( hb_HGetDef( hErrors, 'name', '' ) )
                         <div class="invalid-feedback">{{ hb_HGetDef( hErrors, 'name', '' ) }}</div>
                         @endif
                      </div>
 
-                     <!-- Password -->
+                     <!-- Password: never pre-filled — users.dbf stores a digest only (D-05/D-07) -->
                      <div class="mb-3">
-                        <label for="pass" class="form-label required">Password</label>
-                        <input type="text" name="pass" id="pass" class="form-control {{ if( !empty( hb_HGetDef( hErrors, 'pass', '' ) ), 'is-invalid', '' ) }}" value="{{ HB_HGetDef( hRow, 'pass', '' ) }}">
+                        <label for="pass" class="form-label {{ if( cMode == 'create', 'required', '' ) }}">Password</label>
+                        <input type="password" name="pass" id="pass" class="form-control {{ if( !empty( hb_HGetDef( hErrors, 'pass', '' ) ), 'is-invalid', '' ) }}" value="" autocomplete="new-password" placeholder="{{ if( cMode == 'create', 'Min 4 characters', 'Leave blank to keep current password' ) }}">
+                        <div class="form-text">{{ if( cMode == 'create', 'Stored as a salted, iterated SHA-256 digest.', 'Passwords are stored hashed. Leave blank to keep the current password.' ) }}</div>
                         @if !empty( hb_HGetDef( hErrors, 'pass', '' ) )
                         <div class="invalid-feedback">{{ hb_HGetDef( hErrors, 'pass', '' ) }}</div>
                         @endif
@@ -100,7 +106,7 @@
                      <!-- Roles -->
                      <div class="mb-3">
                         <label for="roles" class="form-label required">Roles</label>
-                        <input type="text" name="roles" id="roles" class="form-control {{ if( !empty( hb_HGetDef( hErrors, 'roles', '' ) ), 'is-invalid', '' ) }}" value="{{ HB_HGetDef( hRow, 'roles', '' ) }}" placeholder="customers:search;show;edit">
+                        <input type="text" name="roles" id="roles" class="form-control {{ if( !empty( hb_HGetDef( hErrors, 'roles', '' ) ), 'is-invalid', '' ) }}" value="{{ HB_HGetDef( hRow, 'roles', '' ) }}" autocomplete="off" placeholder="customers:search;show;edit">
                         <div class="form-text">Format: role:ops (e.g. "customers:search;show;edit")</div>
                         @if !empty( hb_HGetDef( hErrors, 'roles', '' ) )
                         <div class="invalid-feedback">{{ hb_HGetDef( hErrors, 'roles', '' ) }}</div>

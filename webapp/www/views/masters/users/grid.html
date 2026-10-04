@@ -109,9 +109,6 @@
                         <th class="sortable" onclick="window.location='/users/grid?sort=name&dir={{ if( cSort == 'name' .and. cDir == 'ASC', 'DESC', 'ASC' ) }}&q={{ cSearch }}'">
                            Name <span class="sort-icon">{{ if( cSort == 'name', if( cDir == 'ASC', '▲', '▼' ), '') }}</span>
                         </th>
-                        <th class="sortable" onclick="window.location='/users/grid?sort=pass&dir={{ if( cSort == 'pass' .and. cDir == 'ASC', 'DESC', 'ASC' ) }}&q={{ cSearch }}'">
-                           Password <span class="sort-icon">{{ if( cSort == 'pass', if( cDir == 'ASC', '▲', '▼' ), '') }}</span>
-                        </th>
                         <th class="sortable" onclick="window.location='/users/grid?sort=roles&dir={{ if( cSort == 'roles' .and. cDir == 'ASC', 'DESC', 'ASC' ) }}&q={{ cSearch }}'">
                            Roles <span class="sort-icon">{{ if( cSort == 'roles', if( cDir == 'ASC', '▲', '▼' ), '') }}</span>
                         </th>
@@ -122,7 +119,6 @@
                      @foreach hRow IN aGrid
                      <tr>
                         <td>{{ HB_HGetDef( hRow, 'name', '' ) }}</td>
-                        <td>{{ HB_HGetDef( hRow, 'pass', '' ) }}</td>
                         <td>{{ HB_HGetDef( hRow, 'roles', '' ) }}</td>
                         <td>
                            <a href="{{ URoute( 'users.show', HB_HGetDef( hRow, '_recno' ) ) }}" class="btn btn-sm btn-outline-primary" title="Show">
@@ -186,7 +182,8 @@
                </div>
                <div class="modal-footer">
                   <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                  <button type="button" id="btnConfirmAccept" class="btn btn-outline-success">Accept</button>
+                  <button type="button" id="btnConfirmAccept" class="btn btn-outline-success"
+                          data-csrf="{{ HIX_CsrfMakeToken() }}">Accept</button>
                </div>
             </div>
          </div>
@@ -213,12 +210,19 @@
          });
 
          if (acceptBtn) {
+            // N-01: an @CSRF directive written inside a JS string literal is never expanded -
+            // the template engine only expands a directive at the start of a line, so the
+            // token was never emitted and every JS-built POST was rejected by
+            // HIX_MwCsrfCheck.  The token is now generated server-side and carried in a
+            // data attribute.
+            const csrfToken = acceptBtn.getAttribute('data-csrf') || '';
+
             acceptBtn.addEventListener('click', function() {
                if (targetUrl) {
                   const form = document.createElement('form');
                   form.method = 'POST';
                   form.action = targetUrl;
-                  form.innerHTML = '@CSRF';
+                  form.innerHTML = '<input type="hidden" name="_csrf" value="' + csrfToken + '">';
                   document.body.appendChild(form);
                   form.submit();
                }
