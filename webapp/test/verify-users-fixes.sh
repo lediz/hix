@@ -12,6 +12,8 @@
 #   D-07 plaintext passwords        D-14 orphan data/ artifacts
 #   D-15 view hash-subscript 500s   D-16 login case handling / RDD ==
 #   N-01 CSRF token on every users write form (browser path)
+#   C-009 TLS enabled, plaintext HTTP refused
+#   SEC  signing keys and password salts generated, never committed
 #
 # Complies with srs/DEV-compliance.md: lives inside the project folder,
 # HIX/Harbour only, no SQL, no 3rd-party tooling, server on port 9090.
@@ -32,7 +34,7 @@
 # free slot instead of failing, so it runs at any configured limit - it is just
 # slower at a tighter one.  The deliberate rate-limit probe is at the very end.
 # ------------------------------------------------------------------
-API="http://localhost:9090"
+API="${VERIFY_API:-https://localhost:9090}"
 CK=$(mktemp -u /tmp/vdck.XXXXXX)
 
 # Unique per run: see "Idempotency" above.
@@ -46,7 +48,9 @@ LOGIN_WINDOW=$(python3 -c "import json;print(json.load(open('www/middlewares/con
 CT=5                 # curl connect timeout (s)
 MT=15                # curl total transfer timeout (s)
 HBC_TIMEOUT=60       # Harbour compile timeout (s)
-CU="curl -s --connect-timeout $CT --max-time $MT"
+# -k: the dev certificate is self-signed (./gen_cert.sh).  It is harmless over
+# plain http, so it is always passed rather than branched on the scheme.
+CU="curl -s -k --connect-timeout $CT --max-time $MT"
 
 PASS=0; FAIL=0
 P()   { echo "  PASS  $1"; PASS=$((PASS+1)); }
@@ -65,7 +69,7 @@ post() { $CU -o /dev/null -w "%{redirect_url}" -b "$CK" -c "$CK" -X POST "$API/$
 auth_post() {                      # auth_post <user> <pass> -> HTTP code of POST /auth
    rm -f "$CK"
    local T
-   T=$(curl -s --connect-timeout "$CT" --max-time "$MT" -c "$CK" "$API/login" \
+   T=$(curl -s -k --connect-timeout "$CT" --max-time "$MT" -c "$CK" "$API/login" \
         | grep -oP 'name="_csrf"[^>]*value="\K[^"]+' | head -1)
    $CU -o /dev/null -w "%{http_code}" -b "$CK" -c "$CK" -X POST "$API/auth" \
        -d "username=$1&password=$2&_csrf=$T"
@@ -152,7 +156,7 @@ PY
 # --- pre-flight: server must answer, otherwise abort immediately ----
 if ! $CU -o /dev/null "$API/login"; then
    echo "ABORT: HIX server not reachable at $API (timeout ${CT}s connect / ${MT}s transfer)"
-   echo "Start it with:  hbmk2 app.hbp && ./app"
+   echo "Start it with:  ./gen_cert.sh && hbmk2 app.hbp && ./app"
    exit 2
 fi
 
@@ -428,9 +432,9 @@ echo "=== D-07b  /auth is rate-limited ==="
 BLOCKED=""
 for i in $(seq 1 $((LOGIN_MAX+5))); do
    rm -f "$CK"
-   T=$(curl -s --connect-timeout "$CT" --max-time "$MT" -c "$CK" "$API/login" \
+   T=$(curl -s -k --connect-timeout "$CT" --max-time "$MT" -c "$CK" "$API/login" \
         | grep -oP 'name="_csrf"[^>]*value="\K[^"]+' | head -1)
-   C=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout "$CT" --max-time "$MT" \
+   C=$(curl -s -k -o /dev/null -w "%{http_code}" --connect-timeout "$CT" --max-time "$MT" \
         -b "$CK" -c "$CK" -X POST "$API/auth" -d "username=admin&password=0000&_csrf=$T")
    if [ "$C" = "429" ]; then BLOCKED="$i"; break; fi
 done
@@ -438,9 +442,52 @@ if [ -n "$BLOCKED" ]; then P "D-07c /auth returns 429 after repeated attempts (a
 else F "D-07c /auth rate limiting" "429 within $((LOGIN_MAX+5)) attempts" "never blocked"; fi
 
 # ==================================================================
+# The last two groups cover what the status review left as open risks:
+# no TLS, non-CSPRNG salts, and signing keys committed to the repository.
+# ==================================================================
+echo "=== C-009  TLS ==="
+case "$API" in
+  https://*) P "C-009a suite reaches the app over https";;
+  *)         F "C-009a suite reaches the app over https" "https://..." "$API";;
+esac
+TLSLINE=$($CU -sv -o /dev/null "$API/login" 2>&1 | grep -oE 'SSL connection using [^ |]+' | head -1)
+if [ -n "$TLSLINE" ]; then P "C-009b TLS handshake negotiated ($TLSLINE)"
+else F "C-009b TLS handshake" "SSL connection using ..." "none reported"; fi
+if curl -s --connect-timeout "$CT" --max-time "$MT" -o /dev/null "http://localhost:9090/login"; then
+   F "C-009c plain HTTP is refused" "no plaintext answer" "answered over http"
+else P "C-009c plain HTTP is refused (the server speaks TLS only)"; fi
+
+# ==================================================================
+echo "=== SEC  signing keys and salts are generated, not committed ==="
+git check-ignore -q www/config.json
+chk "SEC-01a www/config.json is gitignored (it holds this install's keys)" "0" "$?"
+chk "SEC-01b the committed template carries no keys section" "0" "$(grep -c '"keys"' www/config.json.example)"
+chk "SEC-01c no signing-key literal left in src/app.prg" "0" "$(grep -cE '"[0-9a-f]{32,}"' src/app.prg)"
+chk "SEC-01d app.prg installs the keys before the server starts" "1" "$(grep -c '_AppKeysEnsure( HIX_APP_CONFIG )' src/app.prg)"
+chk "SEC-01e www/config.json carries a key set after a server run" "5" "$(python3 -c "
+import json
+print(len(json.load(open('www/config.json')).get('keys',{})))")"
+chk "SEC-01f every key is >=32 chars and not a published HIX default" "5" "$(python3 -c "
+import json
+k=json.load(open('www/config.json'))['keys']
+print(sum(1 for v in k.values() if isinstance(v,str) and len(v)>=32 and 'H!x@' not in v))")"
+chk "SEC-02a salt comes from the Harbour core CSPRNG (hb_RandStr)" "1" "$(grep -c 'hb_RandStr( 32 )' www/models/hpassword.prg)"
+chk "SEC-02b no name/time/record-count salt derivation left behind" "0" "$(grep -cE 'hb_NTOS\( Seconds|hb_NTOS\( RecCount|hb_TToS\( hb_DateTime' www/models/hpassword.prg)"
+NSEC=$(dbf count)
+chk "SEC-02c every stored salt is 32-hex" "$NSEC" "$(python3 -c "
+import re
+d=open('data/users.dbf','rb').read()
+n=int.from_bytes(d[4:8],'little'); s=int.from_bytes(d[8:10],'little'); l=int.from_bytes(d[10:12],'little')
+print(sum(1 for r in range(1,n+1) if re.fullmatch(r'[0-9a-f]{32}', d[s+(r-1)*l+179:s+(r-1)*l+211].decode().strip())))")"
+chk "SEC-02d every stored salt is distinct" "$NSEC" "$(python3 -c "
+d=open('data/users.dbf','rb').read()
+n=int.from_bytes(d[4:8],'little'); s=int.from_bytes(d[8:10],'little'); l=int.from_bytes(d[10:12],'little')
+print(len(set(d[s+(r-1)*l+179:s+(r-1)*l+211].decode().strip() for r in range(1,n+1))))")"
+
+# ==================================================================
 ERR_AFTER=$(grep -c "Bound error" .logs/errors.log 2>/dev/null || echo 0)
 chk "D-15h no new 'Bound error' logged during the run" "$ERR_BEFORE" "$ERR_AFTER"
 
 echo
-echo "users module regression (D-01..D-16 + N-01): PASS=$PASS FAIL=$FAIL"
+echo "users module regression (D-01..D-16 + N-01 + C-009 + SEC): PASS=$PASS FAIL=$FAIL"
 [ "$FAIL" -eq 0 ]

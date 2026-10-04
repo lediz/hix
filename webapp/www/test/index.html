@@ -13,7 +13,7 @@
                as the CRUD app so session cookies and CSRF work.
                The simplest way is to copy this folder to
                  www/public/test/
-               and open http://localhost/public/test/index.html
+               and open https://localhost:9090/test/index.html
                in a browser while the CRUD server is running.
                (Opening this file via file:// will fail: browsers
                block cross-origin cookies and CORS is not enabled
@@ -146,7 +146,7 @@
     <span style="color:#555;font-size:.9em">
       Start the server (<code>go.bat</code> in <code>examples/web/crud/</code>) and reload this page.<br>
       Remember: this page must be served from the same origin as the CRUD app
-      (copy to <code>www/public/test/</code> and open <code>http://localhost/public/test/index.html</code>).
+      (copy to <code>www/public/test/</code> and open <code>https://localhost:9090/test/index.html</code>).
     </span>
   </div>
 
@@ -233,10 +233,10 @@
 
   // ── API base ────────────────────────────────────────────────
   // If the page is served over http(s) we assume same-origin as
-  // the CRUD app; otherwise (file://) fall back to localhost:80.
+  // the CRUD app; otherwise (file://) fall back to the local server.
   const API = (location.protocol.startsWith('http'))
               ? location.origin
-              : 'http://localhost';
+              : 'https://localhost:9090';
 
   document.getElementById('target').textContent     = API;
   document.getElementById('target-off').textContent = API;
