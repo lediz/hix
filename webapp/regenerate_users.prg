@@ -15,8 +15,9 @@ FUNCTION MAIN()
    LOCAL aPass := { "1234", "1234", "1234", "5678", "9012" }
    // ROLES: "role:ops" format matching CRUD example (hStore roles hash)
    // role name = first part, ops = semicolon-separated after ":"
+   // ROLES format: "role:op1;op2;op3|role2:op1;op2" (pipe separates role pairs)
    LOCAL aRoles := { ;
-      "customers:search;show;edit;delete;recall;create", ;  // full customer access
+      "customers:search;show;edit;delete;recall;create|users:search;show;edit;delete;create", ;  // full customer + users access
       "customers:search;show", ;                            // read-only
       "customers:search;show;edit", ;                      // edit access
       "customers:search;show", ;                           // read-only

@@ -1,0 +1,101 @@
+@args hSearch := {=>}, hMessage := {=>}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+	@view 'common/header.html' 
+
+</head>
+
+<style>
+
+	main {
+		margin-top: 70px;
+	}
+
+	.card {
+		box-shadow: 5px 5px 5px gray !important;
+	}
+
+	.search-box {
+		max-width: 600px;
+		margin: 0 auto;
+	}
+
+</style>
+
+<body>
+
+	<!-- Navbar -->
+
+	@view 'common/navbar.html'
+
+
+	<!-- Offcanvas Sidebar -->
+
+	@view 'common/sidebar.html', 'users'
+
+   <main class="container-fluid">
+		<!-- Breadcrumb... -->
+
+		<div class="row w-100 mt-5">
+			<nav  aria-label="breadcrumb">
+			  <ol class="breadcrumb fs-5">
+				<li class="breadcrumb-item"><a href="/main"><i class="bi bi-house-door-fill"></i></button></li>
+				<li class="breadcrumb-item"><a href="/users/grid">Users</button></li>
+				<li class="breadcrumb-item active" aria-current="page">Search</li>
+			  </ol>
+			</nav>
+		</div>
+
+		<!-- Flash message -->
+      @if !empty( hMessage[ 'message' ] )
+			<div class="row ">
+				<div class="col">
+				<div class="alert alert-{{ hMessage[ 'type' ] }}" role="alert">
+				<b>
+					<i class="bi bi-info-circle"></i>&nbsp;
+					{{ hMessage[ 'message' ] }}
+				</b>
+				</div>
+				</div>
+			</div>
+      @endif
+
+      <!-- Search Form -->
+      <div class="row w-100 mt-4">
+         <div class="col-md-8">
+            <div class="card">
+               <div class="card-header">
+                  <h4 class="m-0 fw-bold">
+                     <i class="bi bi-search"></i>&nbsp;Search Users
+                  </h4>
+               </div>
+               <div class="card-body">
+                  <form method="GET" action="/users/grid">
+                     
+                     <!-- Name -->
+                     <div class="mb-3">
+                        <label for="name" class="form-label">Name</label>
+                        <input type="text" name="_q_name" id="name" class="form-control" value="{{ HB_HGetDef( hSearch, 'name', '' ) }}" placeholder="Enter name...">
+                     </div>
+
+                     <!-- Submit -->
+                     <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                           <i class="bi bi-search"></i>&nbsp;Search
+                        </button>
+                        <a href="/users/grid" class="btn btn-secondary">
+                           <i class="bi bi-x-lg"></i>&nbsp;Clear
+                        </a>
+                     </div>
+                  </form>
+               </div>
+            </div>
+         </div>
+      </div>
+   </main>
+
+</body>
+</html>

@@ -1,0 +1,127 @@
+@args cMode := 'edit', lFound := .F., hRow := {=>}, hMessage := {=>}, hErrors := {=>}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+	@view 'common/header.html' 
+
+</head>
+
+<style>
+
+	main {
+		margin-top: 70px;
+	}
+
+	.card {
+		box-shadow: 5px 5px 5px gray !important;
+	}
+
+	.form-label {
+		font-weight: bold;
+	}
+
+	.required::after {
+		content: " *";
+		color: red;
+	}
+
+</style>
+
+<body>
+
+	<!-- Navbar -->
+
+	@view 'common/navbar.html'
+
+
+	<!-- Offcanvas Sidebar -->
+
+	@view 'common/sidebar.html', 'users'
+
+   <main class="container-fluid">
+		<!-- Breadcrumb... -->
+
+		<div class="row w-100 mt-5">
+			<nav  aria-label="breadcrumb">
+			  <ol class="breadcrumb fs-5">
+				<li class="breadcrumb-item"><a href="/main"><i class="bi bi-house-door-fill"></i></button></li>
+				<li class="breadcrumb-item"><a href="/users/grid">Users</button></li>
+				<li class="breadcrumb-item active" aria-current="page">{{ if( cMode == 'create', 'Create User', 'Edit User' ) }}</li>
+			  </ol>
+			</nav>
+		</div>
+
+		<!-- Flash message -->
+      @if !empty( hMessage[ 'message' ] )
+			<div class="row ">
+				<div class="col">
+				<div class="alert alert-{{ hMessage[ 'type' ] }}" role="alert">
+				<b>
+					<i class="bi bi-info-circle"></i>&nbsp;
+					{{ hMessage[ 'message' ] }}
+				</b>
+				</div>
+				</div>
+			</div>
+      @endif
+
+      <!-- Form -->
+      <div class="row w-100 mt-4">
+         <div class="col-md-8">
+            <div class="card">
+               <div class="card-header">
+                  <h4 class="m-0 fw-bold">
+                     <i class="bi bi-person-plus-fill"></i>&nbsp;{{ if( cMode == 'create', 'Create User', 'Edit User' ) }}
+                  </h4>
+               </div>
+               <div class="card-body">
+                  <form method="POST" action="{{ if( cMode == 'create', URoute( 'users.store' ), URoute( 'users.update', HB_HGetDef( hRow, '_recno', 0 ) ) ) }}">
+                     
+                     <!-- Name -->
+                     <div class="mb-3">
+                        <label for="name" class="form-label required">Name</label>
+                        <input type="text" name="name" id="name" class="form-control {{ if( !empty( hErrors[ 'name' ] ), 'is-invalid', '' ) }}" value="{{ HB_HGetDef( hRow, 'name', '' ) }}">
+                        @if !empty( hErrors[ 'name' ] )
+                        <div class="invalid-feedback">{{ hErrors[ 'name' ] }}</div>
+                        @endif
+                     </div>
+
+                     <!-- Password -->
+                     <div class="mb-3">
+                        <label for="pass" class="form-label required">Password</label>
+                        <input type="text" name="pass" id="pass" class="form-control {{ if( !empty( hErrors[ 'pass' ] ), 'is-invalid', '' ) }}" value="{{ HB_HGetDef( hRow, 'pass', '' ) }}">
+                        @if !empty( hErrors[ 'pass' ] )
+                        <div class="invalid-feedback">{{ hErrors[ 'pass' ] }}</div>
+                        @endif
+                     </div>
+
+                     <!-- Roles -->
+                     <div class="mb-3">
+                        <label for="roles" class="form-label required">Roles</label>
+                        <input type="text" name="roles" id="roles" class="form-control {{ if( !empty( hErrors[ 'roles' ] ), 'is-invalid', '' ) }}" value="{{ HB_HGetDef( hRow, 'roles', '' ) }}" placeholder="customers:search;show;edit">
+                        <div class="form-text">Format: role:ops (e.g. "customers:search;show;edit")</div>
+                        @if !empty( hErrors[ 'roles' ] )
+                        <div class="invalid-feedback">{{ hErrors[ 'roles' ] }}</div>
+                        @endif
+                     </div>
+
+                     <!-- Submit -->
+                     <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                           <i class="bi bi-check-lg"></i>&nbsp;{{ if( cMode == 'create', 'Create', 'Update' ) }}
+                        </button>
+                        <a href="/users/grid" class="btn btn-secondary">
+                           <i class="bi bi-x-lg"></i>&nbsp;Cancel
+                        </a>
+                     </div>
+                  </form>
+               </div>
+            </div>
+         </div>
+      </div>
+   </main>
+
+</body>
+</html>

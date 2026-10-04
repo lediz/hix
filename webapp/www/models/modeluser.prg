@@ -11,7 +11,7 @@
 // Output: { "customers" => "search;show;edit" }
 STATIC FUNCTION _ParseRoles( cRolesStr )
    LOCAL hRoles := hb_Hash()
-   LOCAL aParts
+   LOCAL aParts, aPairs, nI, cRole, cOps
    
    IF Empty( cRolesStr )
       RETURN hRoles
@@ -20,11 +20,19 @@ STATIC FUNCTION _ParseRoles( cRolesStr )
    // Trim trailing spaces (DBF C field padding) before parsing
    cRolesStr := ALLTRIM( cRolesStr )
    
-   // Split on ":" to get role name and ops
-   aParts := hb_ATokens( cRolesStr, ":" )
-   IF Len( aParts ) >= 2
-      hRoles[ aParts[1] ] := aParts[2]
-   ENDIF
+   // Split on "|" to get individual role:ops pairs
+   // Format: "role1:op1;op2;op3|role2:op1;op2"
+   aPairs := hb_ATokens( cRolesStr, "|" )
+   FOR nI := 1 TO Len( aPairs )
+      aParts := hb_ATokens( ALLTRIM( aPairs[ nI ] ), ":" )
+      IF Len( aParts ) >= 2
+         cRole := ALLTRIM( aParts[1] )
+         cOps  := ALLTRIM( aParts[2] )
+         IF !empty( cRole ) .AND. !empty( cOps )
+            hRoles[ cRole ] := cOps
+         ENDIF
+      ENDIF
+   NEXT
    
 RETURN hRoles
 

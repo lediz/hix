@@ -1,0 +1,101 @@
+@args lFound := .F., hRow := {=>}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+	@view 'common/header.html' 
+
+</head>
+
+<style>
+
+	main {
+		margin-top: 70px;
+	}
+
+	.card {
+		box-shadow: 5px 5px 5px gray !important;
+	}
+
+	.confirm-box {
+		max-width: 500px;
+		margin: 0 auto;
+	}
+
+</style>
+
+<body>
+
+	<!-- Navbar -->
+
+	@view 'common/navbar.html'
+
+
+	<!-- Offcanvas Sidebar -->
+
+	@view 'common/sidebar.html', 'users'
+
+   <main class="container-fluid">
+		<!-- Breadcrumb... -->
+
+		<div class="row w-100 mt-5">
+			<nav  aria-label="breadcrumb">
+			  <ol class="breadcrumb fs-5">
+				<li class="breadcrumb-item"><a href="/main"><i class="bi bi-house-door-fill"></i></button></li>
+				<li class="breadcrumb-item"><a href="/users/grid">Users</button></li>
+				<li class="breadcrumb-item active" aria-current="page">Delete Confirmation</li>
+			  </ol>
+			</nav>
+		</div>
+
+      @if lFound
+      <!-- Delete Confirmation -->
+      <div class="row w-100 mt-4">
+         <div class="col-md-6">
+            <div class="card border-danger">
+               <div class="card-header bg-danger text-white">
+                  <h4 class="m-0 fw-bold">
+                     <i class="bi bi-exclamation-triangle-fill"></i>&nbsp;Confirm Delete
+                  </h4>
+               </div>
+               <div class="card-body">
+                  <p class="lead">Are you sure you want to delete user <strong>{{ HB_HGetDef( hRow, 'name', '' ) }}</strong>?</p>
+                  <p class="text-muted">This action cannot be undone.</p>
+                  
+                  <form method="POST" action="{{ URoute( 'users.delete', HB_HGetDef( hRow, '_recno', 0 ) ) }}">
+                     <input type="hidden" name="id" value="{{ HB_HGetDef( hRow, '_recno', 0 ) }}">
+                     <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-danger">
+                           <i class="bi bi-trash"></i>&nbsp;Yes, Delete
+                        </button>
+                        <a href="/users/grid" class="btn btn-secondary">
+                           <i class="bi bi-x-lg"></i>&nbsp;Cancel
+                        </a>
+                     </div>
+                  </form>
+               </div>
+            </div>
+         </div>
+      </div>
+      @else
+      <!-- Not found -->
+      <div class="row w-100 mt-4">
+         <div class="col-md-6">
+            <div class="card">
+               <div class="card-body text-center">
+                  <i class="bi bi-exclamation-triangle" style="font-size: 3rem; color: orange;"></i>
+                  <h4 class="mt-3">User not exist</h4>
+                  <p class="text-muted">The requested user could not be found.</p>
+                  <a href="/users/grid" class="btn btn-primary">
+                     <i class="bi bi-arrow-left"></i>&nbsp;Back to Grid
+                  </a>
+               </div>
+            </div>
+         </div>
+      </div>
+      @endif
+   </main>
+
+</body>
+</html>
