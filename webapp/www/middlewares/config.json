@@ -24,7 +24,9 @@
     },
     "ratelimit": {
       "ip_per_min": 300,
-      "window_s": 60
+      "window_s": 60,
+      "login_max": 5,
+      "login_window": 60
     }
   }
 }

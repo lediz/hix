@@ -5,6 +5,7 @@
 // --------------------------------------------------------------------------------
 
 #include "hbclass.ch"
+#include "models/hpassword.prg"
 
 // Parse ROLES string into hash matching CRUD example format
 // Input:  "customers:search;show;edit"
@@ -42,6 +43,8 @@ FUNCTION ModelUser( cUser, cPass )
    LOCAL cTag
    LOCAL cSeek
    LOCAL cFound
+   LOCAL cStored
+   LOCAL cSalt
    
    // Data path (same as customers.dbf)
    cData := hb_dirbase() + UConfig( "paths", "data", "data" ) + "/users"
@@ -68,24 +71,27 @@ FUNCTION ModelUser( cUser, cPass )
       RETURN NIL
    ENDIF
    
-   // Build entry from current record
+   // Read the stored digest + salt before anything is exposed (D-07)
+   cStored := AllTrim( ( "USR" )->( FieldGet( FieldPos( "PASS" ) ) ) )
+   cSalt   := AllTrim( ( "USR" )->( FieldGet( FieldPos( "SALT" ) ) ) )
+
+   // D-07: users.dbf holds an iterated, salted SHA-256 digest, never the
+   // password.  Re-hash the submitted password with the stored salt.
+   IF ! _PwMatch( cStored, _PwHash( cPass, cSalt ) )
+      ( "USR" )->( DbCloseArea() )
+      RETURN NIL
+   ENDIF
+
+   // Build the session entry WITHOUT credentials (D-05): the session hash is
+   // readable from every authenticated view and middleware.
    hEntry := hb_Hash()
-   hEntry[ "id" ] := ( "USR" )->( FieldGet( FieldPos( "ID" ) ) )
-   hEntry[ "name" ] := ( "USR" )->( FieldGet( FieldPos( "NAME" ) ) )
-   hEntry[ "pass" ] := ( "USR" )->( FieldGet( FieldPos( "PASS" ) ) )
+   hEntry[ "id" ]    := ( "USR" )->( FieldGet( FieldPos( "ID" ) ) )
+   hEntry[ "name" ]  := AllTrim( ( "USR" )->( FieldGet( FieldPos( "NAME" ) ) ) )
    
    // Parse ROLES string into hash matching CRUD example format
    // ROLES format: "role:ops" (e.g. "customers:search;show;edit")
    // Result: { "customers" => "search;show;edit" }
    hEntry[ "roles" ] := _ParseRoles( ( "USR" )->( FieldGet( FieldPos( "ROLES" ) ) ) )
-   
-   // Password comparison: strict and case-sensitive (== not =).
-   // With SET EXACT .F. a loose != would accept any PREFIX of the stored
-   // password (verified: "12345678" = "1234" -> .T.), which is an auth bypass.
-   IF ! ( AllTrim( hEntry[ "pass" ] ) == cPass )
-      ( "USR" )->( DbCloseArea() )
-      RETURN NIL
-   ENDIF
    
    ( "USR" )->( DbCloseArea() )
    RETURN hEntry

@@ -2,6 +2,7 @@
 -w1
 -es2
 -inc
+-iwww
 -mt
 -workdir=.hbmk/${hb_compiler}/regenerate_users
 

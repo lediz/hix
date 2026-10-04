@@ -6,13 +6,16 @@
  */
 
 #include "hbclass.ch"
+#include "models/hpassword.prg"
 
 REQUEST DBFCDX
 
 FUNCTION MAIN()
    LOCAL nI, nCount
-   LOCAL aName := { "admin", "carles", "maria", "john", "jane" }
-   LOCAL aPass := { "1234", "1234", "1234", "5678", "9012" }
+   LOCAL cSalt
+   LOCAL aName := { "admin", "carles", "maria", "John", "jane" }   // "John" is mixed-case on purpose: it proves the Lower(name) CDX tag round-trips
+   // Seed passwords: hashed before they reach the DBF (D-07)
+   LOCAL aPass := { "1234", "1234", "1234", "5678", "9012abcd" }   // jane is longer than 4 chars: prefix-login regression probe
    // ROLES: "role:ops" format matching CRUD example (hStore roles hash)
    // role name = first part, ops = semicolon-separated after ":"
    // ROLES format: "role:op1;op2;op3|role2:op1;op2" (pipe separates role pairs)
@@ -27,12 +30,15 @@ FUNCTION MAIN()
    
    QOut( "Creating users.dbf with test data..." )
    
-   // Create new DBF with schema: id(N,10,0), name(C,40,0), pass(C,40,0), roles(C,255)
+   // Create new DBF with schema: id(N,10,0), name(C,40,0), pass(C,128), salt(C,32), roles(C,255)
+   // D-07: PASS stores a salted, iterated SHA-256 digest (64 hex chars), never
+   // the password; SALT holds the per-user salt.
    DBCREATE( "/home/jack/Projects/pi-agent/webapp/data/users_new.dbf", ;
-      { { "ID", "N", 10, 0 }, ;
-        { "NAME", "C", 40, 0 }, ;
-        { "PASS", "C", 40, 0 }, ;
-        { "ROLES", "C", 255, 0 } } )
+      { { "ID",   "N", 10,  0 }, ;
+        { "NAME", "C", 40,  0 }, ;
+        { "PASS", "C", 128, 0 }, ;
+        { "SALT", "C", 32,  0 }, ;
+        { "ROLES","C", 255, 0 } } )
    
    // Open EXCLUSIVE to create index
    USE "/home/jack/Projects/pi-agent/webapp/data/users_new" ALIAS "NEWDBF" EXCLUSIVE
@@ -40,10 +46,12 @@ FUNCTION MAIN()
    
    nCount := 5
    FOR nI := 1 TO nCount
+      cSalt := _PwSalt( aName[ nI ] )
       ( "NEWDBF" )->( DbAppend() )
       ( "NEWDBF" )->( FieldPut( FieldPos( "ID" ), nI ) )
       ( "NEWDBF" )->( FieldPut( FieldPos( "NAME" ), aName[ nI ] ) )
-      ( "NEWDBF" )->( FieldPut( FieldPos( "PASS" ), aPass[ nI ] ) )
+      ( "NEWDBF" )->( FieldPut( FieldPos( "SALT" ), cSalt ) )
+      ( "NEWDBF" )->( FieldPut( FieldPos( "PASS" ), _PwHash( aPass[ nI ], cSalt ) ) )
       ( "NEWDBF" )->( FieldPut( FieldPos( "ROLES" ), aRoles[ nI ] ) )
       ( "NEWDBF" )->( DbCommit() )
       
@@ -70,16 +78,8 @@ FUNCTION MAIN()
    ENDDO
    ( "NEWDBF2" )->( DbCloseArea() )
    
-   // Replace old with new (backup existing files)
-   IF File( "/home/jack/Projects/pi-agent/webapp/data/users.dbf" )
-      FileCopy( "/home/jack/Projects/pi-agent/webapp/data/users.dbf", "/home/jack/Projects/pi-agent/webapp/data/users.dbf.bak", .T. )
-   ENDIF
-   IF File( "/home/jack/Projects/pi-agent/webapp/data/users.cdb" )
-      FileCopy( "/home/jack/Projects/pi-agent/webapp/data/users.cdb", "/home/jack/Projects/pi-agent/webapp/data/users.cdb.bak", .T. )
-   ENDIF
-   IF File( "/home/jack/Projects/pi-agent/webapp/data/users.dbt" )
-      FileCopy( "/home/jack/Projects/pi-agent/webapp/data/users.dbt", "/home/jack/Projects/pi-agent/webapp/data/users.dbt.bak", .T. )
-   ENDIF
+   // Replace old with new.  No .bak files are written (D-14): users.dbf and
+   // users.cdx are tracked in git, which is the rollback mechanism.
    
    // Delete old CDX first, then copy new one
    QOut( "Deleting old users.cdx..." )
@@ -101,8 +101,8 @@ FUNCTION MAIN()
    ( "USR" )->( DbCloseArea() )
    
    QOut( "Done. " + ltrim(str(nCount)) + " users created." )
-   QOut( "Fields: ID, NAME, PASS, ROLES(C,255)" )
+   QOut( "Fields: ID, NAME, PASS(C,128 digest), SALT(C,32), ROLES(C,255)" )
+   QOut( "PASS format: iterated salted SHA-256, " + ltrim(str( PW_HASH_ITERATIONS )) + " rounds" )
    QOut( "ROLES format: role:ops (matching CRUD example)" )
-   QOut( "Backup files: users.dbf.bak, users.cdb.bak, users.dbt.bak" )
    
 RETURN NIL

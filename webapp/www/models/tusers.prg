@@ -14,6 +14,11 @@ FUNCTION TUsers()
    oUsers:cCdx     := 'users.cdx'
    oUsers:cTag     := 'name'
 
+   // D-05 / D-07: credentials must never reach a view.  HIX_DBF:Row() builds
+   // hRow from ::hFields, so hiding PASS/SALT keeps them out of every hRow
+   // returned by GetRecno()/LoadAll().
+   oUsers:Hide( { 'pass', 'salt' } )
+
    oUsers:Open()
 
 RETURN oUsers
