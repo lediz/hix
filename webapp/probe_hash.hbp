@@ -1,0 +1,9 @@
+-n
+-w1
+-es2
+-mt
+-workdir=.hbmk/${hb_compiler}/probe_hash
+-hbexe
+-oprobe_hash
+test/probe_hash.prg
+${hb_root}/include/harbour.hbx

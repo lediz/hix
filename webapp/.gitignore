@@ -4,8 +4,20 @@ app
 .hbmk/gcc/app/*.o
 .hbmk/gcc/app/*.c
 
+# Adhoc tool binaries built from the .hbp files in this folder
+create_cdx
+create_dbf_ntx
+migrate_dbf
+migrate_users
+regenerate_data
+regenerate_users
+probe_hash
+probe_seek
+probe_pwcost
+
 # Session files
 sessions/
+.sessions/
 
 # Logs
 .logs/
@@ -13,6 +25,17 @@ trace.log
 
 # Compiled views
 .cached/
+
+# Scratch / verification folders
+.tmp_verify/
+tmp/
+
+# Backups (git is the rollback mechanism - see D-14)
+*.bak
+
+# Node (pi tooling, not part of the Harbour/HIX app)
+node_modules/
+package-lock.json
 
 # OS files
 .DS_Store
