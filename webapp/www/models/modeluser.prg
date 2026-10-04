@@ -40,19 +40,30 @@ FUNCTION ModelUser( cUser, cPass )
    LOCAL hEntry
    LOCAL cData
    LOCAL cTag
+   LOCAL cSeek
+   LOCAL cFound
    
    // Data path (same as customers.dbf)
    cData := hb_dirbase() + UConfig( "paths", "data", "data" ) + "/users"
+   
+   // D-16: the submitted name is normalised once and reused for the seek and
+   // for the exact-match confirmation below.
+   cSeek := Lower( AllTrim( cUser ) )
    
    // Open RDDCDX using USE with INDEX (file without extension)
    rddSetDefault( "DBFCDX" )
    USE ( cData ) INDEX ( cData ) ALIAS "USR" SHARED
    ( "USR" )->( DbGoTop() )
    
-   // Case-insensitive search: seek on Lower(name) via index
-   ( "USR" )->( DbSeek( Lower( cUser ) ) )
+   // Case-insensitive search: the 'name' tag is keyed on Lower(name), so seek
+   // the very same expression (D-16).
+   ( "USR" )->( DbSeek( cSeek ) )
    
-   IF ( "USR" )->( Eof() )
+   // SET EXACT is .F. in www/config.json, so DbSeek can land on a longer key
+   // (e.g. "carles" -> "carlesx").  Confirm an exact case-insensitive match.
+   cFound := AllTrim( ( "USR" )->( FieldGet( FieldPos( "NAME" ) ) ) )
+   
+   IF ( "USR" )->( Eof() ) .OR. ! ( Lower( cFound ) == cSeek )
       ( "USR" )->( DbCloseArea() )
       RETURN NIL
    ENDIF
@@ -68,8 +79,10 @@ FUNCTION ModelUser( cUser, cPass )
    // Result: { "customers" => "search;show;edit" }
    hEntry[ "roles" ] := _ParseRoles( ( "USR" )->( FieldGet( FieldPos( "ROLES" ) ) ) )
    
-   // Password comparison (case-sensitive)
-   IF hEntry[ "pass" ] != cPass
+   // Password comparison: strict and case-sensitive (== not =).
+   // With SET EXACT .F. a loose != would accept any PREFIX of the stored
+   // password (verified: "12345678" = "1234" -> .T.), which is an auth bypass.
+   IF ! ( AllTrim( hEntry[ "pass" ] ) == cPass )
       ( "USR" )->( DbCloseArea() )
       RETURN NIL
    ENDIF

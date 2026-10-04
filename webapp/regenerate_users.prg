@@ -52,8 +52,10 @@ FUNCTION MAIN()
       ENDIF
    NEXT
    
-   // Create index after data is appended (EXCLUSIVE mode required)
-   INDEX ON field->name TAG name
+   // Create index after data is appended (EXCLUSIVE mode required).
+   // D-16: the tag key is Lower(name) so ModelUser's DbSeek( Lower(cUser) )
+   // matches exactly regardless of how the name was typed into the DBF.
+   INDEX ON Lower( field->name ) TAG name
    
    // Close the table to release the CDX file
    ( "NEWDBF" )->( DbCloseArea() )

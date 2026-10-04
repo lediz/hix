@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # ------------------------------------------------------------------
 # verify-users-fixes.sh — regression verification for the users module
-# Covers closed defects D-01..D-04 and D-15 (view hash-subscript 500s)
-# from TEST-RESULTS-USERS-MODULE.md.  Scope: users module only.
+# Covers closed defects D-01..D-04, D-15 (view hash-subscript 500s) and
+# D-16 (login case handling / CDX name tag) from TEST-RESULTS-USERS-MODULE.md.
+# Scope: users module only.
 #
 # Complies with srs/DEV-compliance.md:
 #   - lives inside the project folder (test/)
@@ -42,6 +43,11 @@ do_login() {                       # do_login <user> <pass>
         | grep -oP 'name="_csrf"[^>]*value="\K[^"]+' | head -1)
    $CU -o /dev/null -b "$CK" -c "$CK" -X POST "$API/auth" \
        -d "username=$1&password=$2&_csrf=$T"
+}
+
+logged_in() {                      # logged_in <user> <pass> -> HTTP code of /main
+   do_login "$1" "$2"
+   code main
 }
 
 nrec() { python3 - "$1" <<'PY'
@@ -152,6 +158,42 @@ else F "D-15g create re-render shows field error messages" "messages present" "a
 ERR_AFTER=$(grep -c "Bound error" .logs/errors.log 2>/dev/null || echo 0)
 chk "D-15h no new 'Bound error' logged during the run" "$ERR_BEFORE" "$ERR_AFTER"
 
+echo "=== D-16  login is case-insensitive and exact ==="
+if grep -q "INDEX ON Lower( field->name ) TAG name" regenerate_users.prg; then
+   P "D-16a 'name' CDX tag is keyed on Lower(name)"
+else
+   F "D-16a 'name' CDX tag is keyed on Lower(name)" "Lower( field->name )" "raw field->name"
+fi
+chk "D-16b lowercase login (admin)"   "200" "$(logged_in admin 1234)"
+chk "D-16c uppercase login (ADMIN)"   "200" "$(logged_in ADMIN 1234)"
+chk "D-16d mixed-case login (AdMiN)"  "200" "$(logged_in AdMiN 1234)"
+chk "D-16e partial name not accepted (carle)" "302" "$(logged_in carle 1234)"
+chk "D-16f wrong password rejected"              "302" "$(logged_in admin 0000)"
+
+# A mixed-case user created through the UI must authenticate under any case
+do_login admin 1234
+post users/store "name=ZedTest&pass=abcd&roles=customers:search&_csrf=$(csrf)" >/dev/null
+chk "D-16g UI-created 'ZedTest' logs in as zedtest" "200" "$(logged_in zedtest abcd)"
+chk "D-16h UI-created 'ZedTest' logs in as ZEDTEST" "200" "$(logged_in ZEDTEST abcd)"
+
+# Harbour's loose = / != (SET EXACT .F.) made a stored password unlockable by
+# any prefix of it.  ModelUser now compares with ==.
+do_login admin 1234
+post users/store "name=PrefixTest&pass=abcd1234&roles=customers:search&_csrf=$(csrf)" >/dev/null
+chk "D-16i password prefix 'abcd' rejected"   "302" "$(logged_in prefixtest abcd)"
+chk "D-16j full password 'abcd1234' accepted" "200" "$(logged_in prefixtest abcd1234)"
+
+# leave the seed clean
+do_login admin 1234
+LAST=$(nrec data/users.dbf)
+post "users/$LAST/delete"     "id=$LAST&_csrf=$(csrf)"     >/dev/null
+post "users/$((LAST-1))/delete" "id=$((LAST-1))&_csrf=$(csrf)" >/dev/null
+if deleted_flag data/users.dbf "$LAST" && deleted_flag data/users.dbf "$((LAST-1))"; then
+   P "D-16k test users soft-deleted (seed left clean)"
+else
+   F "D-16k test users soft-deleted" "'*' on recs $((LAST-1)),$LAST" "missing"
+fi
+
 echo
-echo "users module fixes D-01..D-04 + D-15: PASS=$PASS FAIL=$FAIL"
+echo "users module fixes D-01..D-04 + D-15 + D-16: PASS=$PASS FAIL=$FAIL"
 [ "$FAIL" -eq 0 ]
