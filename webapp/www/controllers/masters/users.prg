@@ -41,7 +41,21 @@ RETURN SELF
 
 METHOD Search() CLASS UsersController
 
-RETURN UView( 'masters/users/search.html' )
+   LOCAL oFlash
+   LOCAL hMessage := { => }
+   LOCAL hSearch  := { => }
+
+   // Recover flash message (cleared after reading, same pattern as Grid())
+   oFlash := UFlash( 'users' )
+   hMessage[ 'type' ]    := oFlash:Get( 'type' )
+   hMessage[ 'message' ] := oFlash:Get( 'message' )
+   oFlash:Clear()
+   oFlash:Save()
+
+   // Pre-fill the per-field search box from the query string
+   hSearch[ 'name' ] := Trim( UParam( '_q_name', '' ) )
+
+RETURN UView( 'masters/users/search.html', hSearch, hMessage )
 
 // -------------------------------------------------------------- //
 

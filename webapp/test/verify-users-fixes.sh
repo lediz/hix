@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # ------------------------------------------------------------------
-# verify-D01-D04.sh — targeted verification of defects D-01..D-04
-# (see TEST-RESULTS-USERS-MODULE.md).  Scope: users module only.
+# verify-users-fixes.sh — regression verification for the users module
+# Covers closed defects D-01..D-04 and D-15 (view hash-subscript 500s)
+# from TEST-RESULTS-USERS-MODULE.md.  Scope: users module only.
 #
 # Complies with srs/DEV-compliance.md:
 #   - lives inside the project folder (test/)
@@ -70,6 +71,7 @@ if ! $CU -o /dev/null "$API/login"; then
 fi
 
 echo "=== D-01  compile integrity (users.prg) ==="
+ERR_BEFORE=$(grep -c "Bound error" .logs/errors.log 2>/dev/null || echo 0)
 HBC=$(mktemp -d /tmp/vdhb.XXXXXX)
 timeout "$HBC_TIMEOUT" harbour -iwww -i"${HB_INCLUDE:-$HOME/harbour/include}" \
        -n -o"$HBC/u" www/controllers/masters/users.prg >"$HBC/out.txt" 2>&1
@@ -126,6 +128,30 @@ esac
 if deleted_flag data/users.dbf "$N"; then P "D-02c record $N soft-deleted ('*' flag set)"
 else F "D-02c soft-delete flag" "'*' set" "not set"; fi
 
+echo "=== D-15  views render (raw hash subscript removed) ==="
+RAW=$(grep -l "hMessage\[ '\|hErrors\[ '" www/views/masters/users/*.html 2>/dev/null | wc -l)
+chk "D-15a no raw hMessage[]/hErrors[] subscript left in users views" "0" "$RAW"
+for R in users/grid users/search users/create users/1 users/1/edit users/1/delete_confirm; do
+   chk "D-15b GET /$R renders" "200" "$(code $R)"
+done
+chk "D-15c non-existent record still renders (not-found path)" "200" "$(code users/999)"
+
+# Validation failure must flash back into a rendered form, not a 500
+post users/1/update "name=&pass=&roles=&_csrf=$(csrf)" >/dev/null
+ED=$(page users/1/edit)
+chk "D-15d edit re-render after failed update" "200" "$(code users/1/edit)"
+NINV=$(echo "$ED" | grep -c 'is-invalid')
+chk "D-15e edit re-render marks all 3 invalid fields" "3" "$NINV"
+if echo "$ED" | grep -q 'is-invalid' && echo "$ED" | grep -q 'The field name is required'; then P "D-15f edit re-render shows field error messages"
+else F "D-15f edit re-render shows field error messages" "messages present" "absent"; fi
+post users/store "name=&pass=&roles=&_csrf=$(csrf)" >/dev/null
+CR=$(page users/create)
+if echo "$CR" | grep -q 'is-invalid' && echo "$CR" | grep -q 'The field roles is required'; then P "D-15g create re-render shows field error messages"
+else F "D-15g create re-render shows field error messages" "messages present" "absent"; fi
+
+ERR_AFTER=$(grep -c "Bound error" .logs/errors.log 2>/dev/null || echo 0)
+chk "D-15h no new 'Bound error' logged during the run" "$ERR_BEFORE" "$ERR_AFTER"
+
 echo
-echo "D-01..D-04 verification: PASS=$PASS FAIL=$FAIL"
+echo "users module fixes D-01..D-04 + D-15: PASS=$PASS FAIL=$FAIL"
 [ "$FAIL" -eq 0 ]

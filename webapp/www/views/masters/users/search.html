@@ -50,13 +50,13 @@
 		</div>
 
 		<!-- Flash message -->
-      @if !empty( hMessage[ 'message' ] )
+      @if !empty( hb_HGetDef( hMessage, 'message', '' ) )
 			<div class="row ">
 				<div class="col">
-				<div class="alert alert-{{ hMessage[ 'type' ] }}" role="alert">
+				<div class="alert alert-{{ hb_HGetDef( hMessage, 'type', 'info' ) }}" role="alert">
 				<b>
 					<i class="bi bi-info-circle"></i>&nbsp;
-					{{ hMessage[ 'message' ] }}
+					{{ hb_HGetDef( hMessage, 'message', '' ) }}
 				</b>
 				</div>
 				</div>
