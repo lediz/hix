@@ -3,10 +3,24 @@
 # Complies with: SRS-Harbour-HIX.md, DAL SRS, DEV-compliance.md
 # No remediation — results and recommendations only
 
-API="http://localhost:9090"
+API="${TEST_API:-http://localhost:9090}"
 PASS=0
 FAIL=0
 TOTAL=0
+
+# --- timeouts ---------------------------------------------------------
+# Same policy as test/verify-users-fixes.sh: every network call is bounded, so
+# the suite can never hang on a wedged HIX worker or a stalled request.  A
+# hung worker would otherwise block the whole run until the shell is killed.
+CT=5                  # curl connect timeout (s)
+MT=15                 # curl total transfer timeout (s)
+CU="curl -s --connect-timeout $CT --max-time $MT"
+
+# Preflight: fail fast and loudly instead of reporting 23 timeouts.
+if ! $CU -o /dev/null "$API/login"; then
+    echo "ABORT: HIX server not reachable at $API (timeout ${CT}s connect / ${MT}s transfer)"
+    exit 1
+fi
 
 pass_test() {
     TOTAL=$((TOTAL+1))
@@ -32,7 +46,7 @@ echo ""
 # ---- Authentication & Authorization ----
 # T01-T06: All customer endpoints protected
 for endpoint in "customer/grid" "customer/search" "customer/1" "customer/create" "customer/1/edit" "customer/1/delete_confirm"; do
-    CODE=$(curl -s -o /dev/null -w "%{http_code}" "$API/$endpoint")
+    CODE=$($CU -o /dev/null -w "%{http_code}" "$API/$endpoint")
     if [ "$CODE" = "302" ]; then
         pass_test "T$(printf '%02d' $((TOTAL+1))) - $endpoint protected without session" "302" "$CODE"
     else
@@ -41,7 +55,7 @@ for endpoint in "customer/grid" "customer/search" "customer/1" "customer/create"
 done
 
 # T07: Login page serves HTML + CSRF token
-CSRF=$(curl -s "$API/login" | grep -oP 'name=["\x27]_csrf["\x27]\s+value=["\x27]([^"\x27]+)["\x27]' | grep -oP 'value=["\x27]([^"\x27]+)["\x27]' | sed 's/value=["\x27]\([^"\x27]*\)["\x27]/\1/')
+CSRF=$($CU "$API/login" | grep -oP 'name=["\x27]_csrf["\x27]\s+value=["\x27]([^"\x27]+)["\x27]' | grep -oP 'value=["\x27]([^"\x27]+)["\x27]' | sed 's/value=["\x27]\([^"\x27]*\)["\x27]/\1/')
 if [ -n "$CSRF" ]; then
     pass_test "T07 - Login page returns HTML with CSRF token" "non-empty" "yes"
 else
@@ -49,7 +63,7 @@ else
 fi
 
 # T08: POST /auth WITHOUT CSRF → rejected
-CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$API/auth" \
+CODE=$($CU -o /dev/null -w "%{http_code}" -X POST "$API/auth" \
     -d "username=admin&password=1234" \
     -H "Content-Type: application/x-www-form-urlencoded" \
     --cookie-jar /tmp/test_cookies.txt)
@@ -60,7 +74,7 @@ else
 fi
 
 # T09: POST /auth WITH CSRF → authenticated
-CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$API/auth" \
+CODE=$($CU -o /dev/null -w "%{http_code}" -X POST "$API/auth" \
     -d "username=admin&password=1234&_csrf=$CSRF" \
     -H "Content-Type: application/x-www-form-urlencoded" \
     --cookie /tmp/test_cookies.txt)
@@ -71,7 +85,7 @@ else
 fi
 
 # T10: GET /main with session → 200
-CODE=$(curl -s -o /dev/null -w "%{http_code}" "$API/main" --cookie /tmp/test_cookies.txt)
+CODE=$($CU -o /dev/null -w "%{http_code}" "$API/main" --cookie /tmp/test_cookies.txt)
 if [ "$CODE" = "200" ]; then
     pass_test "T10 - GET /main with session → 200" "200" "$CODE"
 else
@@ -79,10 +93,10 @@ else
 fi
 
 # ---- Grid (FR-READ-1, FR-READ-2) ----
-GRID=$(curl -s "$API/customer/grid" --cookie /tmp/test_cookies.txt)
+GRID=$($CU "$API/customer/grid" --cookie /tmp/test_cookies.txt)
 
 # T11: Grid returns 200
-CODE=$(curl -s -o /dev/null -w "%{http_code}" "$API/customer/grid" --cookie /tmp/test_cookies.txt)
+CODE=$($CU -o /dev/null -w "%{http_code}" "$API/customer/grid" --cookie /tmp/test_cookies.txt)
 if [ "$CODE" = "200" ]; then
     pass_test "T11 - GET /customer/grid with session → 200 (FR-READ-1, FR-READ-2)" "200" "$CODE"
 else
@@ -139,7 +153,7 @@ else
 fi
 
 # ---- Search (FR-READ-3, FR-READ-5) ----
-SEARCH=$(curl -s "$API/customer/search" --cookie /tmp/test_cookies.txt)
+SEARCH=$($CU "$API/customer/search" --cookie /tmp/test_cookies.txt)
 
 # T19: Search endpoint renders form (FR-READ-3)
 if echo "$SEARCH" | grep -q "Customer"; then
@@ -156,7 +170,7 @@ else
 fi
 
 # ---- Show (FR-READ-1, FR-READ-5) ----
-SHOW=$(curl -s "$API/customer/1" --cookie /tmp/test_cookies.txt)
+SHOW=$($CU "$API/customer/1" --cookie /tmp/test_cookies.txt)
 
 # T21: Show renders customer details (FR-READ-1)
 if echo "$SHOW" | grep -q "Recno:"; then
@@ -181,7 +195,7 @@ else
 fi
 
 # T24: Show invalid record → "Customer not exist"
-SHOW_INVALID=$(curl -s "$API/customer/99999" --cookie /tmp/test_cookies.txt)
+SHOW_INVALID=$($CU "$API/customer/99999" --cookie /tmp/test_cookies.txt)
 if echo "$SHOW_INVALID" | grep -q "Customer not exist"; then
     pass_test "T24 - Show invalid record → 'Customer not exist'" "contains" "yes"
 else
@@ -189,7 +203,7 @@ else
 fi
 
 # ---- Create (FR-CREATE-1, FR-CREATE-2, FR-CREATE-3) ----
-CREATE=$(curl -s "$API/customer/create" --cookie /tmp/test_cookies.txt)
+CREATE=$($CU "$API/customer/create" --cookie /tmp/test_cookies.txt)
 
 # T25: Create renders form (FR-CREATE-1, FR-CREATE-2)
 if echo "$CREATE" | grep -q "Create"; then
@@ -228,7 +242,7 @@ else
 fi
 
 # ---- Edit (FR-UPDATE-2, FR-UPDATE-3) ----
-EDIT=$(curl -s "$API/customer/1/edit" --cookie /tmp/test_cookies.txt)
+EDIT=$($CU "$API/customer/1/edit" --cookie /tmp/test_cookies.txt)
 
 # T29: Edit pre-populates form (FR-UPDATE-2)
 if echo "$EDIT" | grep -q "Recno:"; then
@@ -266,7 +280,7 @@ else
 fi
 
 # ---- Delete (FR-DELETE-1, FR-DELETE-2, FR-DELETE-3, FR-DELETE-4) ----
-DELETE=$(curl -s "$API/customer/1/delete_confirm" --cookie /tmp/test_cookies.txt)
+DELETE=$($CU "$API/customer/1/delete_confirm" --cookie /tmp/test_cookies.txt)
 
 # T34: Delete_confirm renders confirmation modal
 if echo "$DELETE" | grep -q "deleteConfirmModal"; then
@@ -291,7 +305,7 @@ fi
 
 # ---- Write operations ----
 # T37: POST /customer/store WITHOUT CSRF → rejected
-CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$API/customer/store" \
+CODE=$($CU -o /dev/null -w "%{http_code}" -X POST "$API/customer/store" \
     -d "first=Test&last=Customer" \
     -H "Content-Type: application/x-www-form-urlencoded" \
     --cookie /tmp/test_cookies.txt)
@@ -302,7 +316,7 @@ else
 fi
 
 # T38: POST /customer/store with valid data → success
-STORE_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$API/customer/store" \
+STORE_CODE=$($CU -o /dev/null -w "%{http_code}" -X POST "$API/customer/store" \
     -d "first=TestUser&last=TestLast&street=123 Test St&city=TestCity&state=TX&zip=75001&hiredate=2024-01-15&age=30&married=1&notes=Test note" \
     -H "Content-Type: application/x-www-form-urlencoded" \
     --cookie /tmp/test_cookies.txt)
@@ -313,7 +327,7 @@ else
 fi
 
 # T39: POST /customer/store with validation failure → redirect
-FAIL_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$API/customer/store" \
+FAIL_CODE=$($CU -o /dev/null -w "%{http_code}" -X POST "$API/customer/store" \
     -d "first=&last=" \
     -H "Content-Type: application/x-www-form-urlencoded" \
     --cookie /tmp/test_cookies.txt)
@@ -325,7 +339,7 @@ fi
 
 # T40: POST /customer/:id/update with valid data → success
 # Use the newly created record (recno 6)
-UPDATE_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$API/customer/6/update" \
+UPDATE_CODE=$($CU -o /dev/null -w "%{http_code}" -X POST "$API/customer/6/update" \
     -d "first=UpdatedFirst&last=UpdatedLast&street=456 Updated St&city=UpdatedCity&state=TX&zip=99999&hiredate=2024-06-01&age=35&married=0&notes=Updated note" \
     -H "Content-Type: application/x-www-form-urlencoded" \
     --cookie /tmp/test_cookies.txt)
@@ -336,7 +350,7 @@ else
 fi
 
 # T41: POST /customer/:id/update with validation failure → redirect
-UPDATE_FAIL=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$API/customer/6/update" \
+UPDATE_FAIL=$($CU -o /dev/null -w "%{http_code}" -X POST "$API/customer/6/update" \
     -d "first=&last=" \
     -H "Content-Type: application/x-www-form-urlencoded" \
     --cookie /tmp/test_cookies.txt)
@@ -347,7 +361,7 @@ else
 fi
 
 # T42: DELETE /customer/:id → soft delete (302)
-DELETE_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$API/customer/6/delete" \
+DELETE_CODE=$($CU -o /dev/null -w "%{http_code}" -X POST "$API/customer/6/delete" \
     --cookie /tmp/test_cookies.txt)
 if [ "$DELETE_CODE" = "302" ]; then
     pass_test "T42 - POST /customer/6/delete → soft delete (302)" "302" "$DELETE_CODE"
@@ -356,7 +370,7 @@ else
 fi
 
 # T43: Grid no longer shows deleted record
-GRID_AFTER=$(curl -s "$API/customer/grid" --cookie /tmp/test_cookies.txt)
+GRID_AFTER=$($CU "$API/customer/grid" --cookie /tmp/test_cookies.txt)
 if echo "$GRID_AFTER" | grep -q "TestUser"; then
     fail_test "T43 - Grid excludes soft-deleted record" "not present" "present"
 else
@@ -364,7 +378,7 @@ else
 fi
 
 # T44: Show invalid record → "Customer not exist"
-SHOW_INVALID2=$(curl -s "$API/customer/99999" --cookie /tmp/test_cookies.txt)
+SHOW_INVALID2=$($CU "$API/customer/99999" --cookie /tmp/test_cookies.txt)
 if echo "$SHOW_INVALID2" | grep -q "Customer not exist"; then
     pass_test "T44 - Show invalid record → 'Customer not exist'" "contains" "yes"
 else
@@ -373,7 +387,7 @@ fi
 
 # ---- Logout & cleanup ----
 # T45: Logout → 302
-CODE=$(curl -s -o /dev/null -w "%{http_code}" "$API/logout" --cookie /tmp/test_cookies.txt)
+CODE=$($CU -o /dev/null -w "%{http_code}" "$API/logout" --cookie /tmp/test_cookies.txt)
 if [ "$CODE" = "302" ]; then
     pass_test "T45 - GET /logout → 302 (session destroyed)" "302" "$CODE"
 else
@@ -381,7 +395,7 @@ else
 fi
 
 # T46: After logout, /customer/grid → 302
-CODE=$(curl -s -o /dev/null -w "%{http_code}" "$API/customer/grid" --cookie /tmp/test_cookies.txt)
+CODE=$($CU -o /dev/null -w "%{http_code}" "$API/customer/grid" --cookie /tmp/test_cookies.txt)
 if [ "$CODE" = "302" ]; then
     pass_test "T46 - After logout, /customer/grid → 302" "302" "$CODE"
 else

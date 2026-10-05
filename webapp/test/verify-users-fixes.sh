@@ -13,7 +13,11 @@
 #   D-15 view hash-subscript 500s   D-16 login case handling / RDD ==
 #   N-01 CSRF token on every users write form (browser path)
 #   C-009 TLS enabled, plaintext HTTP refused
-#   SEC  signing keys and password salts generated, never committed
+#   SEC  signing keys live outside the document root, salts are CSPRNG
+#   HARDEN pentest remediations: admin panel off, /hix-slow gone, Secure
+#          cookie, session-bound CSRF, encrypted session store, private
+#          session files (0600) inside a private store (0700), security
+#          headers, no exposed test harness, constant-work login
 #
 # Complies with srs/DEV-compliance.md: lives inside the project folder,
 # HIX/Harbour only, no SQL, no 3rd-party tooling, server on port 9090.
@@ -39,6 +43,10 @@ CK=$(mktemp -u /tmp/vdck.XXXXXX)
 
 # Unique per run: see "Idempotency" above.
 TESTNAME="zverify$(date +%s)"
+
+# Wall-clock start, used to look only at files this run made (session files
+# left behind by an earlier server are not this run's responsibility).
+RUN_TS=$(date +%s)
 
 # Effective /auth rate limit (kept in sync with www/middlewares/myapplogin.prg)
 LOGIN_MAX=$(python3 -c "import json;print(json.load(open('www/middlewares/config.json'))['setup']['ratelimit'].get('login_max',5))")
@@ -458,19 +466,25 @@ if curl -s --connect-timeout "$CT" --max-time "$MT" -o /dev/null "http://localho
 else P "C-009c plain HTTP is refused (the server speaks TLS only)"; fi
 
 # ==================================================================
-echo "=== SEC  signing keys and salts are generated, not committed ==="
+echo "=== SEC  signing keys live outside the docroot, salts are CSPRNG ==="
 git check-ignore -q www/config.json
-chk "SEC-01a www/config.json is gitignored (it holds this install's keys)" "0" "$?"
+chk "SEC-01a www/config.json is gitignored" "0" "$?"
 chk "SEC-01b the committed template carries no keys section" "0" "$(grep -c '"keys"' www/config.json.example)"
 chk "SEC-01c no signing-key literal left in src/app.prg" "0" "$(grep -cE '"[0-9a-f]{32,}"' src/app.prg)"
-chk "SEC-01d app.prg installs the keys before the server starts" "1" "$(grep -c '_AppKeysEnsure( HIX_APP_CONFIG )' src/app.prg)"
-chk "SEC-01e www/config.json carries a key set after a server run" "5" "$(python3 -c "
+chk "SEC-01d app.prg resolves the keys and registers them before Start()" "2" "$(grep -cE '_AppKeysEnsure\( HIX_APP_CONFIG, HIX_KEY_STORE \)|HIX_KeySet\( cName, cVal \)' src/app.prg)"
+chk "SEC-01e www/config.json (inside the docroot) carries NO key set" "0" "$(python3 -c "
 import json
 print(len(json.load(open('www/config.json')).get('keys',{})))")"
-chk "SEC-01f every key is >=32 chars and not a published HIX default" "5" "$(python3 -c "
+chk "SEC-01f keys live in hix.keys.json, outside paths.root" "5" "$(python3 -c "
 import json
-k=json.load(open('www/config.json'))['keys']
+print(len(json.load(open('hix.keys.json')).get('keys',{})))")"
+chk "SEC-01g every key is >=32 chars and not a published HIX default" "5" "$(python3 -c "
+import json
+k=json.load(open('hix.keys.json'))['keys']
 print(sum(1 for v in k.values() if isinstance(v,str) and len(v)>=32 and 'H!x@' not in v))")"
+chk "SEC-01h hix.keys.json is gitignored" "0" "$(git check-ignore -q hix.keys.json; echo $?)"
+chk "SEC-01i hix.keys.json is 0600" "600" "$(stat -c '%a' hix.keys.json)"
+chk "SEC-01j GET /config.json is not served" "404" "$(code 'config.json')"
 chk "SEC-02a salt comes from the Harbour core CSPRNG (hb_RandStr)" "1" "$(grep -c 'hb_RandStr( 32 )' www/models/hpassword.prg)"
 chk "SEC-02b no name/time/record-count salt derivation left behind" "0" "$(grep -cE 'hb_NTOS\( Seconds|hb_NTOS\( RecCount|hb_TToS\( hb_DateTime' www/models/hpassword.prg)"
 NSEC=$(dbf count)
@@ -485,9 +499,110 @@ n=int.from_bytes(d[4:8],'little'); s=int.from_bytes(d[8:10],'little'); l=int.fro
 print(len(set(d[s+(r-1)*l+179:s+(r-1)*l+211].decode().strip() for r in range(1,n+1))))")"
 
 # ==================================================================
+echo "=== HARDEN  pentest remediations (PENTEST-REPORT.md §2-§9) ==="
+
+# §2  The HIX admin panel is disabled: none of its 13 system routes exist.
+for R in hix-setup hix-login hix-status hix-stop hix-index hix-trace hix-cache-clear hix-bench-start; do
+   chk "H-01 /$R is not registered" "404" "$(code "$R")"
+done
+
+# §3  /hix-slow used to hold one of the 64 HTTP workers for 3 s per
+#     unauthenticated GET.  It must answer immediately with 404.
+chk "H-02 GET /hix-slow is 404" "404" "$(code hix-slow)"
+SLOW_T=$( $CU -o /dev/null -w "%{time_total}" "$API/hix-slow" )
+chk "H-02b /hix-slow does not sleep a worker" "fast" "$(awk -v t="$SLOW_T" 'BEGIN{print (t+0 < 1.0) ? "fast" : "slow"}')"
+
+# §9  No docroot directory is served in production (app.env != dev).
+chk "H-07 GET /test/ is not served" "403" "$(code test/)"
+
+# §8  Hardening headers on application responses.
+HDRS=$( $CU -D - -o /dev/null "$API/" | tr -d '\r' | grep -ciE '^(x-frame-options|x-content-type-options|strict-transport-security|content-security-policy):' )
+chk "H-06 / carries the four hardening headers" "4" "$HDRS"
+
+# §4  Standalone TLS: the session cookie must carry Secure.
+CKS=$(mktemp /tmp/hardenS.XXXXXX)
+if $CU -D - -o /dev/null -c "$CKS" "$API/login" | tr -d '\r' | grep -i '^set-cookie:' | grep -qi '; Secure'; then
+   P "H-03 session cookie is marked Secure"
+else F "H-03 session cookie Secure flag" "; Secure" "missing"; fi
+rm -f "$CKS"
+
+# §7  Session payloads are encrypted on disk and the store is private.
+chk "H-05a .sessions is 0700" "700" "$(stat -c '%a' .sessions)"
+chk "H-05b session payload is not plaintext JSON" "1" "$(python3 -c "
+import base64,glob,os
+fs=sorted(glob.glob('.sessions/sess_*'),key=os.path.getmtime)
+print(0 if not fs or (lambda p: p.lstrip()[:1]==b'{')(base64.b64decode(open(fs[-1],'rb').read()).split(b'|',1)[-1]) else 1)")"
+
+# §7 follow-up  Session files are private, not just the store around them.
+# Only files created during this run count: the server inherits its umask from
+# go_gcc.sh (umask 077), so anything it writes from now on is 0600.
+chk "H-05c session files written by this run are 0600" "0" "$(python3 -c "
+import glob,os,time
+n=0
+for p in glob.glob('.sessions/sess_*'):
+    st=os.stat(p)
+    if st.st_mtime >= $RUN_TS-5 and (st.st_mode & 0o077):
+        n+=1
+print(n)")"
+
+# §5  CSRF tokens are bound to the session that was served them.
+JA=$(mktemp -u /tmp/hardenA.XXXXXX); JB=$(mktemp -u /tmp/hardenB.XXXXXX)
+login_as() {                       # login_as <jar> <user> <pass> -> HTTP code
+   local jar=$1 u=$2 p=$3 T
+   rm -f "$jar"
+   T=$( $CU -c "$jar" "$API/login" | grep -oP 'name="_csrf"[^>]*value="\K[^"]+' | head -1 )
+   $CU -o /dev/null -w "%{http_code}" -b "$jar" -c "$jar" -X POST "$API/auth" \
+       -d "username=$u&password=$p&_csrf=$T"
+}
+login_wait() {                     # login_wait <jar> <user> <pass> -> HTTP code
+   local n C
+   for n in 1 2 3; do
+      C=$(login_as "$1" "$2" "$3")
+      if [ "$C" != "429" ]; then echo "$C"; return 0; fi
+      echo "  ... /auth rate-limit window busy ($LOGIN_MAX/$LOGIN_WINDOW s), waiting $((LOGIN_WINDOW*2+5))s (attempt $n)" >&2
+      sleep $((LOGIN_WINDOW*2+5))
+   done
+   echo "$C"
+}
+chk "H-04a session A logs in" "302" "$(login_wait "$JA" admin 1234)"
+TB=$( $CU -b "$JA" -c "$JA" "$API/users/create" | grep -oP 'name="_csrf"[^>]*value="\K[^"]+' | head -1 )
+chk "H-04b session A was served a CSRF token" "non-empty" "$( [ -n "$TB" ] && echo non-empty || echo empty )"
+chk "H-04c session B logs in" "302" "$(login_wait "$JB" admin 1234)"
+# Same authenticated user, different session: A's token must be refused.
+LOC=$( $CU -o /dev/null -w "%{redirect_url}" -b "$JB" -c "$JB" -X POST "$API/users/store" \
+       -d "name=&pass=&roles=&_csrf=$TB" )
+chk "H-04d A's token is rejected in session B (-> /login)" "$API/login" "$LOC"
+# In its own session the very same token still passes the middleware and fails
+# only on field validation, which proves the rejection above is the binding.
+LOCA=$( $CU -o /dev/null -w "%{redirect_url}" -b "$JA" -c "$JA" -X POST "$API/users/store" \
+        -d "name=&pass=&roles=&_csrf=$TB" )
+chk "H-04e the same token is still valid in session A" "$API/users/create" "$LOCA"
+rm -f "$JA" "$JB"
+
+# §6  Login costs the same whether the username exists or not (no enumeration
+#     oracle through the 10 000-round KDF).  Interleaved, medians compared.
+#     4 attempts total, after clearing the /auth window used by H-04.
+timed() {                          # timed <user> -> seconds of one failed POST /auth
+   local CTT=$(mktemp /tmp/hardenT.XXXXXX) T
+   T=$( $CU -c "$CTT" "$API/login" | grep -oP 'name="_csrf"[^>]*value="\K[^"]+' | head -1 )
+   $CU -b "$CTT" -c "$CTT" -o /dev/null -w "%{time_total}" -X POST "$API/auth" \
+       -d "username=$1&password=zzzzzz&_csrf=$T"
+   rm -f "$CTT"
+}
+sleep $((LOGIN_WINDOW*2+5))
+TA=""; TN=""
+for n in 1 2; do
+   TA="$TA $(timed admin)"; TN="$TN $(timed nosuchuser)"; sleep 1
+done
+chk "H-08 unknown username is not cheaper than a known one" "ok" "$(python3 -c "
+import statistics as st
+a=[float(x) for x in '$TA'.split()]; n=[float(x) for x in '$TN'.split()]
+print('ok' if min(a) > 0 and min(n) >= 0.8*st.median(a) else 'gap %.6f/%.6f' % (min(n), st.median(a)))")"
+
+# ==================================================================
 ERR_AFTER=$(grep -c "Bound error" .logs/errors.log 2>/dev/null || echo 0)
 chk "D-15h no new 'Bound error' logged during the run" "$ERR_BEFORE" "$ERR_AFTER"
 
 echo
-echo "users module regression (D-01..D-16 + N-01 + C-009 + SEC): PASS=$PASS FAIL=$FAIL"
+echo "users module regression (D-01..D-16 + N-01 + C-009 + SEC + HARDEN): PASS=$PASS FAIL=$FAIL"
 [ "$FAIL" -eq 0 ]
