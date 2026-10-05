@@ -15,6 +15,16 @@
 set -e
 cd "$(dirname "$(readlink -f "$0")")"
 
+# File creation mask for everything this process and the server it execs
+# create: session store directory, session files, compiled views, logs.
+# HIX writes session files with hb_MemoWrit() + FRename() and never sets a
+# mode, and Harbour core exposes no umask()/chmod() (they fail to link:
+# HB_FUN_UMASK / HB_FUN_CHMOD), so the application cannot tighten them from
+# Harbour code - the launcher is the only place inside the project folder
+# that can.  Under the usual 0022 the store lands 0755 and its files 0644,
+# i.e. world-readable session records (PENTEST-REPORT.md §7).
+umask 077
+
 : "${HB_ROOT:=$HOME/harbour-core}"
 export HB_ROOT   # needed if app.hbp references ${HB_ROOT}/... paths
 
@@ -106,6 +116,23 @@ fi
 if [ -x ./gen_cert.sh ]; then
     ./gen_cert.sh
 fi
+
+# Signing keys live outside the document root (www/) with 0600 perms.
+# Idempotent: it only creates hix.keys.json when it is missing.
+if [ -x ./gen_keys.sh ]; then
+    ./gen_keys.sh
+fi
+
+# Session store: tighten what an earlier, looser umask already created.  New
+# files inherit 0700/0600 from the umask above, but a store created before
+# this line stays 0755 with 0644 records inside it, and umask cannot fix an
+# existing file.
+for d in .sessions sessions; do
+   if [ -d "$d" ]; then
+      chmod 700 "$d"
+      find "$d" -maxdepth 1 -type f -exec chmod 600 {} +
+   fi
+done
 
 echo
 "$BIN" "$@"
