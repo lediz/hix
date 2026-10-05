@@ -2,11 +2,17 @@
   File ......: auth.prg
   Author.....: Charly 9000
   Created....: 2026-05-24
-  Modified...: 2026-05-26
-  Version....: 1.1.0
+  Modified...: 2026-10-05
+  Version....: 1.2.0
   Description: Login controller — validates credentials and
                starts a session. No middleware on the route;
                session is managed explicitly via USession().
+
+               On success the SID is rotated (USessionRotate) before the
+               identity is stored: GET /login issues an anonymous session so
+               its CSRF token can be bound to a session id, and that
+               pre-login SID must never survive into the authenticated
+               session (A1.19, no session fixation).
   Usage      : POST /login  (form fields: username, password)
  -----------------------------------------------------------*/
 
@@ -49,6 +55,11 @@ function Main()
    // Response.... 
 
       IF ValType( hUser ) == "H"
+      
+         // Rotate first: the anonymous SID that GET /login handed out (and that
+         // the CSRF token is bound to) is deleted, the authenticated identity
+         // is written under a brand new one.
+         USessionRotate()
       
          // UMwConfig( "auth", "session_user_key" ) 
          // Recovery config of auth middleware. See : /middlewares/config.json

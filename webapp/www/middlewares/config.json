@@ -1,5 +1,6 @@
 {
   "load": [
+    "myapppublic.prg",
     "myappauth.prg",
     "myappauthrole.prg",
     "myappauthedit.prg",
@@ -27,6 +28,9 @@
       "window_s": 60,
       "login_max": 5,
       "login_window": 60
+    },
+    "secheaders": {
+      "csp": "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; font-src 'self' https://cdn.jsdelivr.net; img-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'self'"
     }
   }
 }

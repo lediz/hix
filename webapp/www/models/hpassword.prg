@@ -15,6 +15,13 @@
 #include 'hbclass.ch'
 
 #DEFINE PW_SALT_LEN      32
+
+// Fixed salt used by ModelUser() on the "this username does not exist" path.
+// The KDF must cost the same whether the name is real or not: skipping the
+// 10 000 rounds for unknown names made response time a user-enumeration
+// oracle (~4 ms of difference, PENTEST-REPORT.md §6).  It is not a secret and
+// no digest is ever stored with it.
+#DEFINE PW_DUMMY_SALT    "0123456789abcdef0123456789abcdef"
 // Work factor.  Measured on this machine with test/probe_pwcost.prg
 // (hb_sha256, Harbour core, no contrib):
 //     1000 -> 0.4 ms      10000 -> 4.0 ms      50000 -> 17.8 ms   per hash

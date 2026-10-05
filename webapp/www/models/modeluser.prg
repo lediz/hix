@@ -68,6 +68,11 @@ FUNCTION ModelUser( cUser, cPass )
    
    IF ( "USR" )->( Eof() ) .OR. ! ( Lower( cFound ) == cSeek )
       ( "USR" )->( DbCloseArea() )
+      // D-17 (PENTEST-REPORT.md §6): pay the full work factor even when the
+      // name does not exist.  Skipping it made an unknown username ~4 ms
+      // cheaper than a real one, which is a user-enumeration oracle even
+      // though the error message is generic.
+      _PwHash( cPass, PW_DUMMY_SALT )
       RETURN NIL
    ENDIF
    

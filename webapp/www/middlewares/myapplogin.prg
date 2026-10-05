@@ -3,9 +3,9 @@
   Author.....: Charly 9000
   Created....: 2026-05-27
   Modified...: 2026-10-05
-  Version....: 2.1.0
+  Version....: 2.2.0
   Description: Middleware group for unauthenticated login POST.
-               MyAppLogin = Session + LoginRateLimit + CsrfCheck.
+               MyAppLogin = SecHeaders + Session + LoginRateLimit + CsrfCheck.
 
                D-07: the global HIX_MwRateLimit (60 req/min, set in
                src/app.prg) is far too loose for a credential endpoint.
@@ -29,9 +29,26 @@ FUNCTION MyAppLogin( oCtx )
 
    LOCAL o := UBaseMiddleware():New( oCtx )
 
+   o:Add( UMiddleware():New( "HIX_MwSecHeaders"   ) )
    o:Add( UMiddleware():New( "HIX_MwSession"   ) )
    o:Add( UMiddleware():New( MyAppLoginLimit(), "login-rate-limit" ) )
    o:Add( UMiddleware():New( "HIX_MwCsrfCheck" ) )
+
+RETURN o:Run()
+
+
+// GET /login - the public login page.
+// HIX_MwSession gives the page a session id, and the CSRF token rendered by
+// @CSRF is bound to it (HIX_CsrfMakeToken puts the SID in the payload), so
+// POST /auth only accepts a token that was served to this same session
+// (PENTEST-REPORT.md §5).  login.prg persists it with USession():Save().
+// The SID is rotated on successful login (auth.prg) - no session fixation.
+FUNCTION MyAppLoginView( oCtx )
+
+   LOCAL o := UBaseMiddleware():New( oCtx )
+
+   o:Add( UMiddleware():New( "HIX_MwSecHeaders" ) )
+   o:Add( UMiddleware():New( "HIX_MwSession"    ) )
 
 RETURN o:Run()
 

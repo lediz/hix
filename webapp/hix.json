@@ -38,12 +38,12 @@
     "dispatch_mode": "full",
     "auto_close_dbf": true,
     "auto_close_dbf_log": false,
-    "env": "dev",
+    "env": "prod",
     "debug": false
   },
   "admin":
   {
-    "enabled": true,
+    "enabled": false,
     "user": "",
     "password": "",
     "secret": ""
@@ -87,10 +87,10 @@
   {
     "storage": "file",
     "prefix": "sess_",
-    "crypt": false,
+    "crypt": true,
     "seed": "",
     "lifetime": 3600,
-    "gc_days": 3
+    "gc_days": 1
   },
   "monitor":
   {
@@ -125,8 +125,8 @@
   },
   "trace":
   {
-    "app": true,
-    "server": true,
+    "app": false,
+    "server": false,
     "worker_http": false,
     "worker_ws": false,
     "worker_otros": false,

@@ -1,7 +1,7 @@
 [
-  { "name": "index",          "url": "/",                              "action": "views/index.html",                         "method": "GET" },
+  { "name": "index",          "url": "/",                              "action": "views/index.html",                         "method": "GET",  "middleware": "MyAppPublic" },
   { "name": "main",           "url": "/main",                          "action": "controllers/main.prg",                     "method": "GET",  "middleware": "MyAppAuth" },
-  { "name": "sys.login" ,     "url": "/login",                         "action": "controllers/login.prg",                    "method": "GET" },
+  { "name": "sys.login" ,     "url": "/login",                         "action": "controllers/login.prg",                    "method": "GET",  "middleware": "MyAppLoginView" },
   { "name": "sys.logout",     "url": "/logout",                        "action": "controllers/logout.prg",                   "method": "GET",  "middleware": "MyAppAuth" },
   { "name": "sys.auth",       "url": "/auth",                          "action": "controllers/auth.prg" ,                    "method": "POST", "middleware": "MyAppLogin" },
 
