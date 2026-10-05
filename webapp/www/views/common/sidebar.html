@@ -17,6 +17,14 @@
 				</li>
 			@endif
 
+			@if UHasRole( 'users' )
+				<li class="nav-item">
+					<a class="nav-link text-white {{ if( cItemActive == 'users', 'active', '' ) }}" href="/users/grid">
+						<i class="bi bi-person-gear me-2"></i> Users (Grid)
+					</a>
+				</li>
+			@endif
+
 			@if UHasRole( 'sales' )
 				<li class="nav-item">
 					<a class="nav-link text-white {{ if( cItemActive == 'module_a', 'active', '' ) }}" aria-current="page" href="/module_a">

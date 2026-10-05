@@ -55,8 +55,8 @@
 		<div class="row w-100 mt-5">
 			<nav  aria-label="breadcrumb">
 			  <ol class="breadcrumb fs-5">
-				<li class="breadcrumb-item"><a href="/main"><i class="bi bi-house-door-fill"></i></button></li>
-				<li class="breadcrumb-item"><a href="/customer/grid">Customers</button></li>
+				<li class="breadcrumb-item"><a href="/main"><i class="bi bi-house-door-fill"></i></a></li>
+				<li class="breadcrumb-item"><a href="/customer/grid">Customers</a></li>
 				<li class="breadcrumb-item active" aria-current="page">Data Grid</li>
 			  </ol>
 			</nav>
@@ -76,17 +76,43 @@
 			</div>
       @endif
 
-      <!-- Search + Create -->
+      <!-- Search: one entry per grid column (FR-READ-3) + Create -->
       <div class="row mb-3">
-         <div class="col-md-6">
-            <div class="d-flex gap-2 align-items-center">
-               <input class="form-control form-control-sm" type="text" id="_q_first" placeholder="Enter text..." autocomplete="off" spellcheck="false" data-default="{{ HB_HGetDef( hSearch, 'first', '' ) }}">
-               <button class="btn btn-sm btn-outline-primary" type="button" onclick="window.location='/customer/grid?_q_first='+encodeURIComponent(document.getElementById('_q_first').value)"><i class="bi bi-search"></i></button>
-               <a class="btn btn-sm btn-outline-secondary" href="/customer/grid"><i class="bi bi-x-circle"></i> Clear</a>
-            </div>
+         <div class="col-md-9">
+            <form class="card" method="GET" action="/customer/grid">
+               <div class="card-body py-2">
+                  <div class="d-flex flex-wrap gap-3 align-items-end">
+                     <input type="hidden" name="sort" value="{{ cSort }}">
+                     <input type="hidden" name="dir" value="{{ cDir }}">
+                     <div>
+                        <label class="form-label small text-muted mb-1" for="_q_first">First</label>
+                        <input class="form-control form-control-sm" type="text" name="_q_first" id="_q_first" placeholder="First..." autocomplete="off" spellcheck="false" value="{{ HB_HGetDef( hSearch, 'first', '' ) }}">
+                     </div>
+                     <div>
+                        <label class="form-label small text-muted mb-1" for="_q_last">Last</label>
+                        <input class="form-control form-control-sm" type="text" name="_q_last" id="_q_last" placeholder="Last..." autocomplete="off" spellcheck="false" value="{{ HB_HGetDef( hSearch, 'last', '' ) }}">
+                     </div>
+                     <div>
+                        <label class="form-label small text-muted mb-1" for="_q_address">Address</label>
+                        <input class="form-control form-control-sm" type="text" name="_q_address" id="_q_address" placeholder="Address..." autocomplete="off" spellcheck="false" value="{{ HB_HGetDef( hSearch, 'address', '' ) }}">
+                     </div>
+                     <div>
+                        <label class="form-label small text-muted mb-1" for="_q_country">Country</label>
+                        <input class="form-control form-control-sm" type="text" name="_q_country" id="_q_country" placeholder="Country..." autocomplete="off" spellcheck="false" value="{{ HB_HGetDef( hSearch, 'country', '' ) }}">
+                     </div>
+                     <div>
+                        <label class="form-label small text-muted mb-1" for="_q_zip">Zip</label>
+                        <input class="form-control form-control-sm" type="text" name="_q_zip" id="_q_zip" placeholder="Zip..." autocomplete="off" spellcheck="false" value="{{ HB_HGetDef( hSearch, 'zip', '' ) }}">
+                     </div>
+                     <div class="d-flex gap-2">
+                        <button class="btn btn-sm btn-outline-primary" type="submit"><i class="bi bi-search"></i> Search</button>
+                        <a class="btn btn-sm btn-outline-secondary" href="/customer/grid"><i class="bi bi-x-circle"></i> Clear</a>
+                     </div>
+                  </div>
+               </div>
             </form>
          </div>
-         <div class="col-md-6 text-end">
+         <div class="col-md-3 text-end">
             @if UHasRole( 'customers', 'create' )
                <a href="{{ URoute( 'customer.create' ) }}" class="btn btn-success">
                   <i class="bi bi-plus-lg"></i> Create Customer
@@ -107,19 +133,19 @@
                <table class="table table-striped table-hover mb-0">
                   <thead class="table-dark">
                      <tr>
-                        <th class="sortable" onclick="window.location='/customer/grid?sort=first&dir={{ if( cSort == 'first' .and. cDir == 'ASC', 'DESC', 'ASC' ) }}&q={{ cSearch }}'">
+                        <th class="sortable" onclick="window.location='/customer/grid?sort=first&dir={{ if( cSort == 'first' .and. cDir == 'ASC', 'DESC', 'ASC' ) }}{{ cSearchParams }}'">
                            First <span class="sort-icon">{{ if( cSort == 'first', if( cDir == 'ASC', '▲', '▼' ), '') }}</span>
                         </th>
-                        <th class="sortable" onclick="window.location='/customer/grid?sort=last&dir={{ if( cSort == 'last' .and. cDir == 'ASC', 'DESC', 'ASC' ) }}&q={{ cSearch }}'">
+                        <th class="sortable" onclick="window.location='/customer/grid?sort=last&dir={{ if( cSort == 'last' .and. cDir == 'ASC', 'DESC', 'ASC' ) }}{{ cSearchParams }}'">
                            Last <span class="sort-icon">{{ if( cSort == 'last', if( cDir == 'ASC', '▲', '▼' ), '') }}</span>
                         </th>
-                        <th class="sortable" onclick="window.location='/customer/grid?sort=address&dir={{ if( cSort == 'address' .and. cDir == 'ASC', 'DESC', 'ASC' ) }}&q={{ cSearch }}'">
+                        <th class="sortable" onclick="window.location='/customer/grid?sort=address&dir={{ if( cSort == 'address' .and. cDir == 'ASC', 'DESC', 'ASC' ) }}{{ cSearchParams }}'">
                            Address <span class="sort-icon">{{ if( cSort == 'address', if( cDir == 'ASC', '▲', '▼' ), '') }}</span>
                         </th>
-                        <th class="sortable" onclick="window.location='/customer/grid?sort=country&dir={{ if( cSort == 'country' .and. cDir == 'ASC', 'DESC', 'ASC' ) }}&q={{ cSearch }}'">
+                        <th class="sortable" onclick="window.location='/customer/grid?sort=country&dir={{ if( cSort == 'country' .and. cDir == 'ASC', 'DESC', 'ASC' ) }}{{ cSearchParams }}'">
                            Country <span class="sort-icon">{{ if( cSort == 'country', if( cDir == 'ASC', '▲', '▼' ), '') }}</span>
                         </th>
-                        <th class="sortable" onclick="window.location='/customer/grid?sort=zip&dir={{ if( cSort == 'zip' .and. cDir == 'ASC', 'DESC', 'ASC' ) }}&q={{ cSearch }}'">
+                        <th class="sortable" onclick="window.location='/customer/grid?sort=zip&dir={{ if( cSort == 'zip' .and. cDir == 'ASC', 'DESC', 'ASC' ) }}{{ cSearchParams }}'">
                            Zip <span class="sort-icon">{{ if( cSort == 'zip', if( cDir == 'ASC', '▲', '▼' ), '') }}</span>
                         </th>
                         <th>Actions</th>

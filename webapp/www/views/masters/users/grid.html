@@ -55,8 +55,8 @@
 		<div class="row w-100 mt-5">
 			<nav  aria-label="breadcrumb">
 			  <ol class="breadcrumb fs-5">
-				<li class="breadcrumb-item"><a href="/main"><i class="bi bi-house-door-fill"></i></button></li>
-				<li class="breadcrumb-item"><a href="/users/grid">Users</button></li>
+				<li class="breadcrumb-item"><a href="/main"><i class="bi bi-house-door-fill"></i></a></li>
+				<li class="breadcrumb-item"><a href="/users/grid">Users</a></li>
 				<li class="breadcrumb-item active" aria-current="page">Data Grid</li>
 			  </ol>
 			</nav>
@@ -76,16 +76,31 @@
 			</div>
       @endif
 
-      <!-- Search + Create -->
+      <!-- Search: one entry per grid column (FR-READ-3) + Create -->
       <div class="row mb-3">
-         <div class="col-md-6">
-            <div class="d-flex gap-2 align-items-center">
-               <input class="form-control form-control-sm" type="text" id="_q_name" placeholder="Enter text..." autocomplete="off" spellcheck="false" data-default="{{ HB_HGetDef( hSearch, 'name', '' ) }}">
-               <button class="btn btn-sm btn-outline-primary" type="button" onclick="window.location='/users/grid?_q_name='+encodeURIComponent(document.getElementById('_q_name').value)"><i class="bi bi-search"></i></button>
-               <a class="btn btn-sm btn-outline-secondary" href="/users/grid"><i class="bi bi-x-circle"></i> Clear</a>
-            </div>
+         <div class="col-md-8">
+            <form class="card" method="GET" action="/users/grid">
+               <div class="card-body py-2">
+                  <div class="d-flex flex-wrap gap-3 align-items-end">
+                     <input type="hidden" name="sort" value="{{ cSort }}">
+                     <input type="hidden" name="dir" value="{{ cDir }}">
+                     <div>
+                        <label class="form-label small text-muted mb-1" for="_q_name">Name</label>
+                        <input class="form-control form-control-sm" type="text" name="_q_name" id="_q_name" placeholder="Name..." autocomplete="off" spellcheck="false" value="{{ HB_HGetDef( hSearch, 'name', '' ) }}">
+                     </div>
+                     <div>
+                        <label class="form-label small text-muted mb-1" for="_q_roles">Roles</label>
+                        <input class="form-control form-control-sm" type="text" name="_q_roles" id="_q_roles" placeholder="e.g. customers:edit" autocomplete="off" spellcheck="false" value="{{ HB_HGetDef( hSearch, 'roles', '' ) }}">
+                     </div>
+                     <div class="d-flex gap-2">
+                        <button class="btn btn-sm btn-outline-primary" type="submit"><i class="bi bi-search"></i> Search</button>
+                        <a class="btn btn-sm btn-outline-secondary" href="/users/grid"><i class="bi bi-x-circle"></i> Clear</a>
+                     </div>
+                  </div>
+               </div>
+            </form>
          </div>
-         <div class="col-md-6 text-end">
+         <div class="col-md-4 text-end">
             @if UHasRole( 'users', 'create' )
                <a href="{{ URoute( 'users.create' ) }}" class="btn btn-success">
                   <i class="bi bi-plus-lg"></i> Create User
@@ -106,10 +121,10 @@
                <table class="table table-striped table-hover mb-0">
                   <thead class="table-dark">
                      <tr>
-                        <th class="sortable" onclick="window.location='/users/grid?sort=name&dir={{ if( cSort == 'name' .and. cDir == 'ASC', 'DESC', 'ASC' ) }}&q={{ cSearch }}'">
+                        <th class="sortable" onclick="window.location='/users/grid?sort=name&dir={{ if( cSort == 'name' .and. cDir == 'ASC', 'DESC', 'ASC' ) }}{{ cSearchParams }}'">
                            Name <span class="sort-icon">{{ if( cSort == 'name', if( cDir == 'ASC', '▲', '▼' ), '') }}</span>
                         </th>
-                        <th class="sortable" onclick="window.location='/users/grid?sort=roles&dir={{ if( cSort == 'roles' .and. cDir == 'ASC', 'DESC', 'ASC' ) }}&q={{ cSearch }}'">
+                        <th class="sortable" onclick="window.location='/users/grid?sort=roles&dir={{ if( cSort == 'roles' .and. cDir == 'ASC', 'DESC', 'ASC' ) }}{{ cSearchParams }}'">
                            Roles <span class="sort-icon">{{ if( cSort == 'roles', if( cDir == 'ASC', '▲', '▼' ), '') }}</span>
                         </th>
                         <th>Actions</th>

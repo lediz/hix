@@ -201,9 +201,14 @@ METHOD Search() CLASS UsersController
 
    LOCAL hFlash := Self:TakeFlash()
    LOCAL hSearch := { => }
+   LOCAL nI
+   // Grid columns that get a search entry (kept identical to Grid())
+   LOCAL aFields := { 'name', 'roles' }
 
-   // Pre-fill the per-field search box from the query string
-   hSearch[ 'name' ] := Trim( UGet( '_q_name', '' ) )
+   // Pre-fill one search box per grid column (same list as Grid() / grid.html)
+   FOR nI := 1 TO Len( aFields )
+      hSearch[ aFields[ nI ] ] := Trim( UGet( '_q_' + aFields[ nI ], '' ) )
+   NEXT
 
 RETURN UView( 'masters/users/search.html', hSearch, hFlash )
 
@@ -488,18 +493,26 @@ METHOD Grid() CLASS UsersController
    LOCAL hSearch := { => }
    LOCAL cSearchUpper
    LOCAL nTotal, nStart, nEnd, nI
-   LOCAL aFiltered, lMatch
-   LOCAL cAlias, nRecCount, hRec, nJ, cSearchParams
+   LOCAL lMatch, lHit
+   LOCAL cAlias, hRec, nJ, cSearchParams
    LOCAL oUsers
    LOCAL hFlash
-   // D-05 / D-06: the grid projection and the free-text search share one
-   // allow-list.  pass and salt are not in it, so neither can be read,
-   // sorted, searched or rendered.
+   // D-05 / D-06: ONE allow-list drives the grid projection, the column sort
+   // and the per-field search.  pass and salt are not in it, so neither can be
+   // read, sorted, searched or rendered.
+   // This list IS the set of grid columns: every column rendered by grid.html
+   // gets a search entry, and every search entry maps to a visible column.
+   // Adding a column to the grid means adding it here - the search bar follows.
    LOCAL aFields := { 'name', 'roles' }
-   LOCAL aSortOk := { 'name', 'roles' }
+   // Column-sort allow-list: the same list, named separately so the intent is
+   // explicit - sorting may only touch a column the grid actually renders.
+   LOCAL aSortOk := aFields
 
    // --- Pagination params ---
    nPage    := Iif( Empty( UGet( 'page', '' ) ), 1, Val( UGet( 'page', '' ) ) )
+   IF nPage < 1
+      nPage := 1
+   ENDIF
    nRows    := 20   // default page size per FR-READ-2 (DAL SRS)
    // D-08: grid hash keys are lowercase, so the sort key must be too
    cSort    := Lower( UGet( 'sort', 'name' ) )
@@ -512,16 +525,22 @@ METHOD Grid() CLASS UsersController
    ENDIF
    cSearch  := Trim( UGet( 'q', '' ) )
    cSearchUpper := Upper( cSearch )
-   // --- Per-field search params ---
-   hSearch[ 'name' ] := Trim( UGet( '_q_name', '' ) )
-   // --- Build query string for pagination links ---
+
+   // --- FR-READ-3: one search entry per grid column, ?_q_<column> ---
+   FOR nI := 1 TO Len( aFields )
+      hSearch[ aFields[ nI ] ] := Trim( UGet( '_q_' + aFields[ nI ], '' ) )
+   NEXT
+
+   // --- Carry the active search through pagination and column-sort links ---
    cSearchParams := ''
    IF !empty( cSearch )
-      cSearchParams += '&q=' + cSearch
+      cSearchParams += '&q=' + EncParam( cSearch )
    ENDIF
-   IF !empty( hSearch[ 'name' ] )
-      cSearchParams += '&_q_name=' + hSearch[ 'name' ]
-   ENDIF
+   FOR nI := 1 TO Len( aFields )
+      IF !empty( hSearch[ aFields[ nI ] ] )
+         cSearchParams += '&_q_' + aFields[ nI ] + '=' + EncParam( hSearch[ aFields[ nI ] ] )
+      ENDIF
+   NEXT
 
    // --- Recover flash messages (cleared after reading, D-10) ---
    hFlash := Self:TakeFlash()
@@ -531,10 +550,64 @@ METHOD Grid() CLASS UsersController
    // --- Open Data Access Layer ---
    oUsers := Self:OpenDbf()
 
-   // --- FR-READ-2: Direct DBF read (bypassing LoadAll/Row/Normalize) ---
+   // --- FR-READ-1/2/3: read the whole table, apply the search, sort, and only
+   // then paginate the result.  The previous order cut the page out of the raw
+   // table first and filtered only that page, so a match sitting on a later
+   // page was invisible and the page count ignored the filter.
    cAlias := oUsers:cAlias
-   nRecCount := ( cAlias )->( RecCount() )
-   nTotal := nRecCount
+   aAll := {}
+   ( cAlias )->( DbGoTop() )
+   DO WHILE ( cAlias )->( !Eof() )
+      // Soft-deleted records are not part of the user list
+      IF ! ( cAlias )->( Deleted() )
+         hRec := { => }
+         hRec[ '_recno' ]   := ( cAlias )->( RecNo() )
+         hRec[ '_deleted' ] := ( cAlias )->( Deleted() )
+         FOR nJ := 1 TO Len( aFields )
+            hRec[ aFields[ nJ ] ] := ( cAlias )->( FieldGet( ( cAlias )->( FieldPos( aFields[ nJ ] ) ) ) )
+         NEXT
+
+         lMatch := .T.
+
+         // Free-text 'q': D-06 - it may only touch allow-listed (visible)
+         // columns.  Containment direction: the query must be a substring of
+         // the field (the original order tested name $ query, which matches
+         // only when the whole name is typed).
+         IF !empty( cSearchUpper )
+            lHit := .F.
+            FOR nJ := 1 TO Len( aFields )
+               IF cSearchUpper $ Upper( HB_HGetDef( hRec, aFields[ nJ ], '' ) )
+                  lHit := .T.
+               ENDIF
+            NEXT
+            IF !lHit
+               lMatch := .F.
+            ENDIF
+         ENDIF
+
+         // Per-field entries: AND between fields, containment within the field
+         FOR nJ := 1 TO Len( aFields )
+            IF !empty( hSearch[ aFields[ nJ ] ] )
+               IF ! ( Upper( hSearch[ aFields[ nJ ] ] ) $ Upper( HB_HGetDef( hRec, aFields[ nJ ], '' ) ) )
+                  lMatch := .F.
+               ENDIF
+            ENDIF
+         NEXT
+
+         IF lMatch
+            aAdd( aAll, hRec )
+         ENDIF
+      ENDIF
+      ( cAlias )->( DbSkip() )
+   ENDDO
+
+   // --- Apply column sort (FR-READ-4) to the whole filtered set ---
+   IF Len( aAll ) > 1
+      aAll := SortGrid( aAll, cSort, cDir )
+   ENDIF
+
+   // --- Paginate the filtered, sorted set ---
+   nTotal := Len( aAll )
    IF nTotal == 0
       nTotalPages := 0
    ELSE
@@ -543,65 +616,17 @@ METHOD Grid() CLASS UsersController
    IF nPage > nTotalPages
       nPage := nTotalPages
    ENDIF
+   // A search that matches nothing leaves nTotalPages = 0; keep the page index
+   // valid so the slice below is never asked for a negative subscript.
+   IF nPage < 1
+      nPage := 1
+   ENDIF
    nStart := ( ( nPage - 1 ) * nRows ) + 1
-   nEnd := MIN( nStart + nRows - 1, nTotal )
+   nEnd   := MIN( nStart + nRows - 1, nTotal )
    aGrid := {}
-   ( cAlias )->( DbGoTop() )
-   IF nStart > 1
-      ( cAlias )->( DbSkip( nStart - 1 ) )
-   ENDIF
-   nJ := 0
-   DO WHILE nJ < nRows .AND. ( cAlias )->( !Eof() )
-      // Soft-deleted records are not part of the user list
-      IF ! ( cAlias )->( Deleted() )
-         hRec := { => }
-         hRec[ '_recno' ]   := ( cAlias )->( RecNo() )
-         hRec[ '_deleted' ] := ( cAlias )->( Deleted() )
-         FOR nI := 1 TO Len( aFields )
-            hRec[ aFields[ nI ] ] := ( cAlias )->( FieldGet( ( cAlias )->( FieldPos( aFields[ nI ] ) ) ) )
-         NEXT
-         aAdd( aGrid, hRec )
-         nJ++
-      ENDIF
-      ( cAlias )->( DbSkip() )
-   ENDDO
-
-   // --- FR-READ-3: Per-field search (AND logic between fields) ---
-   IF !empty( cSearch ) .OR. !empty( hSearch[ 'name' ] )
-      cSearchUpper := Upper( cSearch )
-      aFiltered := {}
-      FOR nI := 1 TO Len( aGrid )
-         lMatch := .T.
-         IF !empty( cSearch )
-            // D-06: free-text search may only touch allow-listed fields.
-            // Containment direction: the query must be a substring of the
-            // field (the previous order tested name $ query, which matches
-            // only when the whole name is typed).
-            IF ! ( cSearchUpper $ Upper( HB_HGetDef( aGrid[ nI ], 'name', '' ) ) )
-               lMatch := .F.
-            ENDIF
-         ENDIF
-         IF !empty( hSearch[ 'name' ] )
-            IF ! ( Upper( hSearch[ 'name' ] ) $ Upper( HB_HGetDef( aGrid[ nI ], 'name', '' ) ) )
-               lMatch := .F.
-            ENDIF
-         ENDIF
-         IF lMatch
-            aAdd( aFiltered, aGrid[ nI ] )
-         ENDIF
-      NEXT
-      aGrid := aFiltered
-   ENDIF
-
-   // --- Apply column sort (FR-READ-4) ---
-   IF !empty( cSort ) .AND. Len( aGrid ) > 1
-      aGrid := SortGrid( aGrid, cSort, cDir )
-   ENDIF
-
-   // --- Ensure aGrid is never empty after sort (guard against empty input) ---
-   IF empty( aGrid )
-      aGrid := {}
-   ENDIF
+   FOR nI := nStart TO nEnd
+      aAdd( aGrid, aAll[ nI ] )
+   NEXT
 
    // --- Pagination links ---
    IF nTotalPages > 0
@@ -612,7 +637,16 @@ METHOD Grid() CLASS UsersController
 
    // --- Render view ---
 RETURN UView( 'masters/users/grid.html', cAction, aGrid, aPages, nPage, nTotalPages, ;
-              cSort, cDir, cSearch, hSearch, hMessage, hErrors )
+              cSort, cDir, cSearch, hSearch, hMessage, hErrors, cSearchParams )
+
+// -------------------------------------------------------------- //
+// Helper: EncParam — percent-encode a search value so it survives being
+// re-emitted inside pagination / column-sort links.
+// -------------------------------------------------------------- //
+
+FUNCTION EncParam( cVal )
+
+RETURN hb_StrReplace( cVal, { '%', '&', '#', '+', ' ' }, { '%25', '%26', '%23', '%2B', '%20' } )
 
 // -------------------------------------------------------------- //
 // Helper: SortGrid — sort an array of hashes by a field name

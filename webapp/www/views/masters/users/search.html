@@ -42,8 +42,8 @@
 		<div class="row w-100 mt-5">
 			<nav  aria-label="breadcrumb">
 			  <ol class="breadcrumb fs-5">
-				<li class="breadcrumb-item"><a href="/main"><i class="bi bi-house-door-fill"></i></button></li>
-				<li class="breadcrumb-item"><a href="/users/grid">Users</button></li>
+				<li class="breadcrumb-item"><a href="/main"><i class="bi bi-house-door-fill"></i></a></li>
+				<li class="breadcrumb-item"><a href="/users/grid">Users</a></li>
 				<li class="breadcrumb-item active" aria-current="page">Search</li>
 			  </ol>
 			</nav>
@@ -75,10 +75,15 @@
                <div class="card-body">
                   <form method="GET" action="/users/grid">
                      
-                     <!-- Name -->
+                     <!-- One entry per grid column -->
                      <div class="mb-3">
-                        <label for="name" class="form-label">Name</label>
-                        <input type="text" name="_q_name" id="name" class="form-control" value="{{ HB_HGetDef( hSearch, 'name', '' ) }}" placeholder="Enter name...">
+                        <label for="_q_name" class="form-label">Name</label>
+                        <input type="text" name="_q_name" id="_q_name" class="form-control" value="{{ HB_HGetDef( hSearch, 'name', '' ) }}" placeholder="Enter name..." autocomplete="off" spellcheck="false">
+                     </div>
+
+                     <div class="mb-3">
+                        <label for="_q_roles" class="form-label">Roles</label>
+                        <input type="text" name="_q_roles" id="_q_roles" class="form-control" value="{{ HB_HGetDef( hSearch, 'roles', '' ) }}" placeholder="e.g. customers:edit" autocomplete="off" spellcheck="false">
                      </div>
 
                      <!-- Submit -->

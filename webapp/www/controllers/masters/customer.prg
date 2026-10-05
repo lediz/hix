@@ -177,7 +177,7 @@ METHOD Update() CLASS Customer
       retu URedirect( URoute( 'customer.search' ) )
    ENDIF
    
-   nId := oVal:Get()
+   nId := oVal:Get( 'id' )     // D-13: always name the field
 
   
    // Validamos campos (Update).
@@ -358,7 +358,7 @@ METHOD delete_action() CLASS Customer
       retu URedirect( URoute( 'customer.grid' ) )
    ENDIF
    
-   nId := oVal:Get()
+   nId := oVal:Get( 'id' )     // D-13: always name the field
 
    oCustomers := TCustomers()
 
@@ -387,43 +387,51 @@ METHOD Grid() CLASS Customer
    LOCAL hSearch := { => }
    LOCAL cSearchUpper
    LOCAL nTotal, nStart, nEnd, nI
-   LOCAL aFiltered, lMatch
+   LOCAL lMatch, lHit
+   // aFields  = fields projected from the DBF (free-text 'q' may use all of them)
+   // aCols    = the columns actually rendered by grid.html: each one gets a
+   //            search entry (?_q_<column>) and is a legal sort key.
    LOCAL aFields := {'first','last','address','zip','country','notes'}
-   LOCAL cAlias, nRecCount, hRec, nJ, cSearchParams
+   LOCAL aCols   := {'first','last','address','country','zip'}
+   LOCAL cAlias, hRec, nJ, cSearchParams
 
    // --- Pagination params ---
-   nPage    := Iif( Empty( UParam( 'page', '1' ) ), 1, Val( UParam( 'page', '1' ) ) )
+   nPage    := Iif( Empty( UGet( 'page', '1' ) ), 1, Val( UGet( 'page', '1' ) ) )
+   IF nPage < 1
+      nPage := 1
+   ENDIF
    nRows    := 20   // default page size per FR-READ-2 (DAL SRS)
-   cSort    := Upper( UParam( 'sort', 'first' ) )
-   cDir     := Upper( UParam( 'dir', 'ASC' ) )
-   cSearch  := Trim( UParam( 'q', '' ) )
+   // Grid hash keys are lowercase, so the sort key must be too (else the
+   // lookup in SortGrid misses the key and the sort silently does nothing).
+   cSort    := Lower( UGet( 'sort', 'first' ) )
+   IF Ascan( aCols, cSort ) == 0
+      cSort := 'first'
+   ENDIF
+   cDir     := Upper( UGet( 'dir', 'ASC' ) )
+   // NOTE: query-string params are read with UGet(), not UParam().
+   // UParam() resolves its fallback with 'cVal != xDef'; under Harbour's default
+   // SET EXACT OFF (www/config.json -> sets.exact = false) any value compares
+   // equal to an empty string, so UParam( key, '' ) silently returns '' for a
+   // parameter that IS present.  That is why the per-field search never worked
+   // here while ?sort= / ?dir= (non-empty defaults) did.
+   cSearch  := Trim( UGet( 'q', '' ) )
    cSearchUpper := Upper( cSearch )
-   // --- Per-field search params ---
-   hSearch[ 'first' ] := Trim( UParam( '_q_first', '' ) )
-   hSearch[ 'last' ]  := Trim( UParam( '_q_last', '' ) )
-   hSearch[ 'address' ] := Trim( UParam( '_q_address', '' ) )
-   hSearch[ 'country' ] := Trim( UParam( '_q_country', '' ) )
-   hSearch[ 'zip' ] := Trim( UParam( '_q_zip', '' ) )
-   // --- Build query string for pagination links ---
+
+   // --- FR-READ-3: one search entry per visible grid column ---
+   FOR nI := 1 TO Len( aCols )
+      hSearch[ aCols[ nI ] ] := Trim( UGet( '_q_' + aCols[ nI ], '' ) )
+   NEXT
+
+   // --- Carry the active search through pagination and column-sort links ---
    cSearchParams := ''
    IF !empty( cSearch )
-      cSearchParams += '&q=' + cSearch
+      cSearchParams += '&q=' + EncParam( cSearch )
    ENDIF
-   IF !empty( hSearch[ 'first' ] )
-      cSearchParams += '&_q_first=' + hSearch[ 'first' ]
-   ENDIF
-   IF !empty( hSearch[ 'last' ] )
-      cSearchParams += '&_q_last=' + hSearch[ 'last' ]
-   ENDIF
-   IF !empty( hSearch[ 'address' ] )
-      cSearchParams += '&_q_address=' + hSearch[ 'address' ]
-   ENDIF
-   IF !empty( hSearch[ 'country' ] )
-      cSearchParams += '&_q_country=' + hSearch[ 'country' ]
-   ENDIF
-   IF !empty( hSearch[ 'zip' ] )
-      cSearchParams += '&_q_zip=' + hSearch[ 'zip' ]
-   ENDIF
+   FOR nI := 1 TO Len( aCols )
+      IF !empty( hSearch[ aCols[ nI ] ] )
+         cSearchParams += '&_q_' + aCols[ nI ] + '=' + EncParam( hSearch[ aCols[ nI ] ] )
+      ENDIF
+   NEXT
 
    // --- Recover flash messages (only show on grid, clear after reading) ---
    oFlash   := UFlash( 'customer' )
@@ -435,10 +443,58 @@ METHOD Grid() CLASS Customer
    // --- Open Data Access Layer ---
    oCustomers := TCustomers()
 
-   // --- FR-READ-2: Direct DBF read (bypassing LoadAll/Row/Normalize) ---
+   // --- FR-READ-1/2/3: read the whole table, apply the search, sort, and only
+   // then paginate the result.  The previous order cut the page out of the raw
+   // table first and filtered only that page, so a match sitting on a later
+   // page was invisible and the page count ignored the filter.
    cAlias := oCustomers:cAlias
-   nRecCount := ( cAlias )->( RecCount() )
-   nTotal := nRecCount
+   aAll := {}
+   ( cAlias )->( DbGoTop() )
+   DO WHILE ( cAlias )->( !Eof() )
+      hRec := { => }
+      hRec[ '_recno' ] := ( cAlias )->( RecNo() )
+      hRec[ '_deleted' ] := ( cAlias )->( Deleted() )
+      FOR nJ := 1 TO Len( aFields )
+         hRec[ aFields[ nJ ] ] := ( cAlias )->( FieldGet( ( cAlias )->( FieldPos( aFields[ nJ ] ) ) ) )
+      NEXT
+
+      lMatch := .T.
+
+      // Free-text 'q': the query must be contained in one of the projected fields
+      IF !empty( cSearchUpper )
+         lHit := .F.
+         FOR nJ := 1 TO Len( aFields )
+            IF cSearchUpper $ Upper( HB_HGetDef( hRec, aFields[ nJ ], '' ) )
+               lHit := .T.
+            ENDIF
+         NEXT
+         IF !lHit
+            lMatch := .F.
+         ENDIF
+      ENDIF
+
+      // Per-column entries: AND between columns, containment within the column
+      FOR nJ := 1 TO Len( aCols )
+         IF !empty( hSearch[ aCols[ nJ ] ] )
+            IF ! ( Upper( hSearch[ aCols[ nJ ] ] ) $ Upper( HB_HGetDef( hRec, aCols[ nJ ], '' ) ) )
+               lMatch := .F.
+            ENDIF
+         ENDIF
+      NEXT
+
+      IF lMatch
+         aAdd( aAll, hRec )
+      ENDIF
+      ( cAlias )->( DbSkip() )
+   ENDDO
+
+   // --- Apply column sort (FR-READ-4) to the whole filtered set ---
+   IF Len( aAll ) > 1
+      aAll := SortGrid( aAll, cSort, cDir )
+   ENDIF
+
+   // --- Paginate the filtered, sorted set ---
+   nTotal := Len( aAll )
    IF nTotal == 0
       nTotalPages := 0
    ELSE
@@ -447,88 +503,17 @@ METHOD Grid() CLASS Customer
    IF nPage > nTotalPages
       nPage := nTotalPages
    ENDIF
+   // A search that matches nothing leaves nTotalPages = 0; keep the page index
+   // valid so the slice below is never asked for a negative subscript.
+   IF nPage < 1
+      nPage := 1
+   ENDIF
    nStart := ( ( nPage - 1 ) * nRows ) + 1
-   nEnd := MIN( nStart + nRows - 1, nTotal )
+   nEnd   := MIN( nStart + nRows - 1, nTotal )
    aGrid := {}
-   ( cAlias )->( DbGoTop() )
-   IF nStart > 1
-      ( cAlias )->( DbSkip( nStart - 1 ) )
-   ENDIF
-   nJ := 0
-   DO WHILE nJ < nRows .AND. ( cAlias )->( !Eof() )
-      hRec := { => }
-      hRec[ '_recno' ] := ( cAlias )->( RecNo() )
-      hRec[ '_deleted' ] := ( cAlias )->( Deleted() )
-      hRec[ 'first' ] := ( cAlias )->( FieldGet( ( cAlias )->( FieldPos( 'first' ) ) ) )
-      hRec[ 'last' ] := ( cAlias )->( FieldGet( ( cAlias )->( FieldPos( 'last' ) ) ) )
-      hRec[ 'address' ] := ( cAlias )->( FieldGet( ( cAlias )->( FieldPos( 'address' ) ) ) )
-      hRec[ 'country' ] := ( cAlias )->( FieldGet( ( cAlias )->( FieldPos( 'country' ) ) ) )
-      hRec[ 'zip' ] := ( cAlias )->( FieldGet( ( cAlias )->( FieldPos( 'zip' ) ) ) )
-      hRec[ 'notes' ] := ( cAlias )->( FieldGet( ( cAlias )->( FieldPos( 'notes' ) ) ) )
-      aAdd( aGrid, hRec )
-      ( cAlias )->( DbSkip() )
-      nJ++
-   ENDDO
-
-   // --- FR-READ-3: Per-field search (AND logic between fields) ---
-   IF !empty( cSearch ) .OR. !empty( hSearch[ 'first' ] ) .OR. ;
-      !empty( hSearch[ 'last' ] ) .OR. !empty( hSearch[ 'address' ] ) .OR. ;
-      !empty( hSearch[ 'country' ] ) .OR. !empty( hSearch[ 'zip' ] )
-      cSearchUpper := Upper( cSearch )
-      aFiltered := {}
-      FOR nI := 1 TO Len( aGrid )
-         lMatch := .T.
-         IF !empty( cSearch )
-            IF ! ( Upper( HB_HGetDef( aGrid[ nI ], 'first', '' ) ) $ cSearchUpper .OR. ;
-               Upper( HB_HGetDef( aGrid[ nI ], 'last', '' ) ) $ cSearchUpper .OR. ;
-               Upper( HB_HGetDef( aGrid[ nI ], 'zip', '' ) ) $ cSearchUpper .OR. ;
-               Upper( HB_HGetDef( aGrid[ nI ], 'notes', '' ) ) $ cSearchUpper .OR. ;
-               Upper( HB_HGetDef( aGrid[ nI ], 'address', '' ) ) $ cSearchUpper .OR. ;
-               Upper( HB_HGetDef( aGrid[ nI ], 'country', '' ) ) $ cSearchUpper )
-               lMatch := .F.
-            ENDIF
-         ENDIF
-         IF !empty( hSearch[ 'first' ] )
-            IF ! ( Upper( HB_HGetDef( aGrid[ nI ], 'first', '' ) ) $ Upper( hSearch[ 'first' ] ) )
-               lMatch := .F.
-            ENDIF
-         ENDIF
-         IF !empty( hSearch[ 'last' ] )
-            IF ! ( Upper( HB_HGetDef( aGrid[ nI ], 'last', '' ) ) $ Upper( hSearch[ 'last' ] ) )
-               lMatch := .F.
-            ENDIF
-         ENDIF
-         IF !empty( hSearch[ 'address' ] )
-            IF ! ( Upper( HB_HGetDef( aGrid[ nI ], 'address', '' ) ) $ Upper( hSearch[ 'address' ] ) )
-               lMatch := .F.
-            ENDIF
-         ENDIF
-         IF !empty( hSearch[ 'country' ] )
-            IF ! ( Upper( HB_HGetDef( aGrid[ nI ], 'country', '' ) ) $ Upper( hSearch[ 'country' ] ) )
-               lMatch := .F.
-            ENDIF
-         ENDIF
-         IF !empty( hSearch[ 'zip' ] )
-            IF ! ( Upper( HB_HGetDef( aGrid[ nI ], 'zip', '' ) ) $ Upper( hSearch[ 'zip' ] ) )
-               lMatch := .F.
-            ENDIF
-         ENDIF
-         IF lMatch
-            aAdd( aFiltered, aGrid[ nI ] )
-         ENDIF
-      NEXT
-      aGrid := aFiltered
-   ENDIF
-
-   // --- Apply column sort (FR-READ-4) ---
-   IF !empty( cSort ) .AND. Len( aGrid ) > 1
-      aGrid := SortGrid( aGrid, cSort, cDir )
-   ENDIF
-
-   // --- Ensure aGrid is never empty after sort (guard against empty input) ---
-   IF empty( aGrid )
-      aGrid := {}
-   ENDIF
+   FOR nI := nStart TO nEnd
+      aAdd( aGrid, aAll[ nI ] )
+   NEXT
 
    // --- Pagination links ---
    IF nTotalPages > 0
@@ -539,10 +524,19 @@ METHOD Grid() CLASS Customer
 
    // --- Render view ---
 RETURN UView( 'masters/customer/grid.html', cAction, aGrid, aPages, nPage, nTotalPages, ;
-              cSort, cDir, cSearch, hSearch, hMessage, hErrors )
+              cSort, cDir, cSearch, hSearch, hMessage, hErrors, cSearchParams )
+// -------------------------------------------------------------- //
+// Helper: EncParam — percent-encode a search value so it survives being
+// re-emitted inside pagination / column-sort links.
+// -------------------------------------------------------------- //
+
+FUNCTION EncParam( cVal )
+
+RETURN hb_StrReplace( cVal, { '%', '&', '#', '+', ' ' }, { '%25', '%26', '%23', '%2B', '%20' } )
+
 // -------------------------------------------------------------- //
 // Helper: SortGrid — sort an array of hashes by a field name
-// Parameters: aGrid, cField (uppercase), cDir (ASC|DESC)
+// Parameters: aGrid, cField (lowercase, as the grid hash keys are), cDir (ASC|DESC)
 // Returns: sorted array of hashes
 // -------------------------------------------------------------- //
 
