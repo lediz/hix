@@ -1,0 +1,16 @@
+{
+  "sets": {
+    "language": "EN",
+    "dateformat": "dd/mm/yy",
+    "decimals": 2,
+    "deleted": false,
+    "epoch": 1900,
+    "exact": false,
+    "exclusive": false,
+    "fixed": false,
+    "softseek": false
+  },
+  "dbf": {
+    "rddname": "DBFCDX"
+  }
+}

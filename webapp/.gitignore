@@ -1,0 +1,71 @@
+# Build artifacts
+.hbmk/
+app
+.hbmk/gcc/app/*.o
+.hbmk/gcc/app/*.c
+
+# Adhoc tool binaries built from the .hbp files in this folder
+create_cdx
+create_dbf_ntx
+migrate_dbf
+migrate_users
+regenerate_data
+regenerate_users
+probe_entropy
+probe_hash
+probe_pwcost
+probe_seek
+probe_fmode
+
+# TLS material: a private key must never enter the repository
+# (hix/site-docs/en/hixstyle/seguridad/ssl.md).  Create with ./gen_cert.sh
+certs/
+
+# Session files
+sessions/
+.sessions/
+
+# Logs
+.logs/
+trace.log
+
+# Compiled views
+.cached/
+
+# Per-installation app config: HIX rewrites it at startup.  It must NOT hold
+# signing keys any more - www/ is the document root and its root-level files
+# are downloadable (PENTEST-REPORT.md §1).  Template: www/config.json.example
+www/config.json
+
+# Signing keys: outside paths.root, 0600, created by ./gen_keys.sh.
+hix.keys.json
+
+# Scratch / verification folders
+.tmp_verify/
+.tmp_probe_fmode/
+tmp/
+
+# Backups (git is the rollback mechanism - see D-14)
+*.bak
+
+# Node (pi tooling, not part of the Harbour/HIX app)
+node_modules/
+package-lock.json
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Compiled loaders (HIX regenerates them from .prg at startup)
+*.hrb
+*.hrb.md5
+*.log
+# Generated C from .prg tests
+*_customer_module.c
+# Python test caches
+__pycache__/
+# Generated report output (regenerate from the .md)
+COMPARATIVE-ANALYSIS.pdf
+
+# Stray DBF from a path-concat bug (real data lives in data/)
+/datacustomers.dbf

@@ -1,0 +1,9 @@
+-n
+-w1
+-es2
+-mt
+-workdir=.hbmk/${hb_compiler}/probe_seek
+-hbexe
+-oprobe_seek
+test/probe_seek.prg
+${hb_root}/include/harbour.hbx

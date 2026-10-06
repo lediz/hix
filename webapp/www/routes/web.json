@@ -1,0 +1,32 @@
+[
+  { "name": "index",          "url": "/",                              "action": "views/index.html",                         "method": "GET",  "middleware": "MyAppPublic" },
+  { "name": "main",           "url": "/main",                          "action": "controllers/main.prg",                     "method": "GET",  "middleware": "MyAppAuth" },
+  { "name": "sys.login" ,     "url": "/login",                         "action": "controllers/login.prg",                    "method": "GET",  "middleware": "MyAppLoginView" },
+  { "name": "sys.logout",     "url": "/logout",                        "action": "controllers/logout.prg",                   "method": "GET",  "middleware": "MyAppAuth" },
+  { "name": "sys.auth",       "url": "/auth",                          "action": "controllers/auth.prg" ,                    "method": "POST", "middleware": "MyAppLogin" },
+
+  { "name": "module_a",       "url": "/module_a",                      "action": "views/masters/modules/module_a.html", "method": "GET",  "middleware": "MyAppAuth" },
+  { "name": "module_b",       "url": "/module_b",                      "action": "views/masters/modules/module_b.html", "method": "GET",  "middleware": "MyAppAuth" },
+  { "name": "module_c",       "url": "/module_c",                      "action": "views/masters/modules/module_c.html", "method": "GET",  "middleware": "MyAppAuth" },
+
+  { "name": "customer.grid",  "url": "/customer/grid",                "action": "controllers/masters/grid@customer.prg",    "method": "GET",  "middleware": "MyAppAuthRole"    , "scope": "customers:search" },
+  { "name": "customer.search","url": "/customer/search",               "action": "controllers/masters/search@customer.prg",  "method": "GET",  "middleware": "MyAppAuthRole"    , "scope": "customers:search" },
+  { "name": "customer.create","url": "/customer/create",               "action": "controllers/masters/create@customer.prg",  "method": "GET",  "middleware": "MyAppAuthRole"    , "scope": "customers:create" },
+  { "name": "customer.store", "url": "/customer/store",                "action": "controllers/masters/store@customer.prg",   "method": "POST", "middleware": "MyAppAuthRoleEdit", "scope": "customers:create" },
+  { "name": "customer.show",  "url": "/customer/:id([0-9]+)",          "action": "controllers/masters/show@customer.prg",    "method": "GET",  "middleware": "MyAppAuthRole"    , "scope": "customers:show" },
+  { "name": "customer.edit",  "url": "/customer/:id([0-9]+)/edit",     "action": "controllers/masters/edit@customer.prg",    "method": "GET",  "middleware": "MyAppAuthRole"    , "scope": "customers:edit" },
+  { "name": "customer.update","url": "/customer/:id([0-9]+)/update",   "action": "controllers/masters/update@customer.prg",  "method": "POST", "middleware": "MyAppAuthRoleEdit", "scope": "customers:edit" },
+  { "name": "customer.delete_confirm", "url": "/customer/:id([0-9]+)/delete_confirm", "action": "controllers/masters/delete_confirm@customer.prg", "method": "GET",  "middleware": "MyAppAuthRoleEdit", "scope": "customers:delete" },
+  { "name": "customer.delete","url": "/customer/:id([0-9]+)/delete",   "action": "controllers/masters/delete_action@customer.prg",  "method": "POST", "middleware": "MyAppAuthRoleEdit", "scope": "customers:delete" },
+
+  { "name": "users.grid",  "url": "/users/grid",                "action": "controllers/masters/grid@users.prg",    "method": "GET",  "middleware": "MyAppAuthRole"    , "scope": "users:search" },
+  { "name": "users.search","url": "/users/search",               "action": "controllers/masters/search@users.prg",  "method": "GET",  "middleware": "MyAppAuthRole"    , "scope": "users:search" },
+  { "name": "users.create","url": "/users/create",               "action": "controllers/masters/create@users.prg",  "method": "GET",  "middleware": "MyAppAuthRoleEdit", "scope": "users:create" },
+  { "name": "users.store", "url": "/users/store",                "action": "controllers/masters/store@users.prg",   "method": "POST", "middleware": "MyAppAuthRoleEdit", "scope": "users:create" },
+  { "name": "users.show",  "url": "/users/:id([0-9]+)",          "action": "controllers/masters/show@users.prg",    "method": "GET",  "middleware": "MyAppAuthRole"    , "scope": "users:show" },
+  { "name": "users.edit",  "url": "/users/:id([0-9]+)/edit",     "action": "controllers/masters/edit@users.prg",    "method": "GET",  "middleware": "MyAppAuthRoleEdit", "scope": "users:edit" },
+  { "name": "users.update","url": "/users/:id([0-9]+)/update",   "action": "controllers/masters/update@users.prg",  "method": "POST", "middleware": "MyAppAuthRoleEdit", "scope": "users:edit" },
+  { "name": "users.delete_confirm", "url": "/users/:id([0-9]+)/delete_confirm", "action": "controllers/masters/delete_confirm@users.prg", "method": "GET",  "middleware": "MyAppAuthRoleEdit", "scope": "users:delete" },
+  { "name": "users.delete","url": "/users/:id([0-9]+)/delete",   "action": "controllers/masters/delete_action@users.prg",  "method": "POST", "middleware": "MyAppAuthRoleEdit", "scope": "users:delete" }
+
+]

@@ -1,0 +1,133 @@
+@args cMode := 'edit', lFound := .F., hRow := {=>}, hMessage := {=>}, hErrors := {=>}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+	@view 'common/header.html' 
+
+</head>
+
+<style>
+
+	main {
+		margin-top: 70px;
+	}
+
+	.card {
+		box-shadow: 5px 5px 5px gray !important;
+	}
+
+	.form-label {
+		font-weight: bold;
+	}
+
+	.required::after {
+		content: " *";
+		color: red;
+	}
+
+</style>
+
+<body>
+
+	<!-- Navbar -->
+
+	@view 'common/navbar.html'
+
+
+	<!-- Offcanvas Sidebar -->
+
+	@view 'common/sidebar.html', 'users'
+
+   <main class="container-fluid">
+		<!-- Breadcrumb... -->
+
+		<div class="row w-100 mt-5">
+			<nav  aria-label="breadcrumb">
+			  <ol class="breadcrumb fs-5">
+				<li class="breadcrumb-item"><a href="/main"><i class="bi bi-house-door-fill"></i></a></li>
+				<li class="breadcrumb-item"><a href="/users/grid">Users</a></li>
+				<li class="breadcrumb-item active" aria-current="page">{{ if( cMode == 'create', 'Create User', 'Edit User' ) }}</li>
+			  </ol>
+			</nav>
+		</div>
+
+		<!-- Flash message -->
+      @if !empty( hb_HGetDef( hMessage, 'message', '' ) )
+			<div class="row ">
+				<div class="col">
+				<div class="alert alert-{{ hb_HGetDef( hMessage, 'type', 'info' ) }}" role="alert">
+				<b>
+					<i class="bi bi-info-circle"></i>&nbsp;
+					{{ hb_HGetDef( hMessage, 'message', '' ) }}
+				</b>
+				</div>
+				</div>
+			</div>
+      @endif
+
+      <!-- Form -->
+      <div class="row w-100 mt-4">
+         <div class="col-md-8">
+            <div class="card">
+               <div class="card-header">
+                  <h4 class="m-0 fw-bold">
+                     <i class="bi bi-person-plus-fill"></i>&nbsp;{{ if( cMode == 'create', 'Create User', 'Edit User' ) }}
+                  </h4>
+               </div>
+               <div class="card-body">
+                  <form method="POST" action="{{ if( cMode == 'create', URoute( 'users.store' ), URoute( 'users.update', HB_HGetDef( hRow, '_recno', 0 ) ) ) }}">
+
+                     <!-- N-01: this form posts to users.store / users.update, both guarded by
+                          MyAppAuthRoleEdit -> HIX_MwCsrfCheck.  Without @CSRF every write from a
+                          real browser is rejected with 302 -> /login. -->
+                     @CSRF
+
+                     <!-- Name -->
+                     <div class="mb-3">
+                        <label for="name" class="form-label required">Name</label>
+                        <input type="text" name="name" id="name" class="form-control {{ if( !empty( hb_HGetDef( hErrors, 'name', '' ) ), 'is-invalid', '' ) }}" value="{{ HB_HGetDef( hRow, 'name', '' ) }}" autocomplete="off">
+                        @if !empty( hb_HGetDef( hErrors, 'name', '' ) )
+                        <div class="invalid-feedback">{{ hb_HGetDef( hErrors, 'name', '' ) }}</div>
+                        @endif
+                     </div>
+
+                     <!-- Password: never pre-filled — users.dbf stores a digest only (D-05/D-07) -->
+                     <div class="mb-3">
+                        <label for="pass" class="form-label {{ if( cMode == 'create', 'required', '' ) }}">Password</label>
+                        <input type="password" name="pass" id="pass" class="form-control {{ if( !empty( hb_HGetDef( hErrors, 'pass', '' ) ), 'is-invalid', '' ) }}" value="" autocomplete="new-password" placeholder="{{ if( cMode == 'create', 'Min 4 characters', 'Leave blank to keep current password' ) }}">
+                        <div class="form-text">{{ if( cMode == 'create', 'Stored as a salted, iterated SHA-256 digest.', 'Passwords are stored hashed. Leave blank to keep the current password.' ) }}</div>
+                        @if !empty( hb_HGetDef( hErrors, 'pass', '' ) )
+                        <div class="invalid-feedback">{{ hb_HGetDef( hErrors, 'pass', '' ) }}</div>
+                        @endif
+                     </div>
+
+                     <!-- Roles -->
+                     <div class="mb-3">
+                        <label for="roles" class="form-label required">Roles</label>
+                        <input type="text" name="roles" id="roles" class="form-control {{ if( !empty( hb_HGetDef( hErrors, 'roles', '' ) ), 'is-invalid', '' ) }}" value="{{ HB_HGetDef( hRow, 'roles', '' ) }}" autocomplete="off" placeholder="customers:search;show;edit">
+                        <div class="form-text">Format: role:ops (e.g. "customers:search;show;edit")</div>
+                        @if !empty( hb_HGetDef( hErrors, 'roles', '' ) )
+                        <div class="invalid-feedback">{{ hb_HGetDef( hErrors, 'roles', '' ) }}</div>
+                        @endif
+                     </div>
+
+                     <!-- Submit -->
+                     <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                           <i class="bi bi-check-lg"></i>&nbsp;{{ if( cMode == 'create', 'Create', 'Update' ) }}
+                        </button>
+                        <a href="/users/grid" class="btn btn-secondary">
+                           <i class="bi bi-x-lg"></i>&nbsp;Cancel
+                        </a>
+                     </div>
+                  </form>
+               </div>
+            </div>
+         </div>
+      </div>
+   </main>
+
+</body>
+</html>

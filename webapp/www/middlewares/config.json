@@ -1,0 +1,36 @@
+{
+  "load": [
+    "myapppublic.prg",
+    "myappauth.prg",
+    "myappauthrole.prg",
+    "myappauthedit.prg",
+    "myapplogin.prg"
+  ],
+  "setup": {
+    "auth": {
+      "session_user_key": "_auth_user",
+      "roles_key": "roles",
+      "redirect_login": "/login",
+      "redirect_accept": "/main"
+    },
+    "session": {
+      "cookie": "FENIXSID",
+      "ttl": 3600,
+      "max": 100,
+      "storage": "file"
+    },
+    "csrf": {
+      "redirect": "/login",
+      "ttl": 3600
+    },
+    "ratelimit": {
+      "ip_per_min": 300,
+      "window_s": 60,
+      "login_max": 5,
+      "login_window": 60
+    },
+    "secheaders": {
+      "csp": "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; font-src 'self' https://cdn.jsdelivr.net; img-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'self'"
+    }
+  }
+}
