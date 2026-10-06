@@ -1,1 +1,10 @@
 *.sh text eol=lf
+*.bat text eol=crlf
+*.prg text eol=lf
+*.ch  text eol=lf
+*.json text eol=lf
+*.html text eol=lf
+*.dbf binary
+*.cdx binary
+*.hbx binary
+*.hrb binary
