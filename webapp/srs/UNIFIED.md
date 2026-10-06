@@ -1,10 +1,13 @@
 # This repository: HIX framework + the webapp that runs on it
 
+> **This file lives in `webapp/srs/`** — it is the record of how the repository was assembled. The
+> entry point for *what this branch changes* is [`ENHANCE.md`](../../ENHANCE.md) at the root.
+
 One local git repository holding **both** halves of the stack:
 
 * the **HIX web-server framework** (Harbour / xBase++) at the root — upstream history, tags and
   signed commits untouched, exactly as in the framework checkout it was cut from;
-* the **audited CRUD application** under [`webapp/`](webapp/) — its own 26 commits, prefix-rewritten
+* the **audited CRUD application** under [`webapp/`](../) — its own 26 commits, prefix-rewritten
   under `webapp/` and joined to the framework by a single unrelated-histories merge commit
   (`chore: unify the HIX framework with the webapp that runs on it`).
 
@@ -31,19 +34,19 @@ artifacts); the framework is 634 files / 71 commits with 5 tags and signed upstr
 ├── src/  tests/  examples/  site-docs/  changes/  resources/   (dll/ moved to resources/dll/)
 ├── hix_server.hbp / .hbc            framework build
 ├── go_lib_gcc.sh                    → hix_server.hbx + lib/gcc/libhix_server.a
+├── ENHANCE.md                       what this branch enhances and why (entry point)
 ├── compare-branches.sh              origin/enhance vs origin/main → webapp/srs/COMPARISON-enhance-vs-main.md
 ├── mkdocs.yml  .github/workflows/docs.yml      root paths still valid
 ├── webapp/                          the application (26 commits of its own history)
 │   ├── app.hbp  go_gcc.sh  hix.json  gen_cert.sh  gen_keys.sh
 │   ├── src/ www/ test/ data/ docs/ resources/
 │   └── srs/                         requirements, compliance, audit reports, test records,
-│                                    plans and analyses (28 files) — see srs/README.md
-└── UNIFIED.md                       this file
+│                                    plans and analyses — including this file; see srs/README.md
 ```
 
-`webapp/` descends from the framework's own `examples/web/crud/` (33 of its 64 files were
-byte-identical to that example when this repo was cut). Both are kept on purpose: `examples/` is
-upstream documentation, `webapp/` is the hardened, audited application.
+`webapp/` descends from the framework's own `examples/web/crud/` (35 of that example's 64 tracked
+files are still byte-identical in `webapp/`). Both are kept on purpose: `examples/` is upstream
+documentation, `webapp/` is the hardened, audited application.
 
 | | |
 |---|---|

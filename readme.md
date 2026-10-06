@@ -6,8 +6,9 @@
 > **Local workspace note.** This checkout is the unified repo: the framework at the root plus the
 > audited application under [`webapp/`](webapp/) and the requirements / audit / plan corpus under
 > [`webapp/srs/`](webapp/srs/).
-> Build order, remotes (push-disabled), history rules and the test matrix are in
-> [UNIFIED.md](UNIFIED.md).
+> What this branch enhances — in the framework and in the application — is [ENHANCE.md](ENHANCE.md);
+> build order, remotes (push-disabled), history rules and the test matrix are in
+> [webapp/srs/UNIFIED.md](webapp/srs/UNIFIED.md).
 
 **HIX** is a lightweight, versatile web server built to fit the way you work. Whether you're 
 after total freedom or a structured, rock-solid architecture, HIX gives you the tools you need 
