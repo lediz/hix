@@ -55,3 +55,17 @@ package-lock.json
 # OS files
 .DS_Store
 Thumbs.db
+
+# Compiled loaders (HIX regenerates them from .prg at startup)
+*.hrb
+*.hrb.md5
+*.log
+# Generated C from .prg tests
+*_customer_module.c
+# Python test caches
+__pycache__/
+# Generated report output (regenerate from the .md)
+COMPARATIVE-ANALYSIS.pdf
+
+# Stray DBF from a path-concat bug (real data lives in data/)
+/datacustomers.dbf
