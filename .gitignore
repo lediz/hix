@@ -22,3 +22,9 @@ hix_helpers.c
 
 # Backups: git is the rollback mechanism
 *.bak
+
+# Unit-test harness output (tests/unit)
+trace.log
+traces/
+tests/unit/app
+nul
