@@ -160,6 +160,8 @@ Steps 1–2 rewrite no history, so rollback is trivial. A force-push (Step 2 alt
 
 Defaults used: **A**=merge, **B**=publish to `enhance`, **C**=keep `upstream-hix`, **D**=rewrite identity.
 
+**Revision to C (later the same day):** `upstream-hix` (`/home/jack/Projects/hix`) was **removed**. The only remote is now `origin`, and `enhance` tracks `origin/enhance`. Rationale: after the identity rewrite the sibling repo still held the pre-rewrite commits (`2e67926` etc.), which are no longer ancestors of `enhance`; merging from it would have reintroduced `jack@jackllm.local` commits. To restore it deliberately: `git remote add upstream-hix /home/jack/Projects/hix`.
+
 ```bash
 git remote add origin https://github.com/lediz/hix.git
 git fetch origin                      # 36 local-only / 7 remote-only
@@ -167,6 +169,7 @@ git merge --no-edit origin/enhance    # 0 conflicts → 88fbe5c (parents 8bd9726
 git push -u origin main:enhance       # ab31bb4..88fbe5c, fast-forward, no force
 git push origin --tags                # v2.2 v2.1 v2.00.03 v2.00 ia-v0.2.1
 git remote set-head origin enhance
+# (later) git remote remove upstream-hix   -- see the revision note above
 gh api -X PATCH repos/lediz/hix -f default_branch=enhance
 git branch -m main enhance            # local branch renamed to match
 ```
