@@ -119,6 +119,10 @@ FUNCTION HIX_ConfigAppDefaults()
    // last resort, from HIX_KeysLoadFromAppConfig() which generates them in
    // memory only.  Never put a secret under paths.root.
 
+   //  Empty databases section so backfill (HIX_ConfigAppMerge) adds it to
+   //  projects predating v2.3.01 without wiping existing pool entries.
+   hDef[ "databases" ] := { => }
+
 RETURN hDef
 
 // Generates a 64-char hex key from entropy sources available at startup.

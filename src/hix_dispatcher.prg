@@ -473,6 +473,7 @@ METHOD ExecuteHtml( cPath ) CLASS THixDispatcher
       HIX_Throw( oError )
       FINALLY
       HIX_CloseDbfAreas()
+      WDO_ReleaseAllThread()
 
    END
 
@@ -489,8 +490,9 @@ METHOD ExecuteView( cPath ) CLASS THixDispatcher
       cHtml := UView( cPath )
       
    FINALLY
-   
+
       HIX_CloseDbfAreas()
+      WDO_ReleaseAllThread()
 
    END
 
@@ -799,6 +801,12 @@ STATIC FUNCTION _HixThreadExec( oHrb, hMutex, aShared, hClass, oReq, cPath )
 
    END
 
+   // Reclaim pooled connections acquired by this child thread before it
+   // dies. Needed because _Borrowed is THREAD STATIC: the parent's
+   // WDO_ReleaseAllThread() hook can't see slots acquired here, and if
+   // the parent timed out it has already detached us.
+   WDO_ReleaseAllThread()
+
    // Limpiar propia entrada del abort map antes de notificar al padre
    _HixAbortMapDel( hb_threadId() )
 
@@ -876,6 +884,7 @@ STATIC FUNCTION _HixRunHrb( oHrb, cPath  )
       ENDIF
 
       HIX_CloseDbfAreas()
+      WDO_ReleaseAllThread()
 
    END
 
@@ -1098,6 +1107,7 @@ STATIC FUNCTION _HixRunHrbClass( oHrb, cPath, hClass )
             HIX_Throw( oError )
             FINALLY
             HIX_CloseDbfAreas()
+            WDO_ReleaseAllThread()
 
          END
 
