@@ -62,10 +62,11 @@ fi
 export HB_INCLUDE="$HB_ROOT/include${HB_INCLUDE:+:$HB_INCLUDE}"
 
 # ${hix} in app.hbp expands from this env var.  The upstream script assumes
-# examples/web/crud/; this app lives in pi-agent/webapp/, so fall back to
-# sibling checkouts before giving up.
+# examples/web/crud/; this app lives in webapp/, i.e. directly inside the
+# framework checkout (the unified repo), so the parent directory is tried
+# first, then the older sibling checkouts, before giving up.
 if [ ! -f "$hix/hix_server.hbx" ]; then
-    for cand in "$HOME/Projects/hix" "$(cd ../../.. 2>/dev/null && pwd)/hix" "$(cd ../../../.. 2>/dev/null && pwd)/hix"; do
+    for cand in "$(cd .. && pwd)" "$HOME/Projects/hix" "$(cd ../../.. 2>/dev/null && pwd)/hix" "$(cd ../../../.. 2>/dev/null && pwd)/hix"; do
         if [ -f "$cand/hix_server.hbx" ]; then
             export hix="$cand"
             break
