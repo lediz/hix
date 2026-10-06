@@ -59,6 +59,10 @@ Thumbs.db
 *.hrb
 *.hrb.md5
 *.log
+# Generated C: harbour/hbmk2 drop it next to the .prg when there is no
+# -workdir (the .hbp files send it into .hbmk/).  Anchored to this folder so
+# nothing under www/ or test/ is affected.
+/*.c
 # Generated C from .prg tests
 *_customer_module.c
 # Python test caches
