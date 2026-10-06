@@ -1,19 +1,19 @@
 # Comparative analysis: `origin/enhance` vs `origin/main`
 
-Generated: 2026-10-06T14:42:10+08:00 · by `compare-branches.sh`
+Generated: 2026-10-06T14:45:14+08:00 · by `compare-branches.sh`
 
 | Ref | SHA | Commits | Files | Tree size |
 |---|---|---|---|---|
-| `origin/enhance` | `626e135` | 115 | 825 | 39205193 B |
+| `origin/enhance` | `bf3532a` | 116 | 825 | 39205884 B |
 | `origin/main` | `ab31bb4` | 65 | 692 | 38177445 B |
 
 ## 1. Topology
 
 | Metric | Value |
 |---|---|
-| Relationship | **fast-forward: origin/enhance is ahead of origin/main by 50** |
+| Relationship | **fast-forward: origin/enhance is ahead of origin/main by 51** |
 | Merge base | `ab31bb4 — 2.3.10 Move /dll to /resources/dll (2026-10-05)` |
-| Unique to `origin/enhance` | 50 |
+| Unique to `origin/enhance` | 51 |
 | Unique to `origin/main` | 0 |
 | `origin/main` ⊆ `origin/enhance` | yes |
 | `origin/enhance` ⊆ `origin/main` | no |
@@ -22,15 +22,15 @@ Generated: 2026-10-06T14:42:10+08:00 · by `compare-branches.sh`
 
 | Metric | Value |
 |---|---|
-| Files added / modified / deleted / renamed | 132 / 10 / 0 / 0 |
-| Lines inserted / deleted | +19423 / -34 |
+| Files added / modified / deleted / renamed | 133 / 10 / 0 / 0 |
+| Lines inserted / deleted | +19625 / -34 |
 | Binary files changed | 7 |
-| Shortstat | 142 files changed, 19423 insertions(+), 34 deletions(-) |
-| Excluded from the delta | COMPARISON-enhance-vs-main.md |
+| Shortstat | 143 files changed, 19625 insertions(+), 34 deletions(-) |
+| Excluded from the delta | webapp/srs/COMPARISON-enhance-vs-main.md |
 
 ### Top-level entries only in one side
 
-- only in `origin/enhance`: compare-branches.sh GIT_AUTH_PLAN.md GIT_REMOTE_MIGRATION_PLAN.md UNIFIED.md webapp 
+- only in `origin/enhance`: compare-branches.sh COMPARISON-enhance-vs-main.md GIT_AUTH_PLAN.md GIT_REMOTE_MIGRATION_PLAN.md UNIFIED.md 
 - only in `origin/main`: —
 
 ### Largest content changes
@@ -57,8 +57,8 @@ Generated: 2026-10-06T14:42:10+08:00 · by `compare-branches.sh`
 
 ```
 128 webapp/
+8 (root)
 7 src/
-7 (root)
 ```
 
 ### Renames
@@ -69,10 +69,11 @@ Generated: 2026-10-06T14:42:10+08:00 · by `compare-branches.sh`
 
 ## 3. Unique commits
 
-### Only in `origin/enhance` (50)
+### Only in `origin/enhance` (51)
 
 | Date | Author | Subject |
 |---|---|---|
+| 2026-10-06 | lediz | tools: refresh the enhance-vs-main report (srs/ paths moved) |
 | 2026-10-06 | lediz | docs: move srs/ under webapp/ |
 | 2026-10-06 | lediz | webapp: stop tracking generated C from the .prg tools |
 | 2026-10-06 | lediz | webapp: retire migrate_dbf, give the adhoc tools .hbp build files |
@@ -135,7 +136,7 @@ _(none)_
 ### Authors — `origin/enhance`
 ```
 60 Carles Aubia <carles9000@gmail.com>
-50 lediz <14312216+lediz@users.noreply.github.com>
+51 lediz <14312216+lediz@users.noreply.github.com>
 4 Charly <carles9000@gmail.com>
 1 Giuseppe Bogetti <orangesocks@users.noreply.github.com>
 ```
@@ -150,7 +151,7 @@ _(none)_
 ### Committers — `origin/enhance`
 ```
 60 Carles Aubia <carles9000@gmail.com>
-50 lediz <14312216+lediz@users.noreply.github.com>
+51 lediz <14312216+lediz@users.noreply.github.com>
 5 GitHub <noreply@github.com>
 ```
 
@@ -177,26 +178,26 @@ v2.2 -> d8d66d9
 
 ## 6. Findings
 
-- fast-forward: origin/enhance is ahead of origin/main by 50
+- fast-forward: origin/enhance is ahead of origin/main by 51
 - `origin/enhance` can be merged into `origin/main` as a **fast-forward**.
 - Shared history below the merge base is common to both; commits there keep identical SHAs unless history is rewritten.
-- The content delta excludes COMPARISON-enhance-vs-main.md. The unique-commit count still includes the commit that carries this report — that one is unavoidable while the report is tracked.
+- The content delta excludes webapp/srs/COMPARISON-enhance-vs-main.md. The unique-commit count still includes the commit that carries this report — that one is unavoidable while the report is tracked.
 
 ## 7. Machine-readable summary
 
 ```json
 {
   "left": "origin/enhance",
-  "left_sha": "626e135203c68e8795cda2162064cfe19d87f559",
+  "left_sha": "bf3532abab55b3087666e5483e7bd5120a56287a",
   "right": "origin/main",
   "right_sha": "ab31bb4d407204245adb2af62f1232a8b67e5b8a",
   "merge_base": "ab31bb4d407204245adb2af62f1232a8b67e5b8a",
-  "left_only": 50,
+  "left_only": 51,
   "right_only": 0,
   "fast_forward_possible": true,
   "diverged": false,
-  "excluded": ["COMPARISON-enhance-vs-main.md"],
-  "files": {"added": 132, "modified": 10, "deleted": 0, "renamed": 0, "binary": 7},
-  "lines": {"insertions": 19423, "deletions": 34}
+  "excluded": ["webapp/srs/COMPARISON-enhance-vs-main.md"],
+  "files": {"added": 133, "modified": 10, "deleted": 0, "renamed": 0, "binary": 7},
+  "lines": {"insertions": 19625, "deletions": 34}
 }
 ```

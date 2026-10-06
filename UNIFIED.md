@@ -26,12 +26,13 @@ artifacts); the framework is 634 files / 71 commits with 5 tags and signed upstr
 ├── src/  tests/  examples/  site-docs/  changes/  resources/   (dll/ moved to resources/dll/)
 ├── hix_server.hbp / .hbc            framework build
 ├── go_lib_gcc.sh                    → hix_server.hbx + lib/gcc/libhix_server.a
+├── compare-branches.sh              origin/enhance vs origin/main → webapp/srs/COMPARISON-enhance-vs-main.md
 ├── mkdocs.yml  .github/workflows/docs.yml      root paths still valid
 ├── webapp/                          the application (26 commits of its own history)
 │   ├── app.hbp  go_gcc.sh  hix.json  gen_cert.sh  gen_keys.sh
 │   ├── src/ www/ test/ data/ docs/ resources/
-│   ├── srs/                         requirements / compliance corpus (15 files, was un-versioned)
-│   └── STATUS / PENTEST-REPORT / TEST-RESULTS / BF-01 … markdown
+│   └── srs/                         requirements, compliance, audit reports, test records,
+│                                    plans and analyses (28 files) — see srs/README.md
 └── UNIFIED.md                       this file
 ```
 
@@ -41,7 +42,7 @@ upstream documentation, `webapp/` is the hardened, audited application.
 
 | | |
 |---|---|
-| Tracked files | 770 (635 framework + 120 app + 15 `webapp/srs/`) |
+| Tracked files | 825 (694 framework + 103 app + 28 `webapp/srs/`) |
 | Commits reachable from `main` | 93 — of which **26** are the imported `webapp/` history (2026-10-02…10-06) |
 | Tags | `v2.00` `v2.00.03` `v2.1` `v2.2` `ia-v0.2.1` — resolving to the same commits as in `~/Projects/hix` |
 | Branch | `enhance`, tracking `origin/enhance` — `main` holds the imported upstream history and is no longer merged from |
@@ -145,7 +146,7 @@ flip `hix.json → server.ssl` and restart between them (restore it afterwards).
 | `test/test_users_module.sh` | `ssl: false` — `API` is hardcoded to `http://localhost:9090`, no override | 55 / 60 |
 | `test/test_customer_module.sh` | `ssl: false` — honours `TEST_API=`, but its `curl` has no `-k`, so it cannot reach the self-signed TLS server | 20 / 50 |
 | `test/verify-users-fixes.sh` | `ssl: true` — asserts block C-009 (TLS negotiated, plain HTTP refused) | PASS=125 FAIL=0 |
-| `test/bf_harness.sh` | `ssl: true`, `app.env = prod` — brute-force / timing probe, local app only | see `BRUTE-FORCE-PENTEST-PLAN.md` |
+| `test/bf_harness.sh` | `ssl: true`, `app.env = prod` — brute-force / timing probe, local app only | see `webapp/srs/BRUTE-FORCE-PENTEST-PLAN.md` |
 | `tests/unit` (`--cli`) | n/a (no HTTP) | 1979 total / 1970 passed / 9 failed |
 
 Those pass counts are pre-existing failures, not regressions — the *failure sets* are identical to
