@@ -1,0 +1,19 @@
+# Adhoc tool: Add a CDX tag (UPPER( FIRST )) to an existing customers.dbf.
+# Build and run from webapp/, like the seeders:
+#   hbmk2 create_cdx.hbp && ./create_cdx
+# Where it writes: HIX_DATA_DIR if set, otherwise ./data - see data_dir.prg.
+# It prints the directory it is working on before touching anything.
+
+-n
+-w1
+-es2
+-inc
+-mt
+-workdir=.hbmk/${hb_compiler}/create_cdx
+
+-hbexe
+-ocreate_cdx
+
+create_cdx.prg
+
+${hb_root}/include/harbour.hbx

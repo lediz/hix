@@ -7,7 +7,6 @@ app
 # Adhoc tool binaries built from the .hbp files in this folder
 create_cdx
 create_dbf_ntx
-migrate_dbf
 migrate_users
 regenerate_data
 regenerate_users

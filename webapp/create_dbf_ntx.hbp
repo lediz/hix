@@ -1,0 +1,19 @@
+# Adhoc tool: Recreate customers.dbf from scratch with the current schema and fill it with 100 sample rows.
+# Build and run from webapp/, like the seeders:
+#   hbmk2 create_dbf_ntx.hbp && ./create_dbf_ntx
+# Where it writes: HIX_DATA_DIR if set, otherwise ./data - see data_dir.prg.
+# It prints the directory it is working on before touching anything.
+
+-n
+-w1
+-es2
+-inc
+-mt
+-workdir=.hbmk/${hb_compiler}/create_dbf_ntx
+
+-hbexe
+-ocreate_dbf_ntx
+
+create_dbf_ntx.prg
+
+${hb_root}/include/harbour.hbx
