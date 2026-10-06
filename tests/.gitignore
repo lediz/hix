@@ -1,0 +1,7 @@
+# what the suite itself produces
+.out/
+unit/.logs/
+
+# the repo-wide "lib/" rule is Harbour build output; tests/lib/ is source
+# (common.sh, cap.sh, the parsers, rules.tsv), so it is re-included here
+!lib/

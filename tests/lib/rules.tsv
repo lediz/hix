@@ -1,0 +1,47 @@
+# ------------------------------------------------------------------
+# rules.tsv - the only thing allowed to call a failure "not a defect".
+#
+#   rule-id <TAB> case-regex <TAB> detail-regex <TAB> class <TAB> check-id <TAB> reason
+#
+# lib/classify.awk applies a rule to a FAIL/ERROR row only when
+#   * case-regex matches the case name, AND
+#   * detail-regex matches "case name + detail", AND
+#   * check-id is "-" or the check recorded in tests/.out/checks.tsv by
+#     slices/s07_harness.sh says "ok" for this very run.
+#
+# A rule whose check no longer holds is inert: the rows it used to
+# explain fall through to class "triage" and fail the suite again. That
+# is what keeps this table from becoming a place to hide regressions.
+#
+# classes:  product  the code under test is wrong
+#           harness  the project's own test script is wrong
+#           tool     an external tool is missing or different on this OS
+#           env      machine / config / leftover-state, not the code
+#           order    artifact of running a group slice in isolation
+# ------------------------------------------------------------------
+
+# The framework unit groups that build a THixRequest on top of the test
+# mock TMockIO. src/hix_request.prg sends ReadHeaders/Drain/PeerAlive/
+# lUseSSL to its IO object; the mock implements a smaller set, so the
+# group dies with "[EXCEPTION] Message not found" before its first
+# assertion. Nothing about HIX is involved - see check mock.io.stale.
+unit.mockio.messages	^(Routing/Request|Transport/Chunked|Transport/Multipart|Network/Proxied|Network/Proxy|Network/Accept)( :: .*)?$	Message not found	harness	mock.io.stale	tests/unit/src/hix_test_utils.prg TMockIO does not implement the messages src/hix_request.prg sends to its IO object
+
+# The unit suite looks for curl.exe to run its HTTPS cases and reports a
+# FAIL when it cannot find it. On Linux curl.exe does not exist.
+unit.ssl.curl.exe	^Transport/SSL( :: .*)?$	curl\.exe	tool	curl.exe.windows	tests/unit looks for curl.exe; its HTTPS cases cannot run on Linux
+
+# webapp/test/test_users_module.sh pins API="http://localhost:9090" and
+# never reads TEST_API, so the slice cannot point it at the TLS-only
+# server and the script aborts on its own preflight.
+wa.users.abort	^@abort$	(not reachable|aborted)	harness	users.api.hardcoded	webapp/test/test_users_module.sh hardcodes its API URL and ignores TEST_API
+
+# webapp/test/test_customer_module.sh authenticates with --cookie (send)
+# but never --cookie-jar (save), so the session cookie of a successful
+# login is thrown away and every session-dependent case after T09 replays
+# the pre-auth session and gets 302.
+wa.customer.session	^T(1[0-9]|2[0-9]|3[0-6]|44) - 	got (302|no|0)(\)|$)	harness	customer.cookie.jar	webapp/test/test_customer_module.sh never saves the cookie jar of the authenticated session
+
+# Rows named zbf*/zverify* in users.dbf are written by the project's own
+# test scripts; residue in the DBF is residue of previous test runs.
+repo.data.residue	^data\.residue$	left behind by earlier runs	env	test.rows.are.test.rows	the zbf*/zverify* rows are inserted by webapp/test/*.sh, not by the app
