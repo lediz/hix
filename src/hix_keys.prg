@@ -48,42 +48,92 @@ RETURN hb_HHasKey( s_hKeys, cName )
 
 // ============================================================
 // HIX_KeysLoadFromAppConfig — copy config.json > "keys" section
-// into the store. Idempotent. Values already set by HIX_KeySet
-// are overwritten — bootstrap runs before user code by design.
-// Returns the number of keys copied.
+// into the store, then make sure every known slot has a key.
+//
+// Order of trust (PENTEST-REPORT.md §1):
+//   1. HIX_KeySet() from the app bootstrap  — env vars, a file outside
+//      paths.root, anything the application controls
+//   2. config.json > keys                   — legacy location, INSIDE the
+//      document root, kept working for existing installs
+//   3. generated in memory                  — never a published default,
+//      never written to disk
+// Returns the number of keys copied from the app config.
 // ============================================================
 FUNCTION HIX_KeysLoadFromAppConfig()
 
-   LOCAL hKeys, cName, nCount := 0
+   LOCAL hKeys, cName, nCount := 0, nGen := 0
+   LOCAL aSlots := { "csrf", "jwt", "session", "token", "resource" }
 
    hKeys := HIX_ConfigApp( "keys", NIL )
 
-   IF ! HB_ISHASH( hKeys )
+   IF HB_ISHASH( hKeys )
 
-      RETURN 0
+      FOR EACH cName IN hb_HKeys( hKeys )
+
+         // A key the application installed itself wins: config.json lives
+         // under paths.root and is served as a static file, so it is the
+         // last place to trust a secret from.
+         IF hb_HHasKey( s_hKeys, cName ) .AND. ! Empty( s_hKeys[ cName ] )
+
+            lw( "HIX_Keys: '" + cName + "' already set by the application — " + ;
+                "config.json value ignored (do not keep keys under paths.root)" )
+            LOOP
+
+         ENDIF
+
+         s_hKeys[ cName ] := hKeys[ cName ]
+         nCount++
+
+         // Warn loudly when a key still carries the published default pattern.
+         // Published defaults are predictable — anyone who reads the source can
+         // forge tokens, sessions and CSRF. Replace them (A1.16).
+         IF ValType( hKeys[ cName ] ) == "C" .AND. "H!x@" $ hKeys[ cName ]
+
+            lw( "SECURITY: key '" + cName + "' uses a published default — " + ;
+                "replace it before deploying to production" )
+
+         ENDIF
+
+      NEXT
 
    ENDIF
 
-   FOR EACH cName IN hb_HKeys( hKeys )
+   // No slot may stay empty or fall back to a published default (A1.16).
+   // Anything missing is generated in memory only: the app config file is
+   // inside the document root, so nothing secret is ever written to it.
+   FOR EACH cName IN aSlots
 
-      s_hKeys[ cName ] := hKeys[ cName ]
-      nCount++
+      IF Empty( hb_HGetDef( s_hKeys, cName, "" ) )
 
-      // Warn loudly when a key still carries the published default pattern.
-      // Published defaults are predictable — anyone who reads the source can
-      // forge tokens, sessions and CSRF. Replace them in config.json (A1.16).
-      IF ValType( hKeys[ cName ] ) == "C" .AND. "H!x@" $ hKeys[ cName ]
-
-         lw( "SECURITY: key '" + cName + "' uses a published default — " + ;
-             "replace it in config.json > keys before deploying to production" )
+         s_hKeys[ cName ] := _HixGenKey()
+         nGen++
 
       ENDIF
 
    NEXT
 
-   l( "HIX_Keys: " + hb_ntos( nCount ) + " key(s) loaded from config.json" )
+   IF nGen > 0
+
+      lw( "HIX_Keys: " + hb_ntos( nGen ) + " key(s) generated in memory and NOT persisted — " + ;
+          "every token/session issued dies with the process. Provide them with " + ;
+          "HIX_KeySet() (environment variable or a file outside paths.root) " + ;
+          "to keep them valid across restarts" )
+
+   ENDIF
+
+   l( "HIX_Keys: " + hb_ntos( nCount ) + " from config.json, " + ;
+     hb_ntos( nGen ) + " generated, " + hb_ntos( Len( s_hKeys ) ) + " in store" )
 
 RETURN nCount
+
+// ============================================================
+// _HixGenKey — 64 hex chars from 32 bytes of CSPRNG output.
+// hb_RandStr() is Harbour core RTL (src/rtl/hbrand.c -> hb_arc4random_buf,
+// seeded from /dev/urandom).  Not derived from a timestamp, so two
+// installations started at the same millisecond cannot collide.
+// ============================================================
+STATIC FUNCTION _HixGenKey()
+RETURN hb_sha256( hb_RandStr( 32 ) )
 
 // ============================================================
 // HIX_KeysAsHash — returns a hash with the key NAMES only

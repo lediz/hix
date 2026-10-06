@@ -110,16 +110,14 @@ FUNCTION HIX_ConfigAppDefaults()
 
    hDef[ "dbf" ]  := { "rddname" => "DBFCDX" }
 
-   // Generate a unique random key per slot so every fresh installation
-   // gets secrets that cannot be predicted from the source (A1.16).
-   // _HixGenRandKey() uses timestamp+millis+PRNG → HMAC-SHA256, giving
-   // 256-bit unpredictability even before first request is served.
-   hDef[ "keys" ] := { ;
-      "csrf"     => _HixGenRandKey(), ;
-      "jwt"      => _HixGenRandKey(), ;
-      "session"  => _HixGenRandKey(), ;
-      "token"    => _HixGenRandKey(), ;
-      "resource" => _HixGenRandKey()  }
+   // NO "keys" section here (PENTEST-REPORT.md §1).  This file is
+   // <paths.root>/config.json - inside the document root - and HIX serves
+   // root-level docroot files, so every key written here was downloadable
+   // over plain GET /config.json: CSRF, session, token and resource ids could
+   // be forged offline.  Secrets now come from HIX_KeySet() (app bootstrap,
+   // e.g. from environment variables or a file outside the docroot) or, as a
+   // last resort, from HIX_KeysLoadFromAppConfig() which generates them in
+   // memory only.  Never put a secret under paths.root.
 
 RETURN hDef
 

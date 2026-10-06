@@ -130,7 +130,7 @@ METHOD Read() CLASS THixRequest
 
    LOCAL cRaw, nEnd, cFirstLine, aParts, nQ, nCRLF2
    LOCAL aLines, cLine, nPos, nStart, cConn
-   LOCAL cFwd, cReal, cFwdHeader, hFwd, aFwd, cCandidate
+   LOCAL cFwd, cReal, cFwdHeader, hFwd, aFwd, cCandidate, cProto
 
    cRaw := ::oIO:ReadHeaders()
 
@@ -214,6 +214,13 @@ METHOD Read() CLASS THixRequest
 
    ENDIF
 
+   // [PENTEST-REPORT §4] The scheme follows the actual transport.
+   // cProtoScheme used to be assigned ONLY from Forwarded: / X-Forwarded-Proto:,
+   // so a standalone TLS server (no proxy in front) reported "http": every
+   // session cookie was emitted without the Secure flag even though
+   // server.ssl = true.  A trusted proxy may still override it below.
+   ::cProtoScheme := iif( ::oIO != NIL .AND. ::oIO:lUseSSL, "https", "http" )
+
    IF ::lProxied .AND. HIX_IsTrustedProxy( ::cIP )
 
       // RFC 7239 Forwarded: tiene precedencia sobre X-Forwarded-*
@@ -265,7 +272,9 @@ METHOD Read() CLASS THixRequest
 
          ENDIF
 
-         ::cProtoScheme := AllTrim( hb_HGetDef( ::hHeaders, "x-forwarded-proto", "" ) )
+         cProto := AllTrim( hb_HGetDef( ::hHeaders, "x-forwarded-proto", "" ) )
+         IF ! Empty( cProto ) ; ::cProtoScheme := cProto ; ENDIF
+
          ::cFwdHost     := AllTrim( hb_HGetDef( ::hHeaders, "x-forwarded-host",  "" ) )
          ::cFwdPort     := AllTrim( hb_HGetDef( ::hHeaders, "x-forwarded-port",  "" ) )
 

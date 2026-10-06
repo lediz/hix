@@ -133,6 +133,12 @@ RETURN _HixCsrfValidate( oCtx, cToken )
 // through unchanged. Use this for routes where @csrf / UCsrfToHtml()
 // embeds the token directly in the form (no session needed).
 //
+// HIX_CsrfMakeToken() now puts the current session id in the token
+// payload, so when the pipeline DOES run HIX_MwSession the token is also
+// checked against it (HIX_CsrfBound): a token issued to one session is
+// rejected in every other one. Without a session the check is skipped and
+// the middleware keeps its original stateless behaviour.
+//
 // Example:
 // oSrv:AddRoutePost( "auth", "/auth", "controllers/auth.prg", "HIX_MwCsrfCheck" )
 // oSrv:AddRoutePost( "save", "/save", "controllers/save.prg", { "AppAuth", "HIX_MwCsrfCheck" } )
@@ -163,7 +169,7 @@ FUNCTION HIX_MwCsrfCheck( oCtx )
 
    ENDIF
 
-   IF Empty( cGot ) .OR. ! HIX_CsrfValidToken( cGot, s_nLapsus )
+   IF Empty( cGot ) .OR. ! HIX_CsrfValidToken( cGot, s_nLapsus ) .OR. ! HIX_CsrfBound( cGot )
 
       oCtx:lHandled := .T.
 

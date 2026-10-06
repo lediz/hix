@@ -216,6 +216,7 @@ RETURN nLoaded
 STATIC FUNCTION _MwApplySession( hSetup )
 
    LOCAL hSess, cCookie, nTtl, nMax, cStorage, cPath
+   LOCAL cPrefix, lCrypt, cSeed, nGcDays
 
    hSess := _MwHGet( hSetup, "session", NIL )
 
@@ -230,13 +231,22 @@ STATIC FUNCTION _MwApplySession( hSetup )
    nMax     := _MwHGet( hSess, "max",     0  )
    cStorage := _MwHGet( hSess, "storage", "" )
    cPath := UConfig( "paths", "session", "" )
-   IF !Empty( cPath )
-      HIX_MwSessionSetup( cCookie, nTtl, nMax, cStorage, cPath )
-   ELSE
-      HIX_MwSessionSetup( cCookie, nTtl, nMax, cStorage )
-   ENDIF
+
+   // hix.json > session: prefix / crypt / seed / gc_days used to be ignored
+   // here, so "crypt": true had no effect and session payloads stayed in
+   // plaintext on disk (PENTEST-REPORT.md §7).
+   cPrefix := UConfig( "session", "prefix",  "" )
+   cSeed   := UConfig( "session", "seed",    "" )
+   lCrypt  := ( UConfig( "session", "crypt", .F. ) == .T. )
+   nGcDays := UConfig( "session", "gc_days", 0 )
+
+   IF Empty( cPrefix ) ; cPrefix := NIL ; ENDIF   // NIL keeps the built-in prefix
+   IF Empty( cSeed   ) ; cSeed   := NIL ; ENDIF   // NIL -> HIX_KeyGet("session")
+
+   HIX_MwSessionSetup( cCookie, nTtl, nMax, cStorage, cPath, cPrefix, lCrypt, cSeed, nGcDays )
    HIX_BootLogAdd( "middlewares", "config", .T., ;
-      "session: cookie=" + cCookie + " ttl=" + hb_NToS( nTtl ) + " storage=" + cStorage )
+      "session: cookie=" + cCookie + " ttl=" + hb_NToS( nTtl ) + " storage=" + cStorage + ;
+      " crypt=" + iif( lCrypt, "yes", "no" ) )
 
 RETURN NIL
 
