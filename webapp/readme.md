@@ -71,10 +71,10 @@ The suites need **two different server modes** - start the app twice:
 
 | Suite | Needs | Command |
 |---|---|---|
-| `test/test_users_module.sh` | plain HTTP on 9090 (`hix.json -> server.ssl: false`) | `./test/test_users_module.sh` |
-| `test/test_customer_module.sh` | plain HTTP; honours `TEST_API=` | `TEST_API=http://localhost:9090 ./test/test_customer_module.sh` |
+| `test/test_users_module.sh` | plain HTTP on 9090 (`hix.json -> server.ssl: false`); `API` is hardcoded, no override | `./test/test_users_module.sh` |
+| `test/test_customer_module.sh` | plain HTTP; honours `TEST_API=` but its `curl` has no `-k`, so it cannot reach the self-signed TLS server | `TEST_API=http://localhost:9090 ./test/test_customer_module.sh` |
 | `test/verify-users-fixes.sh` | TLS (`server.ssl: true`); asserts block C-009 | `./test/verify-users-fixes.sh` |
-| `test/bf_harness.sh` | brute-force / timing probe harness | see `BRUTE-FORCE-PENTEST-PLAN.md` |
+| `test/bf_harness.sh` | TLS, `app.env = prod`; brute-force / timing probe against **this** local app only - never a deployed instance | see `BRUTE-FORCE-PENTEST-PLAN.md` |
 
 Restore `server.ssl: true` afterwards. Current results (identical before and after the repo
 unification): users 55/60, customer 20/50, verify 125/0. The customer failures are mostly `/auth`

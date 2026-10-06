@@ -13,8 +13,9 @@ decision matrix and execution log are in `~/Projects/pi-agent/UNIFY-GIT-PLAN.md`
 
 **Why the framework is at the root and the app is a subdirectory:** the upstream MkDocs CI triggers
 on root `site-docs/**` and `mkdocs.yml`, and `mkdocs.yml` / `examples/` all assume root paths. The
-app is 127 files / 26 commits (cheap to rewrite); the framework is 634 files / 71 commits with 5
-tags and signed upstream history (expensive). Root = framework keeps upstream re-merging clean.
+app was 127 tracked files / 26 commits (cheap to rewrite, 120 after untracking its build
+artifacts); the framework is 634 files / 71 commits with 5 tags and signed upstream history
+(expensive). Root = framework keeps upstream re-merging clean.
 
 ---
 
@@ -26,7 +27,7 @@ tags and signed upstream history (expensive). Root = framework keeps upstream re
 ├── hix_server.hbp / .hbc            framework build
 ├── go_lib_gcc.sh                    → hix_server.hbx + lib/gcc/libhix_server.a
 ├── mkdocs.yml  .github/workflows/docs.yml      root paths still valid
-├── srs/                             requirements / compliance corpus (14 files, was un-versioned)
+├── srs/                             requirements / compliance corpus (15 files, was un-versioned)
 ├── webapp/                          the application (26 commits of its own history)
 │   ├── app.hbp  go_gcc.sh  hix.json  gen_cert.sh  gen_keys.sh
 │   ├── src/ www/ test/ data/ docs/ resources/
@@ -40,9 +41,9 @@ upstream documentation, `webapp/` is the hardened, audited application.
 
 | | |
 |---|---|
-| Tracked files | 768 (634 framework + 120 app + 14 `srs/`) |
-| Commits reachable from `main` | 91 |
-| Tags | `v2.00` `v2.00.03` `v2.1` `v2.2` `ia-v0.2.1` |
+| Tracked files | 770 (635 framework + 120 app + 15 `srs/`) |
+| Commits reachable from `main` | 93 — of which **26** are the imported `webapp/` history (2026-10-02…10-06) |
+| Tags | `v2.00` `v2.00.03` `v2.1` `v2.2` `ia-v0.2.1` — resolving to the same commits as in `~/Projects/hix` |
 | Branch | `main`, tracking `upstream-hix/main` |
 
 ---
@@ -141,10 +142,11 @@ flip `hix.json → server.ssl` and restart between them (restore it afterwards).
 
 | Suite | Server mode | Baseline = unified (verified equal) |
 |---|---|---|
-| `test/test_users_module.sh` | `ssl: false` | 55 / 60 |
-| `test/test_customer_module.sh` | `ssl: false` (or `TEST_API=`) | 20 / 50 |
-| `test/verify-users-fixes.sh` | `ssl: true` | PASS=125 FAIL=0 |
-| `tests/unit` (`--cli`) | n/a | 1979 total / 1970 passed / 9 failed |
+| `test/test_users_module.sh` | `ssl: false` — `API` is hardcoded to `http://localhost:9090`, no override | 55 / 60 |
+| `test/test_customer_module.sh` | `ssl: false` — honours `TEST_API=`, but its `curl` has no `-k`, so it cannot reach the self-signed TLS server | 20 / 50 |
+| `test/verify-users-fixes.sh` | `ssl: true` — asserts block C-009 (TLS negotiated, plain HTTP refused) | PASS=125 FAIL=0 |
+| `test/bf_harness.sh` | `ssl: true`, `app.env = prod` — brute-force / timing probe, local app only | see `BRUTE-FORCE-PENTEST-PLAN.md` |
+| `tests/unit` (`--cli`) | n/a (no HTTP) | 1979 total / 1970 passed / 9 failed |
 
 Those pass counts are pre-existing failures, not regressions — the *failure sets* are identical to
 the pre-unification baseline. The customer suite's failures are mostly `/auth` rate-limit (429)
@@ -161,6 +163,8 @@ The suites write into `data/*.dbf` and generate `u_check.c`; both are ignored or
   they are the burn-in fallback, not the working copy.
 * `~/Projects/pi-agent/hix` symlinks to `~/Projects/hix-unified` (shim for anything that used the
   old workspace path).
+* The development server that used to run from `~/Projects/pi-agent/webapp` now runs from here:
+  `cd webapp && ./go_gcc.sh --port 9090` (TLS on, `https://localhost:9090`).
 * Burn in this repo for ~1 week, then retire the old ones **by renaming, not deleting**:
   `mv ~/Projects/hix ~/Projects/hix.retired`, same for `webapp`. Confirm the bundles restore first:
   `git clone ~/backups/git/webapp-2026-10-06.bundle /tmp/r && git -C /tmp/r log --oneline | wc -l` → 26.
