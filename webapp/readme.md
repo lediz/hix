@@ -9,6 +9,20 @@
     Only when hix.json -> app.env = "dev": in production the test harness is
     not served at all (src/app.prg gates AllowDir on the environment).
 
+## Where the framework lives
+
+This app sits **inside the HIX framework checkout**, one level below its root
+(`../src`, `../hix_server.hbp`, `../lib/gcc/libhix_server.a`). Build the framework first:
+
+```bash
+cd .. && HB_ROOT=/home/jack/Projects/harbour bash go_lib_gcc.sh && cd webapp
+./go_gcc.sh --port 9090
+```
+
+`go_gcc.sh` resolves `${hix}` (used by `app.hbp` for the `.hbx`, the `.hbc` libpaths and
+`incpaths`) by trying the **parent directory first**, then the older sibling/depth fallbacks that
+the upstream `examples/web/crud/` layout needs. `app.hbp` needs no path edits.
+
 ## Secrets and local files
 
 | File | What it is | Created by |
@@ -50,3 +64,21 @@ cannot tighten them itself.  Under the usual `0022` the store is created 0755
 and its records 0644 - world-readable session data (PENTEST-REPORT.md §7).
 With the launcher umask the store is 0700 and every session file is 0600,
 which `test/verify-users-fixes.sh` checks as H-05a / H-05c.
+
+## Running the test suites
+
+The suites need **two different server modes** - start the app twice:
+
+| Suite | Needs | Command |
+|---|---|---|
+| `test/test_users_module.sh` | plain HTTP on 9090 (`hix.json -> server.ssl: false`) | `./test/test_users_module.sh` |
+| `test/test_customer_module.sh` | plain HTTP; honours `TEST_API=` | `TEST_API=http://localhost:9090 ./test/test_customer_module.sh` |
+| `test/verify-users-fixes.sh` | TLS (`server.ssl: true`); asserts block C-009 | `./test/verify-users-fixes.sh` |
+| `test/bf_harness.sh` | brute-force / timing probe harness | see `BRUTE-FORCE-PENTEST-PLAN.md` |
+
+Restore `server.ssl: true` afterwards. Current results (identical before and after the repo
+unification): users 55/60, customer 20/50, verify 125/0. The customer failures are mostly `/auth`
+rate-limit (429) cascades - the suites share the per-IP login budget in
+`www/middlewares/config.json` (`ratelimit.login_max` / `login_window`).
+
+The suites write into `data/*.dbf` and generate `u_check.c`; both are gitignored.

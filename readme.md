@@ -3,6 +3,11 @@
   Web Server 
 </h1>
 
+> **Local workspace note.** This checkout is the unified repo: the framework at the root plus the
+> audited application under [`webapp/`](webapp/) and the requirements corpus under [`srs/`](srs/).
+> Build order, remotes (push-disabled), history rules and the test matrix are in
+> [UNIFIED.md](UNIFIED.md).
+
 **HIX** is a lightweight, versatile web server built to fit the way you work. Whether you're 
 after total freedom or a structured, rock-solid architecture, HIX gives you the tools you need 
 to build modern apps efficiently.
