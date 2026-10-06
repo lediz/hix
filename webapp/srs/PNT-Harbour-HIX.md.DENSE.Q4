@@ -1,6 +1,6 @@
 # Security Audit Report: Harbour HIX Web Application (Fenix)
 
-**Target:** `/home/jack/Projects/pi-agent/webapp`  
+**Target:** `webapp/`  
 **Audit Date:** 2026-10-03  
 **Auditor:** Senior Penetration Tester  
 

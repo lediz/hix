@@ -58,6 +58,7 @@ the repository root and from `webapp/`:
 Code comments cite these by bare name (`PENTEST-REPORT.md §1`, `D-14`, `BF-01`), which is how they
 are meant to be found — grep for the name or the defect id rather than a path.
 
-> Note: paths written *inside* the historical reports still refer to the pre-unification locations
-> (`/home/jack/Projects/pi-agent/webapp`, `/home/jack/Projects/pi-agent/srs/...`). They are
-> historical text and were left as written.
+> Note: these reports were written before the unification, when the application and the framework
+> lived in two separate checkouts. Where a report says `webapp/` it means the application checkout
+> of that moment, and `$HB_ROOT` means its author's Harbour build. No absolute filesystem paths are
+> kept in the corpus.

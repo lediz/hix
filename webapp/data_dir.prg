@@ -2,10 +2,10 @@
  * data_dir.prg - shared helper for the adhoc data tools in webapp/
  *
  * Include it (#include "data_dir.prg") and call DataDir() to find out where
- * the DBF/CDX files live.  Every one of these tools used to hardcode
- * /home/jack/Projects/pi-agent/webapp/data, the path of an earlier checkout
- * of this project, so run from here they rewrote a different tree's data in
- * silence - and once that checkout moved, they simply failed.
+ * the DBF/CDX files live.  Every one of them used to point at the data
+ * directory of an earlier checkout of this project, so run from here they
+ * rewrote a different tree's data in silence - and once that checkout moved,
+ * they simply failed.
  *
  * Resolution order:
  *   1. HIX_DATA_DIR, if set

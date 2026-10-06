@@ -7,7 +7,7 @@ Authorized self-assessment. Nothing in this document describes a host we do not 
 | | |
 |---|---|
 | Verdict | **BF-01 FAILS** — not "pass with deviation" |
-| Baseline commit | `7e4f61a` (`webapp`), framework `/home/jack/Projects/hix` |
+| Baseline commit | `7e4f61a` (`webapp`), framework at the repository root |
 | Original run | `.tmp_verify/bf/20261006-075931/` (`BF-01.jsonl`, `BF-01.notes.txt`), first request `2026-10-05T23:59:35Z` |
 | Follow-up probes | 17 read-only `GET`s, `2026-10-06T02:2xZ`, recorded in `.logs/access.log` |
 | Changes made | **none** — report only. No source, config, data or session file was modified |
@@ -156,7 +156,7 @@ Verified safe: the framework 404 body reflects the requested path
 (`hix_error.prg:713-715` `cDetail := "Route: " + oReq:cPath`) but the detail is escaped with
 `UHtmlEncode` (`hix_error.prg:831`), so converting 403 → 404 introduces no reflection surface.
 
-This is an upstream change in `/home/jack/Projects/hix`. Gate it on `app.env == "prod"` or a config
+This is an upstream change in the framework (`src/`). Gate it on `app.env == "prod"` or a config
 flag: 403 is the semantically correct answer in development, and the framework already conditions
 a 403 on `env` for the HIXSTYLE-dormant hint (`hix_error.prg:719-723`).
 

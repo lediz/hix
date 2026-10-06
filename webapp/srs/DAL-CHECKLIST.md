@@ -1,6 +1,6 @@
 # Customer Module — DAL SRS Compliance Checklist
 
-> **Source:** Review of `/home/jack/Projects/pi-agent/webapp` vs. DAL SRS (`webapp/srs/SRS-DAL-CRUD-WEB-UI.md`) + Harbour-HIX SRS (`webapp/srs/SRS-Harbour-HIX.md`)
+> **Source:** Review of the application checkout (now `webapp/`) vs. DAL SRS (`webapp/srs/SRS-DAL-CRUD-WEB-UI.md`) + Harbour-HIX SRS (`webapp/srs/SRS-Harbour-HIX.md`)
 > **Date:** 2025-07-29
 > **Last Audit:** 2026-09-30 — Functional test: 18/18 tests pass. All CRUD operations verified working.
 > **Status:** Draft — 90% overall compliance. All core features implemented and verified.

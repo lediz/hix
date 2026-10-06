@@ -10,7 +10,7 @@ Build the WebApp using "hbmk2 app.hbp" only.
 Web service will use pot 9090.
 
 References:
--HIX transpiler for Harbour @/home/jack/Projects/hix
--WebApp based on HIX CRUD approach @/home/jack/Projects/pi-agent/webapp
+-HIX transpiler for Harbour @repository root (this repo)
+-WebApp based on HIX CRUD approach @webapp/
 -DAL @webapp/srs/SRS-DAL-CRUD-WEB-UI.md
 -SRS @webapp/srs/SRS-Harbour-HIX.md

@@ -131,7 +131,7 @@ IF hb_HHasKey( hOut, 'pass' )
 ENDIF
 ```
 
-`HB_HDelKey` is also absent from the Harbour include tree (`/home/jack/Projects/harbour/include`), confirming the symbol genuinely is unavailable to the HIX server binary. Not reproducible in this review; suite check **D-15h** (no new `Bound error` during the run) PASS.
+`HB_HDelKey` is also absent from the Harbour include tree (`$HB_ROOT/include`), confirming the symbol genuinely is unavailable to the HIX server binary. Not reproducible in this review; suite check **D-15h** (no new `Bound error` during the run) PASS.
 
 ---
 
@@ -195,7 +195,7 @@ ENDIF
 * **Data restored byte-identical:** `data/users.dbf` md5 `a1f73e6edaf65f0801e1cf1754eab4a0`, `data/users.cdx` md5 `c6924813be93d601ba05bf4614b992cb` (snapshot taken before the run, restored after).
 * Server started on `localhost:9090` for the review and **stopped afterwards** (port verified closed).
 * Only `.logs/access.log` and `trace.log` grew during the review.
-* Compile check run in `/tmp` (no project artifacts created): `harbour -iwww -i/home/jack/Projects/harbour/include -n users.prg` → 2093 lines, 25 functions, 0 errors.
+* Compile check run in `/tmp` (no project artifacts created): `harbour -iwww -i$HB_ROOT/include -n users.prg` → 2093 lines, 25 functions, 0 errors.
 * A delegated read-only reviewer run timed out at the 30-minute limit and produced no usable result; every finding in this report was established first-hand in the main session.
 * New artifact from this review: this report (`STATUS-USERS-MODULE.md`).
 

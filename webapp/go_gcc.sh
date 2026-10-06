@@ -29,8 +29,17 @@ umask 077
 export HB_ROOT   # needed if app.hbp references ${HB_ROOT}/... paths
 
 HBMK2="$HB_ROOT/bin/linux/gcc/hbmk2"
+if [ ! -x "$HBMK2" ] && command -v hbmk2 >/dev/null 2>&1; then
+    # Not found where HB_ROOT says: derive the build directory from PATH.
+    # hbmk2 lives at <build>/bin/linux/gcc/hbmk2, so three levels up.
+    derived=$(cd "$(dirname "$(command -v hbmk2)")/../../.." 2>/dev/null && pwd)
+    if [ -x "$derived/bin/linux/gcc/hbmk2" ]; then
+        HB_ROOT="$derived"
+        HBMK2="$HB_ROOT/bin/linux/gcc/hbmk2"
+    fi
+fi
 if [ ! -x "$HBMK2" ]; then
-    for cand in "$HOME/Projects/harbour" "$HOME/harbour" "/home/jack/Projects/harbour"; do
+    for cand in "$HOME/Projects/harbour" "$HOME/harbour"; do
         if [ -x "$cand/bin/linux/gcc/hbmk2" ]; then
             export HB_ROOT="$cand"
             HBMK2="$HB_ROOT/bin/linux/gcc/hbmk2"
@@ -46,14 +55,6 @@ fi
 
 export PATH="$HB_ROOT/bin/linux/gcc:$PATH"
 
-# ${hix} in app.hbp expands from this env var (-L${hix}, -i${hix}/src/include).
-export hix="$(cd ../../.. && pwd)"
-# If hix dir not found (e.g., this script is in pi-agent/webapp, not examples/web/crud),
-# try one more level up.
-if [ ! -f "$hix/hix_server.hbx" ]; then
-    export hix="$(cd ../../../.. && pwd)"
-fi
-
 # HIX compiles www/controllers, www/middlewares and www/loaders at
 # runtime via hb_CompileFromBuf. The preprocessor (src/hix_prepro.prg)
 # looks up standard Harbour headers via $HB_INCLUDE — without it,
@@ -61,12 +62,14 @@ fi
 # compile silently and the router returns 403 for their routes.
 export HB_INCLUDE="$HB_ROOT/include${HB_INCLUDE:+:$HB_INCLUDE}"
 
-# ${hix} in app.hbp expands from this env var.  The upstream script assumes
-# examples/web/crud/; this app lives in webapp/, i.e. directly inside the
-# framework checkout (the unified repo), so the parent directory is tried
-# first, then the older sibling checkouts, before giving up.
-if [ ! -f "$hix/hix_server.hbx" ]; then
-    for cand in "$(cd .. && pwd)" "$HOME/Projects/hix" "$(cd ../../.. 2>/dev/null && pwd)/hix" "$(cd ../../../.. 2>/dev/null && pwd)/hix"; do
+# ${hix} in app.hbp expands from this env var (-L${hix}, -i${hix}/src/include).
+# In this repository the framework root is the repository root: webapp/ sits
+# directly inside it, so it is resolved from this script's own location - no
+# assumption about the machine, the user or the checkout's name.  The upstream
+# layout (examples/web/crud, three levels down) is tried as well, and a
+# pre-set hix= always wins.
+if [ -z "${hix:-}" ] || [ ! -f "$hix/hix_server.hbx" ]; then
+    for cand in "$(cd .. && pwd)" "$(cd ../../.. && pwd)"; do
         if [ -f "$cand/hix_server.hbx" ]; then
             export hix="$cand"
             break
@@ -81,7 +84,7 @@ fi
 
 if [ ! -f "$hix/hix_server.hbx" ]; then
     echo "*** ERROR: $hix/hix_server.hbx not found." >&2
-    echo "    ../../../go_lib_gcc.sh" >&2
+    echo "    Build the framework first:  HB_ROOT=$HB_ROOT ../go_lib_gcc.sh" >&2
     exit 1
 fi
 if [ ! -f "$HB_ROOT/include/harbour.hbx" ]; then

@@ -39,7 +39,17 @@ if ! curl -s --connect-timeout 5 --max-time 10 -o /dev/null "$API/login"; then
 fi
 
 # ---- A. Compile integrity (HIXSTYLE compiles controllers at runtime) -------
-HB=/home/jack/Projects/harbour
+# Harbour install for the compile-integrity step: HB_ROOT (the variable the
+# build scripts use) or derived from PATH.  Nothing about this machine is
+# written into the suite.
+HB=${HB:-${HB_ROOT:-}}
+if [ -z "$HB" ] && command -v harbour >/dev/null 2>&1; then
+    HB=$(cd "$(dirname "$(command -v harbour)")/../../.." 2>/dev/null && pwd)
+fi
+if [ -z "$HB" ] || [ ! -d "$HB/include" ]; then
+    echo "ABORT: Harbour include dir not found - set HB_ROOT or put harbour on PATH"
+    exit 2
+fi
 mkdir -p .tmp_compile
 cp www/controllers/masters/users.prg .tmp_compile/u_check.prg
 CERR=$(timeout 60 harbour -iwww -i$HB/include -n .tmp_compile/u_check.prg 2>&1 | grep -c "Error E")

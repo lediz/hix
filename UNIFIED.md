@@ -3,13 +3,18 @@
 One local git repository holding **both** halves of the stack:
 
 * the **HIX web-server framework** (Harbour / xBase++) at the root — upstream history, tags and
-  signed commits untouched, exactly as in `~/Projects/hix`;
+  signed commits untouched, exactly as in the framework checkout it was cut from;
 * the **audited CRUD application** under [`webapp/`](webapp/) — its own 26 commits, prefix-rewritten
   under `webapp/` and joined to the framework by a single unrelated-histories merge commit
   (`chore: unify the HIX framework with the webapp that runs on it`).
 
-It was cut on 2026-10-06 from `~/Projects/hix` and `~/Projects/pi-agent/webapp`. The full analysis,
-decision matrix and execution log are in `~/Projects/pi-agent/UNIFY-GIT-PLAN.md`.
+It was cut on 2026-10-06 from a framework checkout and a separate application checkout. The full
+analysis, decision matrix and execution log are in `UNIFY-GIT-PLAN.md`, which stayed outside the
+repository.
+
+> **Path convention used throughout this file.** `<repo>` = the root of this repository, wherever
+> you cloned it. `$HB_ROOT` = your Harbour build directory. Nothing here hardcodes a machine, a
+> username or a checkout name.
 
 **Why the framework is at the root and the app is a subdirectory:** the upstream MkDocs CI triggers
 on root `site-docs/**` and `mkdocs.yml`, and `mkdocs.yml` / `examples/` all assume root paths. The
@@ -44,7 +49,7 @@ upstream documentation, `webapp/` is the hardened, audited application.
 |---|---|
 | Tracked files | 825 (694 framework + 103 app + 28 `webapp/srs/`) |
 | Commits reachable from `main` | 93 — of which **26** are the imported `webapp/` history (2026-10-02…10-06) |
-| Tags | `v2.00` `v2.00.03` `v2.1` `v2.2` `ia-v0.2.1` — resolving to the same commits as in `~/Projects/hix` |
+| Tags | `v2.00` `v2.00.03` `v2.1` `v2.2` `ia-v0.2.1` — resolving to the same commits as in the source framework repo |
 | Branch | `enhance`, tracking `origin/enhance` — `main` holds the imported upstream history and is no longer merged from |
 
 ---
@@ -56,48 +61,42 @@ The app links the framework's build output, so build the framework first. `go_li
 machine's Harbour:
 
 ```bash
-cd ~/Projects/hix-unified
-HB_ROOT=/home/jack/Projects/harbour bash go_lib_gcc.sh      # → hix_server.hbx, lib/gcc/libhix_server.a
+cd <repo>
+HB_ROOT=/path/to/harbour bash go_lib_gcc.sh       # → hix_server.hbx, lib/gcc/libhix_server.a
 
 cd webapp
-./go_gcc.sh --port 9090                                     # build + run (it execs ./app)
+./go_gcc.sh --port 9090                           # build + run (it execs ./app)
 ```
 
 `go_gcc.sh` resolves `${hix}` (used by `app.hbp` for `hix_server.hbx`, `hix_server.hbc`,
-`incpaths`, `libpaths`) by trying, in order: **the parent directory** (this layout), then
-`$HOME/Projects/hix`, then the older `../../..` / `../../../..` depths. `app.hbp` itself needs no
-edit — everything goes through `${hix}`.
+`incpaths`, `libpaths`) from its own location: **the parent directory** — this layout, where
+`webapp/` sits directly inside the framework — then the `../../..` depth the upstream
+`examples/web/crud/` layout needs. A pre-set `hix=` wins over both. If `HB_ROOT` is wrong or unset
+it derives the Harbour build from `PATH` before falling back to `$HOME/Projects/harbour` and
+`$HOME/harbour`. `app.hbp` itself needs no edit — everything goes through `${hix}`.
 
 Framework unit suite (1979 assertions):
 
 ```bash
-cd ~/Projects/hix-unified/tests/unit
-HB_ROOT=/home/jack/Projects/harbour hix=$(cd ../.. && pwd) bash go_gcc.sh --cli
+cd <repo>/tests/unit
+HB_ROOT=/path/to/harbour hix=$(cd ../.. && pwd) bash go_gcc.sh --cli
 ```
 
 ---
 
-## Remotes — this repo is local-only
+## Remotes
 
 ```
-upstream-hix   /home/jack/Projects/hix   (fetch)
-upstream-hix   DISABLED                  (push)
+origin  https://github.com/lediz/hix.git   (fetch and push)
 ```
 
-Every push URL is `DISABLED`; nothing has ever been pushed from here. `upstream-hix` is a
-**fetch-only** remote pointing at the local `~/Projects/hix` checkout, which in turn has the real
-GitHub URL configured (`https://github.com/lediz/hix.git`, push also `DISABLED`).
+`enhance` is the working branch and tracks `origin/enhance`; `main` holds the imported upstream
+history. **`origin/enhance` is the upstream** — do not merge from the old framework checkout; after
+the identity rewrite it still holds pre-rewrite commits that are not ancestors of `enhance`, and
+merging from it would reintroduce them. The `upstream-hix` remote that used to point at a local
+framework checkout was removed for exactly that reason.
 
-Sync upstream work when you want it:
-
-```bash
-git -C ~/Projects/hix fetch origin            # upstream main has moved: 8095424 → ab31bb4,
-                                              # and there is an 'enhance' branch
-git -C ~/Projects/hix-unified fetch upstream-hix
-git -C ~/Projects/hix-unified merge upstream-hix/main      # framework paths only
-```
-
-Never enable a push URL here without reading the **Secrets** section below.
+Never enable a push URL without reading the **Secrets** section below.
 
 ---
 
@@ -110,8 +109,8 @@ Never enable a push URL here without reading the **Secrets** section below.
    duplicate-history mess — the exact property this layout was chosen to preserve.
 2. **Rewrite the app history before the merge, in a scratch clone**, then merge. That is how the
    `webapp/` prefix rewrite and the secrets purge were finally done.
-3. Verified invariant after every rewrite: the 5 tags resolve to the same commits as in
-   `~/Projects/hix`, the 5 signed commits are reachable with their signatures, and every
+3. Verified invariant after every rewrite: the 5 tags resolve to the same commits as in the source
+   framework repo, the 5 signed commits are reachable with their signatures, and every
    framework-side SHA is byte-identical to the source repo.
 
 ---
@@ -130,8 +129,8 @@ They were removed from history on 2026-10-06 (61 objects) and the repo was `gc`'
 `certs/`, `hix.keys.json`, `www/config.json`, `sessions/` are all ignored.
 
 **Backups are the only pre-rewrite record of those blobs:**
-`~/backups/git/{hix,webapp}-2026-10-06.bundle` + `SHA256SUMS` (+ `.head` files). Treat them as
-sensitive; delete them once you no longer need a pre-unification restore point.
+`<your backup location>/git/{hix,webapp}-2026-10-06.bundle` + `SHA256SUMS` (+ `.head` files). Treat
+them as sensitive; delete them once you no longer need a pre-unification restore point.
 
 ---
 
@@ -160,14 +159,14 @@ The suites write into `data/*.dbf` and generate `u_check.c`; both are ignored or
 
 ## Migration status
 
-* `~/Projects/hix` and `~/Projects/pi-agent/webapp` still exist, clean, with their own history —
-  they are the burn-in fallback, not the working copy.
-* `~/Projects/pi-agent/hix` symlinks to `~/Projects/hix-unified` (shim for anything that used the
-  old workspace path).
-* The development server that used to run from `~/Projects/pi-agent/webapp` now runs from here:
+* The two checkouts this repo was cut from (framework, and the application that lived beside it)
+  still exist, clean, with their own history — they are the burn-in fallback, not the working copy.
+* A symlink kept at the old workspace path pointed here, for anything that still used it; it is no
+  longer needed now that the repo has a remote.
+* The development server that used to run from the application checkout runs from here:
   `cd webapp && ./go_gcc.sh --port 9090` (TLS on, `https://localhost:9090`).
-* Burn in this repo for ~1 week, then retire the old ones **by renaming, not deleting**:
-  `mv ~/Projects/hix ~/Projects/hix.retired`, same for `webapp`. Confirm the bundles restore first:
-  `git clone ~/backups/git/webapp-2026-10-06.bundle /tmp/r && git -C /tmp/r log --oneline | wc -l` → 26.
-* Rollback of the whole unification is `rm -rf ~/Projects/hix-unified` — the two originals are
-  untouched apart from their own Phase 1 commits.
+* Burn in this repo for ~1 week, then retire the old checkouts **by renaming, not deleting**
+  (`mv <old checkout> <old checkout>.retired`). Confirm the bundles restore first:
+  `git clone <backup>/webapp-2026-10-06.bundle /tmp/r && git -C /tmp/r log --oneline | wc -l` → 26.
+* Rollback of the whole unification is to delete this working copy and go back to the two originals
+  — they are untouched apart from their own Phase 1 commits.

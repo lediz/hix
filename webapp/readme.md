@@ -15,13 +15,15 @@ This app sits **inside the HIX framework checkout**, one level below its root
 (`../src`, `../hix_server.hbp`, `../lib/gcc/libhix_server.a`). Build the framework first:
 
 ```bash
-cd .. && HB_ROOT=/home/jack/Projects/harbour bash go_lib_gcc.sh && cd webapp
+cd .. && HB_ROOT=/path/to/harbour bash go_lib_gcc.sh && cd webapp
 ./go_gcc.sh --port 9090
 ```
 
 `go_gcc.sh` resolves `${hix}` (used by `app.hbp` for the `.hbx`, the `.hbc` libpaths and
-`incpaths`) by trying the **parent directory first**, then the older sibling/depth fallbacks that
-the upstream `examples/web/crud/` layout needs. `app.hbp` needs no path edits.
+`incpaths`) from its own location: the **parent directory** — this layout — then the `../../..`
+depth the upstream `examples/web/crud/` layout needs. `HB_ROOT` is yours to set; if it is wrong or
+unset the script derives the Harbour build from `PATH`. Nothing in the build names a particular
+machine or checkout. `app.hbp` needs no path edits.
 
 ## Secrets and local files
 

@@ -1,7 +1,7 @@
 # Plan — move this project's git remote to `github.com/lediz/hix` (branch `enhance`)
 
 Status: **EXECUTED** — see §9 for the record. Original findings below are read-only observations.
-Recorded: repo `/home/jack/Projects/hix-unified`, git 2.56.0.
+Recorded: this repository (at its root), git 2.56.0.
 
 ---
 
@@ -20,7 +20,7 @@ Goal: remote → `https://github.com/lediz/hix.git`, with this project's work pu
 
 | Item | Value |
 |---|---|
-| Remotes | `upstream-hix` → `/home/jack/Projects/hix` (fetch), pushurl `DISABLED` |
+| Remotes | `upstream-hix` → a local framework checkout (fetch), pushurl `DISABLED` |
 | Current branch | `main` @ `8bd9726` ("docs: correct the counts and the test-mode caveats") |
 | Upstream of `main` | `upstream-hix/main` @ `2e67926`, **ahead 33** |
 | Working tree | clean (0 dirty files) |
@@ -28,9 +28,9 @@ Goal: remote → `https://github.com/lediz/hix.git`, with this project's work pu
 | GitHub repo | exists, anonymously readable; branches `main` **and** `enhance`, both @ `ab31bb4` |
 | GitHub tags | none |
 | Size / LFS / submodules | 15.76 MiB pack, no LFS, no submodules, `.gitattributes` present |
-| Worktrees | only `/home/jack/Projects/hix-unified` |
+| Worktrees | only this checkout |
 
-Sibling repo `/home/jack/Projects/hix` already has `origin` → `https://github.com/lediz/hix.git` with push `DISABLED` (read-only mirror by design). Its `origin/main` ref is stale at `8095424`.
+The sibling framework checkout already has `origin` → `https://github.com/lediz/hix.git` with push `DISABLED` (read-only mirror by design). Its `origin/main` ref is stale at `8095424`.
 
 ---
 
@@ -64,7 +64,7 @@ Sibling repo `/home/jack/Projects/hix` already has `origin` → `https://github.
 ### Step 1 — add the GitHub remote (keep `upstream-hix`)
 
 ```bash
-cd /home/jack/Projects/hix-unified
+cd <repo>            # the root of this repository
 git remote add origin https://github.com/lediz/hix.git
 git fetch origin
 ```
@@ -160,7 +160,7 @@ Steps 1–2 rewrite no history, so rollback is trivial. A force-push (Step 2 alt
 
 Defaults used: **A**=merge, **B**=publish to `enhance`, **C**=keep `upstream-hix`, **D**=rewrite identity.
 
-**Revision to C (later the same day):** `upstream-hix` (`/home/jack/Projects/hix`) was **removed**. The only remote is now `origin`, and `enhance` tracks `origin/enhance`. Rationale: after the identity rewrite the sibling repo still held the pre-rewrite commits (`2e67926` etc.), which are no longer ancestors of `enhance`; merging from it would have reintroduced `jack@jackllm.local` commits. To restore it deliberately: `git remote add upstream-hix /home/jack/Projects/hix`.
+**Revision to C (later the same day):** `upstream-hix` (the local framework checkout) was **removed**. The only remote is now `origin`, and `enhance` tracks `origin/enhance`. Rationale: after the identity rewrite the sibling repo still held the pre-rewrite commits (`2e67926` etc.), which are no longer ancestors of `enhance`; merging from it would have reintroduced `jack@jackllm.local` commits. To restore it deliberately: `git remote add upstream-hix <path to a framework checkout>`.
 
 ```bash
 git remote add origin https://github.com/lediz/hix.git

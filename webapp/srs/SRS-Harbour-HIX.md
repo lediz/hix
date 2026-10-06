@@ -124,7 +124,7 @@ The product is a **HIX-Harbour Web Application System** — a full-stack web app
 | Harbour Project Documentation | The Harbour Project | 3.4+ | 2025 | https://harbour.github.io | Normative |
 | Harbour Core Repository | harbour/core | main | 2025 | https://github.com/harbour/core | Informative |
 | SRS Template | jam01 | master | — | https://github.com/jam01/SRS-Template | Informative |
-| DBFCDX RDD Source | harbour/core (src/rdd/dbfcdx) | — | — | Local: `/home/jack/Projects/harbour/src/rdd/dbfcdx` | Normative |
+| DBFCDX RDD Source | harbour/core (src/rdd/dbfcdx) | — | — | Local: `$HB_ROOT/src/rdd/dbfcdx` | Normative |
 
 ### 1.5 Document Overview
 💬 _Brief guide to the structure of the SRS so readers can quickly find what they need._
