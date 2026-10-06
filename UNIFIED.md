@@ -23,7 +23,7 @@ artifacts); the framework is 634 files / 71 commits with 5 tags and signed upstr
 
 ```
 .                        ← HIX framework (upstream layout, unchanged)
-├── src/  tests/  examples/  site-docs/  changes/  dll/  resources/
+├── src/  tests/  examples/  site-docs/  changes/  resources/   (dll/ moved to resources/dll/)
 ├── hix_server.hbp / .hbc            framework build
 ├── go_lib_gcc.sh                    → hix_server.hbx + lib/gcc/libhix_server.a
 ├── mkdocs.yml  .github/workflows/docs.yml      root paths still valid
