@@ -44,3 +44,12 @@ webapp/data/*.cdx
 # Seeder binaries, built by the .hbp files next to their sources
 webapp/regenerate_users
 webapp/regenerate_data
+
+# The test suite is local tooling, not part of what ships: tests/run.sh and
+# its slices, the shared lib/, and the unit-test harness under tests/unit/
+# (its .prg sources, build files and www/ assets) are untracked on 2026-10-07
+# — 112 paths, staged with `git rm -r --cached tests/`. Everything still lives
+# on disk and the suite still runs; a fresh clone simply has no tests until
+# they are added back. Re-instate with `git add -f tests/` plus the paths you
+# want, and drop this rule.
+tests/
