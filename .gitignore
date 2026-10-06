@@ -12,3 +12,13 @@
 site/
 
 
+
+# Build output (Linux/gcc)
+lib/
+*.hbx
+
+# Generated C next to its .prg
+hix_helpers.c
+
+# Backups: git is the rollback mechanism
+*.bak
