@@ -4,19 +4,26 @@
  */
 
 #include "hbclass.ch"
+#include "data_dir.prg"
 
 FUNCTION MAIN()
    LOCAL hRow, nRecCount, nI, nFieldPos
+   LOCAL cPath
+
+   cPath := DataDir()
+   IF cPath == NIL
+      RETURN NIL
+   ENDIF
    
    // Open old DBF using USE with literal path
-   USE "/home/jack/Projects/pi-agent/webapp/data/customers" ALIAS "OLDBEF" SHARED
+   USE ( cPath + "/customers" ) ALIAS "OLDBEF" SHARED
    ( "OLDBEF" )->( DbGoTop() )
    nRecCount := ( "OLDBEF" )->( RecCount() )
    
    QOut( "Migrating " + ltrim(str(nRecCount)) + " records..." )
    
    // Create new DBF with new schema using DBCREATE
-   DBCREATE( "/home/jack/Projects/pi-agent/webapp/data/customers_new.dbf", ;
+   DBCREATE( cPath + "/customers_new.dbf", ;
       { { "ID", "N", 10, 0 }, ;
         { "FIRST", "C", 20, 0 }, ;
         { "LAST", "C", 20, 0 }, ;
@@ -27,7 +34,7 @@ FUNCTION MAIN()
         { "AGE", "N", 3, 0 } } )
    
    // Open new DBF
-   USE "/home/jack/Projects/pi-agent/webapp/data/customers_new" ALIAS "NEWDBF" SHARED
+   USE ( cPath + "/customers_new" ) ALIAS "NEWDBF" SHARED
    ( "NEWDBF" )->( DbGoTop() )
    
    nI := 0
@@ -67,10 +74,10 @@ FUNCTION MAIN()
    ( "NEWDBF" )->( DbCloseArea() )
    
    // Replace old with new
-   FileCopy( "/home/jack/Projects/pi-agent/webapp/data/customers_new.dbf", "/home/jack/Projects/pi-agent/webapp/data/customers.dbf", .T. )
-   FileCopy( "/home/jack/Projects/pi-agent/webapp/data/customers_new.cdx", "/home/jack/Projects/pi-agent/webapp/data/customers.cdx", .T. )
-   FileDelete( "/home/jack/Projects/pi-agent/webapp/data/customers_new.dbf" )
-   FileDelete( "/home/jack/Projects/pi-agent/webapp/data/customers_new.cdx" )
+   FileCopy( cPath + "/customers_new.dbf", cPath + "/customers.dbf", .T. )
+   FileCopy( cPath + "/customers_new.cdx", cPath + "/customers.cdx", .T. )
+   FileDelete( cPath + "/customers_new.dbf" )
+   FileDelete( cPath + "/customers_new.cdx" )
    
    QOut( "Migration complete. " + ltrim(str(nI)) + " records migrated." )
    

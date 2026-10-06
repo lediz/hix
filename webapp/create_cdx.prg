@@ -1,18 +1,22 @@
 #include "hbclass.ch"
+#include "data_dir.prg"
 
 FUNCTION MAIN()
    LOCAL cPath, cDbf, cCdx, cTag
    
-   cPath := "/home/jack/Projects/pi-agent/webapp/data"
+   cPath := DataDir()
+   IF cPath == NIL
+      RETURN NIL
+   ENDIF
    cDbf := cPath + "/customers.dbf"
    cCdx := cPath + "/customers.cdx"
    cTag := "first"
    
    // Open DBF with DBFCDX driver and create CDX
-   USE "/home/jack/Projects/pi-agent/webapp/data/customers" ALIAS "DBF" SHARED
+   USE ( cPath + "/customers" ) ALIAS "DBF" SHARED
    
    // Create index on FIRST field
-   DBCreateIndex( "/home/jack/Projects/pi-agent/webapp/data/customers.cdx", cTag, "UPPER( FIRST )" )
+   DBCreateIndex( cPath + "/customers.cdx", cTag, "UPPER( FIRST )" )
    
    ( "DBF" )->( DbCloseArea() )
    

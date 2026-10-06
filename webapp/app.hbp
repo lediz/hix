@@ -6,7 +6,7 @@
 -w1
 -es2
 -inc
--i/home/jack/Projects/pi-agent/webapp/www
+-iwww
 -head=full
 -mt
 -workdir=.hbmk/${hb_compiler}/app

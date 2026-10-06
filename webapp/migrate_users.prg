@@ -4,21 +4,26 @@
  */
 
 #include "hbclass.ch"
+#include "data_dir.prg"
 
 FUNCTION MAIN()
    LOCAL cData, hRow
    LOCAL oDB
    
-   cData := "/home/jack/Projects/pi-agent/webapp/data/users.dbf"
+   cData := DataDir()
+   IF cData == NIL
+      RETURN NIL
+   ENDIF
+   cData := cData + "/users.dbf"
    
    // Ensure DB exists with correct schema (N id, C name, C pass, M roles)
-   IF ! FILE( "/home/jack/Projects/pi-agent/webapp/data/users.dbf" )
-      QOut( "Creating users RDDCDX: /home/jack/Projects/pi-agent/webapp/data/users.dbf" )
-      DBCREATE( "/home/jack/Projects/pi-agent/webapp/data/users.dbf", { { "id", "N", 10, 0 }, { "name", "C", 50, 0 }, { "pass", "C", 40, 0 }, { "roles", "M", 1, 256 } } )
+   IF ! FILE( cData )
+      QOut( "Creating users RDDCDX: " + cData )
+      DBCREATE( cData, { { "id", "N", 10, 0 }, { "name", "C", 50, 0 }, { "pass", "C", 40, 0 }, { "roles", "M", 1, 256 } } )
    ENDIF
    
    // Open with USE (RDDCDX driver)
-   USE "/home/jack/Projects/pi-agent/webapp/data/users.dbf" ALIAS "USR" SHARED
+   USE ( cData ) ALIAS "USR" SHARED
    ( "USR" )->( DbGoTop() )
    
    // Insert admin demo

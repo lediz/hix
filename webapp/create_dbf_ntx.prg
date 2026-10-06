@@ -1,4 +1,5 @@
 #include "hbclass.ch"
+#include "data_dir.prg"
 
 FUNCTION MAIN()
    LOCAL cPath, cDbf, cCdx, cTag, nI, hRow
@@ -15,13 +16,16 @@ FUNCTION MAIN()
    LOCAL aNotes := { "Regular customer", "VIP client", "New account", "Pending review", "Inactive", ;
       "Active", "Archived", "Special order", "Bulk buyer", "Referral" }
    
-   cPath := "/home/jack/Projects/pi-agent/webapp/data"
+   cPath := DataDir()
+   IF cPath == NIL
+      RETURN NIL
+   ENDIF
    cDbf := cPath + "/customers.dbf"
    cCdx := cPath + "/customers.cdx"
    cTag := "first"
    
    // Create DBF with DBFCDX driver
-   DBCREATE( "/home/jack/Projects/pi-agent/webapp/data/customers.dbf", ;
+   DBCREATE( cPath + "/customers.dbf", ;
       { { "ID", "N", 10, 0 }, ;
         { "FIRST", "C", 20, 0 }, ;
         { "LAST", "C", 20, 0 }, ;
@@ -32,12 +36,14 @@ FUNCTION MAIN()
         { "AGE", "N", 3, 0 } } )
    
    // Open DBF with DBFCDX driver
-   USE "/home/jack/Projects/pi-agent/webapp/data/customers.dbf" ALIAS "DBF" SHARED
+   USE ( cPath + "/customers.dbf" ) ALIAS "DBF" SHARED
    ( "DBF" )->( DbGoTop() )
    
    QOut( "DBF created. Fields: " )
    FOR nI := 1 TO ( "DBF" )->( FCount() )
-      QOut( "   " + ( "DBF" )->( FieldGet( nI ) ) )
+      // FieldName(), not FieldGet(): the latter returns the field's value,
+      // which made this line die with BASE/1081 ("   " + numeric).
+      QOut( "   " + ( "DBF" )->( FieldName( nI ) ) )
    NEXT
    
    // Create index on FIRST field

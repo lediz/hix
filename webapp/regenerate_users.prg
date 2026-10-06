@@ -7,6 +7,7 @@
 
 #include "hbclass.ch"
 #include "models/hpassword.prg"
+#include "data_dir.prg"
 
 REQUEST DBFCDX
 
@@ -113,36 +114,3 @@ FUNCTION MAIN()
    QOut( "ROLES format: role:ops (matching CRUD example)" )
    
 RETURN NIL
-
-/*
- * DataDir() - where the DBF/CDX files live.
- *
- * HIX_DATA_DIR wins; otherwise "data" relative to the current directory,
- * which is webapp/data when the program is run from webapp/ - where its
- * binary lands.  It used to hardcode /home/jack/Projects/pi-agent/webapp/data,
- * the path of an earlier checkout of this project, so running it from here
- * rewrote a different tree's data in silence.
- *
- * Returns the directory, or NIL after reporting a failure (and setting the
- * exit code) - callers must check.
- */
-STATIC FUNCTION DataDir()
-   LOCAL cDir := GetEnv( "HIX_DATA_DIR" )
-
-   IF Empty( cDir )
-      cDir := "data"
-   ENDIF
-
-   IF ! hb_DirExists( cDir )
-      IF hb_DirCreate( cDir ) <> 0
-         QOut( "cannot create " + cDir + " (cwd is " + CurDir() + ")" )
-         QOut( "aborted; nothing was written." )
-         ErrorLevel( 1 )
-         RETURN NIL
-      ENDIF
-      QOut( "created " + cDir )
-   ENDIF
-
-   QOut( "data dir: " + cDir + "   (cwd: " + CurDir() + ")" )
-
-RETURN cDir

@@ -5,12 +5,20 @@
  * Adhoc tool: lives inside the project folder (DEV-compliance.md).
  */
 
+#include "../data_dir.prg"
+
 REQUEST DBFCDX
 
 FUNCTION MAIN()
    LOCAL aKeys := { "admin", "ADMIN", "carle", "carles", "CARLES", "zed", "nobody" }
-   LOCAL cData := "/home/jack/Projects/pi-agent/webapp/data/users"
+   LOCAL cData
    LOCAL cSeek, cFound
+
+   cData := DataDir()
+   IF cData == NIL
+      RETURN NIL
+   ENDIF
+   cData := cData + "/users"
 
    rddSetDefault( "DBFCDX" )
    USE ( cData ) INDEX ( cData ) ALIAS "USR" SHARED
