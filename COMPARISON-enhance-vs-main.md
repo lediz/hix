@@ -1,19 +1,19 @@
 # Comparative analysis: `origin/enhance` vs `origin/main`
 
-Generated: 2026-10-06T13:59:48+08:00 · by `compare-branches.sh`
+Generated: 2026-10-06T14:09:02+08:00 · by `compare-branches.sh`
 
 | Ref | SHA | Commits | Files | Tree size |
 |---|---|---|---|---|
-| `origin/enhance` | `e1cb9ca` | 106 | 830 | 39263822 B |
+| `origin/enhance` | `c8045ec` | 107 | 832 | 39280094 B |
 | `origin/main` | `ab31bb4` | 65 | 692 | 38177445 B |
 
 ## 1. Topology
 
 | Metric | Value |
 |---|---|
-| Relationship | **fast-forward: origin/enhance is ahead of origin/main by 41** |
+| Relationship | **fast-forward: origin/enhance is ahead of origin/main by 42** |
 | Merge base | `ab31bb4 — 2.3.10 Move /dll to /resources/dll (2026-10-05)` |
-| Unique to `origin/enhance` | 41 |
+| Unique to `origin/enhance` | 42 |
 | Unique to `origin/main` | 0 |
 | `origin/main` ⊆ `origin/enhance` | yes |
 | `origin/enhance` ⊆ `origin/main` | no |
@@ -22,14 +22,15 @@ Generated: 2026-10-06T13:59:48+08:00 · by `compare-branches.sh`
 
 | Metric | Value |
 |---|---|
-| Files added / modified / deleted / renamed | 138 / 10 / 0 / 0 |
-| Lines inserted / deleted | +19848 / -34 |
+| Files added / modified / deleted / renamed | 139 / 10 / 0 / 0 |
+| Lines inserted / deleted | +20065 / -34 |
 | Binary files changed | 13 |
-| Shortstat | 148 files changed, 19848 insertions(+), 34 deletions(-) |
+| Shortstat | 149 files changed, 20065 insertions(+), 34 deletions(-) |
+| Excluded from the delta | COMPARISON-enhance-vs-main.md |
 
 ### Top-level entries only in one side
 
-- only in `origin/enhance`: GIT_AUTH_PLAN.md GIT_REMOTE_MIGRATION_PLAN.md srs UNIFIED.md webapp 
+- only in `origin/enhance`: compare-branches.sh GIT_AUTH_PLAN.md GIT_REMOTE_MIGRATION_PLAN.md srs UNIFIED.md webapp 
 - only in `origin/main`: —
 
 ### Largest content changes
@@ -58,7 +59,7 @@ Generated: 2026-10-06T13:59:48+08:00 · by `compare-branches.sh`
 120 webapp/
 15 srs/
 7 src/
-6 (root)
+7 (root)
 ```
 
 ### Renames
@@ -69,10 +70,11 @@ Generated: 2026-10-06T13:59:48+08:00 · by `compare-branches.sh`
 
 ## 3. Unique commits
 
-### Only in `origin/enhance` (41)
+### Only in `origin/enhance` (42)
 
 | Date | Author | Subject |
 |---|---|---|
+| 2026-10-06 | lediz | tools: add compare-branches.sh; track the enhance-vs-main report |
 | 2026-10-06 | lediz | docs: record removing the upstream-hix remote; upstream is origin/enhance |
 | 2026-10-06 | lediz | docs: track the git-remote migration and auth plans |
 | 2026-10-06 | lediz | chore: keep the local git-migration planning notes untracked |
@@ -126,7 +128,7 @@ _(none)_
 ### Authors — `origin/enhance`
 ```
 60 Carles Aubia <carles9000@gmail.com>
-41 lediz <14312216+lediz@users.noreply.github.com>
+42 lediz <14312216+lediz@users.noreply.github.com>
 4 Charly <carles9000@gmail.com>
 1 Giuseppe Bogetti <orangesocks@users.noreply.github.com>
 ```
@@ -141,7 +143,7 @@ _(none)_
 ### Committers — `origin/enhance`
 ```
 60 Carles Aubia <carles9000@gmail.com>
-41 lediz <14312216+lediz@users.noreply.github.com>
+42 lediz <14312216+lediz@users.noreply.github.com>
 5 GitHub <noreply@github.com>
 ```
 
@@ -168,24 +170,26 @@ v2.2 -> d8d66d9
 
 ## 6. Findings
 
-- fast-forward: origin/enhance is ahead of origin/main by 41
+- fast-forward: origin/enhance is ahead of origin/main by 42
 - `origin/enhance` can be merged into `origin/main` as a **fast-forward**.
 - Shared history below the merge base is common to both; commits there keep identical SHAs unless history is rewritten.
+- The content delta excludes COMPARISON-enhance-vs-main.md. The unique-commit count still includes the commit that carries this report — that one is unavoidable while the report is tracked.
 
 ## 7. Machine-readable summary
 
 ```json
 {
   "left": "origin/enhance",
-  "left_sha": "e1cb9ca432d7366610513f47e4ad2a07faba9336",
+  "left_sha": "c8045ecaa527e14e906cc945ae62e58400cce1fe",
   "right": "origin/main",
   "right_sha": "ab31bb4d407204245adb2af62f1232a8b67e5b8a",
   "merge_base": "ab31bb4d407204245adb2af62f1232a8b67e5b8a",
-  "left_only": 41,
+  "left_only": 42,
   "right_only": 0,
   "fast_forward_possible": true,
   "diverged": false,
-  "files": {"added": 138, "modified": 10, "deleted": 0, "renamed": 0, "binary": 13},
-  "lines": {"insertions": 19848, "deletions": 34}
+  "excluded": ["COMPARISON-enhance-vs-main.md"],
+  "files": {"added": 139, "modified": 10, "deleted": 0, "renamed": 0, "binary": 13},
+  "lines": {"insertions": 20065, "deletions": 34}
 }
 ```

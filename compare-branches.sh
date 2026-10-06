@@ -7,6 +7,11 @@
 #
 #   ./compare-branches.sh [LEFT] [RIGHT] [OUTPUT]
 #   ./compare-branches.sh --no-fetch origin/enhance origin/main COMPARISON.md
+#   ./compare-branches.sh --exclude COMPARISON-enhance-vs-main.md
+#
+# The report's own output file is always excluded from the content delta: it
+# changes on every run, so counting it would make the numbers self-referential.
+# Add more with --exclude <path> (repeatable).
 #
 # Exit codes: 0 ok · 2 bad usage/ref · 3 substantive divergence found
 # (a non-fast-forward relationship), so it can gate CI if wanted.
@@ -14,11 +19,33 @@
 set -uo pipefail
 
 FETCH=1
-if [ "${1:-}" = "--no-fetch" ]; then FETCH=0; shift; fi
+EXTRA=()
+while [ $# -gt 0 ]; do
+  case "${1:-}" in
+    --no-fetch) FETCH=0; shift; continue ;;
+    --exclude)  EXTRA+=("${2:?--exclude needs a path}"); shift 2; continue ;;
+    -h|--help)  sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    *) break ;;
+  esac
+done
 
 LEFT="${1:-origin/enhance}"
 RIGHT="${2:-origin/main}"
 OUT="${3:-COMPARISON-enhance-vs-main.md}"
+
+ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || { echo "error: not inside a git repository" >&2; exit 2; }
+norm_rel() { case "$1" in /*) realpath -m --relative-to="$ROOT" "$1" ;; *) printf '%s' "${1#./}" ;; esac }
+in_repo()  { case "$1" in ""|/*|..|../*) return 1 ;; *) return 0 ;; esac; }
+
+OUTREL=$(norm_rel "$OUT")
+XPS=(); EXCLUDED=()
+for _p in "$OUTREL" ${EXTRA[@]+"${EXTRA[@]}"}; do
+  if in_repo "$_p"; then XPS+=(":(exclude)$_p"); EXCLUDED+=("$_p")
+  else echo "warn: not excluding '$_p' — outside the repository" >&2; fi
+done
+TOPS=(); for _p in ${EXCLUDED[@]+"${EXCLUDED[@]}"}; do TOPS+=("${_p%%/*}"); done
+if [ ${#EXCLUDED[@]} -gt 0 ]; then EXCL_TXT="${EXCLUDED[*]}"; else EXCL_TXT="nothing"; fi
+drop_top() { if [ ${#TOPS[@]} -gt 0 ]; then grep -v -x -F -f <(printf '%s\n' "${TOPS[@]}") || true; else cat; fi; }
 
 for ref in "$LEFT" "$RIGHT"; do
   git rev-parse --verify --quiet "$ref^{commit}" >/dev/null || {
@@ -48,10 +75,12 @@ fi
 
 md_escape() { sed 's/|/\\|/g'; }
 
-# --- content delta ----------------------------------------------------------
-NUMSTAT=$(git diff --numstat -M "$R" "$L")
-SHORTSTAT=$(git diff --shortstat -M "$R" "$L" | sed 's/^ *//')
-NAMESTATUS=$(git diff --name-status -M "$R" "$L")
+# --- content delta (this report's own file excluded; see header) -----------
+if ! NUMSTAT=$(git diff --numstat -M "$R" "$L" -- ${XPS[@]+"${XPS[@]}"}); then
+  echo "error: git diff failed — check the --exclude pathspecs" >&2; exit 2
+fi
+SHORTSTAT=$(git diff --shortstat -M "$R" "$L" -- ${XPS[@]+"${XPS[@]}"} | sed 's/^ *//')
+NAMESTATUS=$(git diff --name-status -M "$R" "$L" -- ${XPS[@]+"${XPS[@]}"})
 ADDED=$(echo   "$NAMESTATUS" | grep -c '^A' || true)
 MODIFIED=$(echo "$NAMESTATUS" | grep -c '^M' || true)
 DELETED=$(echo  "$NAMESTATUS" | grep -c '^D' || true)
@@ -72,7 +101,7 @@ commit_table() {   # commit_table <range> <limit>
     | awk -F'\t' '{ gsub(/\|/, "\\|", $3); gsub(/\|/, "\\|", $2); printf "| %s | %s | %s |\n", $1, $2, $3 }'
 }
 
-dir_breakdown() { git diff --name-only -M "$R" "$L" | awk -F/ 'NF>1{print $1"/"} NF==1{print "(root)"}' | sort | uniq -c | sort -rn | sed 's/^ *//'; }
+dir_breakdown() { git diff --name-only -M "$R" "$L" -- ${XPS[@]+"${XPS[@]}"} | awk -F/ 'NF>1{print $1"/"} NF==1{print "(root)"}' | sort | uniq -c | sort -rn | sed 's/^ *//'; }
 
 {
 echo "# Comparative analysis: \`$LEFT\` vs \`$RIGHT\`"
@@ -103,11 +132,12 @@ echo "| Files added / modified / deleted / renamed | $ADDED / $MODIFIED / $DELET
 echo "| Lines inserted / deleted | +$INS / -$DEL |"
 echo "| Binary files changed | $BINARY |"
 echo "| Shortstat | $SHORTSTAT |"
+echo "| Excluded from the delta | $EXCL_TXT |"
 echo
 echo "### Top-level entries only in one side"
 echo
-ONLY_L=$(comm -23 <(git ls-tree --name-only "$L" | sort) <(git ls-tree --name-only "$R" | sort))
-ONLY_R=$(comm -13 <(git ls-tree --name-only "$L" | sort) <(git ls-tree --name-only "$R" | sort))
+ONLY_L=$(comm -23 <(git ls-tree --name-only "$L" | sort) <(git ls-tree --name-only "$R" | sort) | drop_top)
+ONLY_R=$(comm -13 <(git ls-tree --name-only "$L" | sort) <(git ls-tree --name-only "$R" | sort) | drop_top)
 echo "- only in \`$LEFT\`: $( [ -n "$ONLY_L" ] && echo "$ONLY_L" | tr '\n' ' ' || echo '—' )"
 echo "- only in \`$RIGHT\`: $( [ -n "$ONLY_R" ] && echo "$ONLY_R" | tr '\n' ' ' || echo '—' )"
 echo
@@ -199,14 +229,17 @@ fi
 }
 [ "$MB" != "" ] && git merge-base --is-ancestor "$MB" "$R" && git merge-base --is-ancestor "$MB" "$L" && \
   echo "- Shared history below the merge base is common to both; commits there keep identical SHAs unless history is rewritten."
+echo "- The content delta excludes $EXCL_TXT. The unique-commit count still includes the commit that carries this report — that one is unavoidable while the report is tracked."
 echo
 echo "## 7. Machine-readable summary"
 echo
 echo '```json'
-printf '{\n  "left": "%s",\n  "left_sha": "%s",\n  "right": "%s",\n  "right_sha": "%s",\n  "merge_base": "%s",\n  "left_only": %s,\n  "right_only": %s,\n  "fast_forward_possible": %s,\n  "diverged": %s,\n  "files": {"added": %s, "modified": %s, "deleted": %s, "renamed": %s, "binary": %s},\n  "lines": {"insertions": %s, "deletions": %s}\n}\n' \
+EXJSON=$(for _p in ${EXCLUDED[@]+"${EXCLUDED[@]}"}; do printf '"%s",' "$_p"; done | sed 's/,$//')
+printf '{\n  "left": "%s",\n  "left_sha": "%s",\n  "right": "%s",\n  "right_sha": "%s",\n  "merge_base": "%s",\n  "left_only": %s,\n  "right_only": %s,\n  "fast_forward_possible": %s,\n  "diverged": %s,\n  "excluded": [%s],\n  "files": {"added": %s, "modified": %s, "deleted": %s, "renamed": %s, "binary": %s},\n  "lines": {"insertions": %s, "deletions": %s}\n}\n' \
   "$LEFT" "$L" "$RIGHT" "$R" "$MB" "$AHEAD" "$BEHIND" \
   "$([ "$R_IS_ANC_L" = yes ] || [ "$L_IS_ANC_R" = yes ] && echo true || echo false)" \
   "$([ "$R_IS_ANC_L" = no ] && [ "$L_IS_ANC_R" = no ] && echo true || echo false)" \
+  "$EXJSON" \
   "$ADDED" "$MODIFIED" "$DELETED" "$RENAMED" "$BINARY" "$INS" "$DEL"
 echo '```'
 } > "$OUT"
