@@ -30,7 +30,3 @@ trace.log
 traces/
 tests/unit/app
 nul
-
-# Local planning notes for the git-remote migration (kept off the public branch)
-GIT_REMOTE_MIGRATION_PLAN.md
-GIT_AUTH_PLAN.md
