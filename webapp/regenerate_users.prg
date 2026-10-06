@@ -12,6 +12,7 @@ REQUEST DBFCDX
 
 FUNCTION MAIN()
    LOCAL nI, nCount
+   LOCAL cPath
    LOCAL cSalt
    LOCAL aName := { "admin", "carles", "maria", "John", "jane" }   // "John" is mixed-case on purpose: it proves the Lower(name) CDX tag round-trips
    // Seed passwords: hashed before they reach the DBF (D-07)
@@ -27,13 +28,18 @@ FUNCTION MAIN()
       "customers:search;show;edit" }                       // edit access
    
    rddSetDefault( "DBFCDX" )
+
+   cPath := DataDir()
+   IF cPath == NIL
+      RETURN NIL
+   ENDIF
    
    QOut( "Creating users.dbf with test data..." )
    
    // Create new DBF with schema: id(N,10,0), name(C,40,0), pass(C,128), salt(C,32), roles(C,255)
    // D-07: PASS stores a salted, iterated SHA-256 digest (64 hex chars), never
    // the password; SALT holds the per-user salt.
-   DBCREATE( "/home/jack/Projects/pi-agent/webapp/data/users_new.dbf", ;
+   DBCREATE( cPath + "/users_new.dbf", ;
       { { "ID",   "N", 10,  0 }, ;
         { "NAME", "C", 40,  0 }, ;
         { "PASS", "C", 128, 0 }, ;
@@ -41,7 +47,7 @@ FUNCTION MAIN()
         { "ROLES","C", 255, 0 } } )
    
    // Open EXCLUSIVE to create index
-   USE "/home/jack/Projects/pi-agent/webapp/data/users_new" ALIAS "NEWDBF" EXCLUSIVE
+   USE ( cPath + "/users_new" ) ALIAS "NEWDBF" EXCLUSIVE
    ( "NEWDBF" )->( DbGoTop() )
    
    nCount := 5
@@ -70,7 +76,7 @@ FUNCTION MAIN()
    
    // Check users_new.cdx entries
    QOut( "users_new.cdx entries:" )
-   USE "/home/jack/Projects/pi-agent/webapp/data/users_new" ALIAS "NEWDBF2" SHARED
+   USE ( cPath + "/users_new" ) ALIAS "NEWDBF2" SHARED
    ( "NEWDBF2" )->( DbGoTop() )
    DO WHILE ! ( "NEWDBF2" )->( Eof() )
       QOut( "  " + ( "NEWDBF2" )->( FieldGet( FieldPos( "NAME" ) ) ) + " roles=" + ( "NEWDBF2" )->( FieldGet( FieldPos( "ROLES" ) ) ) )
@@ -79,20 +85,21 @@ FUNCTION MAIN()
    ( "NEWDBF2" )->( DbCloseArea() )
    
    // Replace old with new.  No .bak files are written (D-14): users.dbf and
-   // users.cdx are tracked in git, which is the rollback mechanism.
+   // users.cdx are no longer tracked at all - this program is the rollback
+   // mechanism, run it again to get the seed rows back.
    
    // Delete old CDX first, then copy new one
    QOut( "Deleting old users.cdx..." )
-   FileDelete( "/home/jack/Projects/pi-agent/webapp/data/users.cdx" )
+   FileDelete( cPath + "/users.cdx" )
    QOut( "Copying users_new.cdx to users.cdx..." )
-   FileCopy( "/home/jack/Projects/pi-agent/webapp/data/users_new.cdx", "/home/jack/Projects/pi-agent/webapp/data/users.cdx", .T. )
-   FileCopy( "/home/jack/Projects/pi-agent/webapp/data/users_new.dbf", "/home/jack/Projects/pi-agent/webapp/data/users.dbf", .T. )
-   FileDelete( "/home/jack/Projects/pi-agent/webapp/data/users_new.dbf" )
-   FileDelete( "/home/jack/Projects/pi-agent/webapp/data/users_new.cdx" )
+   FileCopy( cPath + "/users_new.cdx", cPath + "/users.cdx", .T. )
+   FileCopy( cPath + "/users_new.dbf", cPath + "/users.dbf", .T. )
+   FileDelete( cPath + "/users_new.dbf" )
+   FileDelete( cPath + "/users_new.cdx" )
    
    // Verify users.cdx entries
    QOut( "users.cdx entries after copy:" )
-   USE "/home/jack/Projects/pi-agent/webapp/data/users" ALIAS "USR" SHARED
+   USE ( cPath + "/users" ) ALIAS "USR" SHARED
    ( "USR" )->( DbGoTop() )
    DO WHILE ! ( "USR" )->( Eof() )
       QOut( "  " + ( "USR" )->( FieldGet( FieldPos( "NAME" ) ) ) + " roles=" + ( "USR" )->( FieldGet( FieldPos( "ROLES" ) ) ) )
@@ -106,3 +113,36 @@ FUNCTION MAIN()
    QOut( "ROLES format: role:ops (matching CRUD example)" )
    
 RETURN NIL
+
+/*
+ * DataDir() - where the DBF/CDX files live.
+ *
+ * HIX_DATA_DIR wins; otherwise "data" relative to the current directory,
+ * which is webapp/data when the program is run from webapp/ - where its
+ * binary lands.  It used to hardcode /home/jack/Projects/pi-agent/webapp/data,
+ * the path of an earlier checkout of this project, so running it from here
+ * rewrote a different tree's data in silence.
+ *
+ * Returns the directory, or NIL after reporting a failure (and setting the
+ * exit code) - callers must check.
+ */
+STATIC FUNCTION DataDir()
+   LOCAL cDir := GetEnv( "HIX_DATA_DIR" )
+
+   IF Empty( cDir )
+      cDir := "data"
+   ENDIF
+
+   IF ! hb_DirExists( cDir )
+      IF hb_DirCreate( cDir ) <> 0
+         QOut( "cannot create " + cDir + " (cwd is " + CurDir() + ")" )
+         QOut( "aborted; nothing was written." )
+         ErrorLevel( 1 )
+         RETURN NIL
+      ENDIF
+      QOut( "created " + cDir )
+   ENDIF
+
+   QOut( "data dir: " + cDir + "   (cwd: " + CurDir() + ")" )
+
+RETURN cDir

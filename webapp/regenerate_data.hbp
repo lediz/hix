@@ -1,0 +1,24 @@
+# ============================================================
+# regenerate_data.hbp - rebuild webapp/data/customers.{dbf,cdx}
+#
+#   hbmk2 regenerate_data.hbp && ./regenerate_data
+#
+# hbct is needed for FileCopy()/FileDelete() in regenerate_data.prg.
+# See DataDir() at the end of the .prg for where the files land
+# (HIX_DATA_DIR overrides).
+# ============================================================
+
+-n
+-w1
+-es2
+-inc
+-mt
+-workdir=.hbmk/${hb_compiler}/regenerate_data
+
+-hbexe
+-oregenerate_data
+
+regenerate_data.prg
+
+${hb_root}/include/harbour.hbx
+${hb_root}/contrib/hbct/hbct.hbc

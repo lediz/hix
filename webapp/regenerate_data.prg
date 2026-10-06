@@ -22,7 +22,10 @@ FUNCTION MAIN()
    LOCAL aNotes := { "Regular customer", "VIP client", "New account", "Pending review", "Inactive", ;
       "Active", "Archived", "Special order", "Bulk buyer", "Referral" }
    
-   cPath := "/home/jack/Projects/pi-agent/webapp/data"
+   cPath := DataDir()
+   IF cPath == NIL
+      RETURN NIL
+   ENDIF
 
    rddSetDefault( "DBFCDX" )
    
@@ -37,11 +40,11 @@ FUNCTION MAIN()
         { "NOTES", "C", 70, 0 }, ;
         { "AGE", "N", 3, 0 } } )
    
-   USE "/home/jack/Projects/pi-agent/webapp/data/customers_new" ALIAS "NEWINDEX" EXCLUSIVE
+   USE ( cPath + "/customers_new" ) ALIAS "NEWINDEX" EXCLUSIVE
    INDEX ON field->first TAG first
    ( "NEWINDEX" )->( DbCloseArea() )
 
-   USE "/home/jack/Projects/pi-agent/webapp/data/customers_new" ALIAS "NEWDBF" SHARED
+   USE ( cPath + "/customers_new" ) ALIAS "NEWDBF" SHARED
    ( "NEWDBF" )->( DbGoTop() )
    
    nCount := 100
@@ -76,3 +79,36 @@ FUNCTION MAIN()
    QOut( "Fields: ID, FIRST, LAST, ADDRESS, ZIP, COUNTRY, NOTES, AGE" )
    
 RETURN NIL
+
+/*
+ * DataDir() - where the DBF/CDX files live.
+ *
+ * HIX_DATA_DIR wins; otherwise "data" relative to the current directory,
+ * which is webapp/data when the program is run from webapp/ - where its
+ * binary lands.  It used to hardcode /home/jack/Projects/pi-agent/webapp/data,
+ * the path of an earlier checkout of this project, so running it from here
+ * rewrote a different tree's data in silence.
+ *
+ * Returns the directory, or NIL after reporting a failure (and setting the
+ * exit code) - callers must check.
+ */
+STATIC FUNCTION DataDir()
+   LOCAL cDir := GetEnv( "HIX_DATA_DIR" )
+
+   IF Empty( cDir )
+      cDir := "data"
+   ENDIF
+
+   IF ! hb_DirExists( cDir )
+      IF hb_DirCreate( cDir ) <> 0
+         QOut( "cannot create " + cDir + " (cwd is " + CurDir() + ")" )
+         QOut( "aborted; nothing was written." )
+         ErrorLevel( 1 )
+         RETURN NIL
+      ENDIF
+      QOut( "created " + cDir )
+   ENDIF
+
+   QOut( "data dir: " + cDir + "   (cwd: " + CurDir() + ")" )
+
+RETURN cDir

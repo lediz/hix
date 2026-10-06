@@ -34,10 +34,13 @@ nul
 # Runtime data. The app and the test suites write these in place, so they are
 # state, not source — every run dirtied the working tree. Regenerate instead:
 #   hbmk2 regenerate_users.hbp && ./regenerate_users   -> webapp/data/users.{dbf,cdx}
-#   hbmk2 regenerate_data.prg  && ./regenerate_data    -> webapp/data/customers.{dbf,cdx}
-# WARNING: both seeders still hardcode cPath := "/home/jack/Projects/pi-agent/webapp/data",
-# an older checkout that is still on disk — they write there, not here.
+#   hbmk2 regenerate_data.hbp  && ./regenerate_data    -> webapp/data/customers.{dbf,cdx}
+# Run them from webapp/ (they write to ./data); HIX_DATA_DIR overrides.
 # states.{dbf,cdx} has no generator; it is byte-identical to the tracked
 # examples/web/crud/data/states.{dbf,cdx} — copy from there.
 webapp/data/*.dbf
 webapp/data/*.cdx
+
+# Seeder binaries, built by the .hbp files next to their sources
+webapp/regenerate_users
+webapp/regenerate_data
