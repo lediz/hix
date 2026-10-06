@@ -1,19 +1,19 @@
 # Comparative analysis: `origin/enhance` vs `origin/main`
 
-Generated: 2026-10-06T14:45:14+08:00 · by `compare-branches.sh`
+Generated: 2026-10-06T14:57:13+08:00 · by `compare-branches.sh`
 
 | Ref | SHA | Commits | Files | Tree size |
 |---|---|---|---|---|
-| `origin/enhance` | `bf3532a` | 116 | 825 | 39205884 B |
+| `origin/enhance` | `7f2d8eb` | 118 | 825 | 39208299 B |
 | `origin/main` | `ab31bb4` | 65 | 692 | 38177445 B |
 
 ## 1. Topology
 
 | Metric | Value |
 |---|---|
-| Relationship | **fast-forward: origin/enhance is ahead of origin/main by 51** |
+| Relationship | **fast-forward: origin/enhance is ahead of origin/main by 53** |
 | Merge base | `ab31bb4 — 2.3.10 Move /dll to /resources/dll (2026-10-05)` |
-| Unique to `origin/enhance` | 51 |
+| Unique to `origin/enhance` | 53 |
 | Unique to `origin/main` | 0 |
 | `origin/main` ⊆ `origin/enhance` | yes |
 | `origin/enhance` ⊆ `origin/main` | no |
@@ -22,15 +22,15 @@ Generated: 2026-10-06T14:45:14+08:00 · by `compare-branches.sh`
 
 | Metric | Value |
 |---|---|
-| Files added / modified / deleted / renamed | 133 / 10 / 0 / 0 |
-| Lines inserted / deleted | +19625 / -34 |
+| Files added / modified / deleted / renamed | 132 / 10 / 0 / 0 |
+| Lines inserted / deleted | +19455 / -34 |
 | Binary files changed | 7 |
-| Shortstat | 143 files changed, 19625 insertions(+), 34 deletions(-) |
+| Shortstat | 142 files changed, 19455 insertions(+), 34 deletions(-) |
 | Excluded from the delta | webapp/srs/COMPARISON-enhance-vs-main.md |
 
 ### Top-level entries only in one side
 
-- only in `origin/enhance`: compare-branches.sh COMPARISON-enhance-vs-main.md GIT_AUTH_PLAN.md GIT_REMOTE_MIGRATION_PLAN.md UNIFIED.md 
+- only in `origin/enhance`: compare-branches.sh UNIFIED.md 
 - only in `origin/main`: —
 
 ### Largest content changes
@@ -46,7 +46,7 @@ Generated: 2026-10-06T14:45:14+08:00 · by `compare-branches.sh`
 589	0	webapp/srs/PNT-Harbour-HIX.md.MOE.3.6
 570	0	webapp/srs/PNT-Harbour-HIX.md.MOE.3.9
 510	0	webapp/srs/PNT-Harbour-HIX.md.MOE.3.8
-469	0	webapp/BRUTE-FORCE-PENTEST-PLAN.md
+469	0	webapp/srs/BRUTE-FORCE-PENTEST-PLAN.md
 445	0	webapp/www/test/index.html
 445	0	webapp/test/test_customer_module.sh
 434	0	webapp/src/app.prg
@@ -56,9 +56,9 @@ Generated: 2026-10-06T14:45:14+08:00 · by `compare-branches.sh`
 ### Changes by top-level directory
 
 ```
-128 webapp/
-8 (root)
+130 webapp/
 7 src/
+5 (root)
 ```
 
 ### Renames
@@ -69,10 +69,12 @@ Generated: 2026-10-06T14:45:14+08:00 · by `compare-branches.sh`
 
 ## 3. Unique commits
 
-### Only in `origin/enhance` (51)
+### Only in `origin/enhance` (53)
 
 | Date | Author | Subject |
 |---|---|---|
+| 2026-10-06 | lediz | paths: nothing in the repo names this machine |
+| 2026-10-06 | lediz | docs: gather plans, reports and analyses under webapp/srs/ |
 | 2026-10-06 | lediz | tools: refresh the enhance-vs-main report (srs/ paths moved) |
 | 2026-10-06 | lediz | docs: move srs/ under webapp/ |
 | 2026-10-06 | lediz | webapp: stop tracking generated C from the .prg tools |
@@ -136,7 +138,7 @@ _(none)_
 ### Authors — `origin/enhance`
 ```
 60 Carles Aubia <carles9000@gmail.com>
-51 lediz <14312216+lediz@users.noreply.github.com>
+53 lediz <14312216+lediz@users.noreply.github.com>
 4 Charly <carles9000@gmail.com>
 1 Giuseppe Bogetti <orangesocks@users.noreply.github.com>
 ```
@@ -151,7 +153,7 @@ _(none)_
 ### Committers — `origin/enhance`
 ```
 60 Carles Aubia <carles9000@gmail.com>
-51 lediz <14312216+lediz@users.noreply.github.com>
+53 lediz <14312216+lediz@users.noreply.github.com>
 5 GitHub <noreply@github.com>
 ```
 
@@ -178,7 +180,7 @@ v2.2 -> d8d66d9
 
 ## 6. Findings
 
-- fast-forward: origin/enhance is ahead of origin/main by 51
+- fast-forward: origin/enhance is ahead of origin/main by 53
 - `origin/enhance` can be merged into `origin/main` as a **fast-forward**.
 - Shared history below the merge base is common to both; commits there keep identical SHAs unless history is rewritten.
 - The content delta excludes webapp/srs/COMPARISON-enhance-vs-main.md. The unique-commit count still includes the commit that carries this report — that one is unavoidable while the report is tracked.
@@ -188,16 +190,16 @@ v2.2 -> d8d66d9
 ```json
 {
   "left": "origin/enhance",
-  "left_sha": "bf3532abab55b3087666e5483e7bd5120a56287a",
+  "left_sha": "7f2d8eb0a325dc7b52859ca987b287430d37bf96",
   "right": "origin/main",
   "right_sha": "ab31bb4d407204245adb2af62f1232a8b67e5b8a",
   "merge_base": "ab31bb4d407204245adb2af62f1232a8b67e5b8a",
-  "left_only": 51,
+  "left_only": 53,
   "right_only": 0,
   "fast_forward_possible": true,
   "diverged": false,
   "excluded": ["webapp/srs/COMPARISON-enhance-vs-main.md"],
-  "files": {"added": 133, "modified": 10, "deleted": 0, "renamed": 0, "binary": 7},
-  "lines": {"insertions": 19625, "deletions": 34}
+  "files": {"added": 132, "modified": 10, "deleted": 0, "renamed": 0, "binary": 7},
+  "lines": {"insertions": 19455, "deletions": 34}
 }
 ```
