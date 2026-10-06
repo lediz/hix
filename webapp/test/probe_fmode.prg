@@ -1,7 +1,7 @@
 /*
  * probe_fmode.prg - what can the app see and control about file modes?
  *
- * Adhoc tool, lives inside the project folder (srs/DEV-compliance.md).
+ * Adhoc tool, lives inside the project folder (webapp/srs/DEV-compliance.md).
  * Harbour core only, no contrib, no SQL, no external process call.
  *
  * Purpose: HIX writes session files with hb_MemoWrit() + FRename() and never

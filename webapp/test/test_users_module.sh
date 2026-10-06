@@ -3,7 +3,7 @@
 # USERS MODULE — FUNCTIONAL END-TO-END TEST SUITE
 # Scope: users module ONLY (www/controllers/masters/users.prg, TUsers,
 #        www/views/masters/users/*, users routes in www/routes/web.json)
-# Compliance: srs/DEV-compliance.md (HIX only, no SQL, no 3rd-party WEB UI,
+# Compliance: webapp/srs/DEV-compliance.md (HIX only, no SQL, no 3rd-party WEB UI,
 #             hbmk2 app.hbp build, port 9090, tools inside project folder)
 # Mode: REPORT ONLY — results + recommendations, NO remediation applied.
 # Timeouts: every HTTP call uses --connect-timeout 5 --max-time 15;

@@ -4,7 +4,7 @@
 </h1>
 
 > **Local workspace note.** This checkout is the unified repo: the framework at the root plus the
-> audited application under [`webapp/`](webapp/) and the requirements corpus under [`srs/`](srs/).
+> audited application under [`webapp/`](webapp/) and the requirements corpus under [`webapp/srs/`](webapp/srs/).
 > Build order, remotes (push-disabled), history rules and the test matrix are in
 > [UNIFIED.md](UNIFIED.md).
 

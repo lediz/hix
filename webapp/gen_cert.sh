@@ -3,7 +3,7 @@
 # gen_cert.sh - create the local self-signed certificate HIX serves
 #               HTTPS with (hix.json -> server.ssl = true).
 #
-# Adhoc tool, lives inside the project folder (srs/DEV-compliance.md).
+# Adhoc tool, lives inside the project folder (webapp/srs/DEV-compliance.md).
 # openssl is used only to create the key pair; the app itself is HIX +
 # Harbour and links OpenSSL through Harbour's hbnetssl (app.hbp).
 #

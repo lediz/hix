@@ -5,7 +5,7 @@
 **Suite:** `test/test_users_module.sh` (60 tests) — new, created inside the project folder
 **Target:** `http://localhost:9090` — HIX 2.2.01 (r2609301131) / Harbour 3.2.1dev (r2609180937) / GNU C 16.2.1 / RDD default DBFCDX
 **Build:** `hbmk2 app.hbp` (per DEV-compliance.md) — reported "Target up to date"; controllers are compiled at runtime by HIXSTYLE
-**Mode:** **Report only — no remediation applied** (per `srs/FUNC-testing.md` convention)
+**Mode:** **Report only — no remediation applied** (per `webapp/srs/FUNC-testing.md` convention)
 
 ---
 

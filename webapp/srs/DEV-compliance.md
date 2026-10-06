@@ -12,5 +12,5 @@ Web service will use pot 9090.
 References:
 -HIX transpiler for Harbour @/home/jack/Projects/hix
 -WebApp based on HIX CRUD approach @/home/jack/Projects/pi-agent/webapp
--DAL @/home/jack/Projects/pi-agent/srs/SRS-DAL-CRUD-WEB-UI.md
--SRS @/home/jack/Projects/pi-agent/srs/SRS-Harbour-HIX.md
+-DAL @webapp/srs/SRS-DAL-CRUD-WEB-UI.md
+-SRS @webapp/srs/SRS-Harbour-HIX.md

@@ -19,7 +19,7 @@
 #          session files (0600) inside a private store (0700), security
 #          headers, no exposed test harness, constant-work login
 #
-# Complies with srs/DEV-compliance.md: lives inside the project folder,
+# Complies with webapp/srs/DEV-compliance.md: lives inside the project folder,
 # HIX/Harbour only, no SQL, no 3rd-party tooling, server on port 9090.
 #
 # Every network and compiler call is time-bounded so the suite can never

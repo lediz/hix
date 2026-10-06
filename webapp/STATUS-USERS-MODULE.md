@@ -2,7 +2,7 @@
 
 **Date:** 2026-10-05 00:58 (Asia/Manila)
 **Scope:** Users module ONLY — `www/controllers/masters/users.prg`, `www/models/tusers.prg`, `www/models/modeluser.prg`, `www/models/hpassword.prg`, `www/middlewares/myapplogin.prg`, `www/views/masters/users/*.html`, `users.*` routes in `www/routes/web.json`, `data/users.dbf` + `data/users.cdx`
-**Mode:** **Report only — no remediation applied** (per `srs/FUNC-testing.md`: "report only the test results and recommendations, no remediation")
+**Mode:** **Report only — no remediation applied** (per `webapp/srs/FUNC-testing.md`: "report only the test results and recommendations, no remediation")
 **Predecessor report:** `TEST-RESULTS-USERS-MODULE.md` (2026-10-04 09:22) — 22/60 pass, module non-functional. This report supersedes it.
 **Target:** `http://localhost:9090` — HIX 2.2.01 (r2609301131) / Harbour 3.2.1dev (r2609180937) / GNU C 16.2.1 / RDD default DBFCDX
 

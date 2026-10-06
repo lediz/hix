@@ -1,7 +1,7 @@
 /*
  * probe_entropy.prg - verify the CSPRNG primitives used for salts and app keys
  *
- * Adhoc tool, inside the project folder (srs/DEV-compliance.md).
+ * Adhoc tool, inside the project folder (webapp/srs/DEV-compliance.md).
  * Harbour core only: hb_RandStr() lives in src/rtl/hbrand.c and routes to
  * hb_arc4random_buf() (arc4random, seeded from /dev/urandom), so it needs no
  * hbct contrib and no change to app.hbp.

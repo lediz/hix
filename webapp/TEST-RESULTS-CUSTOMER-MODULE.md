@@ -4,7 +4,7 @@
 **Test Suite:** `test/test_customer_module.sh` (50 tests)  
 **Target:** `http://localhost:9090` (HIX v2.2.01 / Harbour 3.2.1dev)  
 **Data:** `data/customers.dbf` (51 records), `data/states.dbf` (14 records)  
-**Compliance Framework:** `srs/DEV-compliance.md`, `srs/SRS-Harbour-HIX.md`, `srs/SRS-DAL-CRUD-WEB-UI.md`
+**Compliance Framework:** `webapp/srs/DEV-compliance.md`, `webapp/srs/SRS-Harbour-HIX.md`, `webapp/srs/SRS-DAL-CRUD-WEB-UI.md`
 
 ---
 

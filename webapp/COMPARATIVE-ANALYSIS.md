@@ -28,7 +28,7 @@ Every compliance claim in this document is anchored to a published document, not
 | **NIST SP 800-90A / 800-90C** | *Recommendation for Random Number Generation Using Deterministic Random Bit Generators* / *Entropy Sources* |
 | **FIPS 180-4** | *Secure Hash Standard* (SHA-256) |
 | **ISO/IEC 25010:2011** | *Systems and software quality models* (functional suitability) — used only for the functional grid requirements |
-| **Project baseline** | `srs/DEV-compliance.md` and `srs/SRS-DAL-CRUD-WEB-UI.md` — internal requirements, explicitly labelled as such |
+| **Project baseline** | `webapp/srs/DEV-compliance.md` and `webapp/srs/SRS-DAL-CRUD-WEB-UI.md` — internal requirements, explicitly labelled as such |
 
 Internal defect IDs (`D-01`…`D-16`, `N-01`, `C-001`…`C-010`, suite check names) are **not** used as compliance references in the body; they appear only in the traceability appendix at the end.
 

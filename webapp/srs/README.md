@@ -1,9 +1,9 @@
-# `srs/` — requirements, compliance and audit corpus
+# `webapp/srs/` — requirements, compliance and audit corpus
 
 The documents the application cites but does not contain: the requirements baseline, the
 compliance constraints every session must obey, and the security-audit reports that produced the
 defect ids (`D-01…D-16`, `N-01`, `SEC-*`, `H-*`, `C-009`, `BF-*`) written into `webapp/`'s code
-comments, test suites and commit messages.
+comments, test suites and commit messages.  It lives inside `webapp/`, beside the code it governs.
 
 Imported into version control on 2026-10-06 — before that this folder was the only part of the
 project not under git, while `webapp/` docs and test headers referenced it by absolute path.
@@ -42,6 +42,7 @@ The *as-fixed* record lives with the code, not here:
 * `webapp/BF-01-SURFACE-FINDINGS.md`, `webapp/BRUTE-FORCE-PENTEST-PLAN.md`
 * `webapp/STATUS-USERS-MODULE.md`, `webapp/TEST-RESULTS-*-MODULE.md`, `webapp/DAL-CHECKLIST.md`
 
-> Note: paths written *inside* these documents still refer to the pre-unification locations
+> Note: paths written *inside* the historical reports still refer to the pre-unification locations
 > (`/home/jack/Projects/pi-agent/webapp`, `/home/jack/Projects/pi-agent/srs/...`). They are
-> historical text and were left as written; the corpus now lives at `srs/` in this repository.
+> historical text and were left as written; the corpus now lives at `webapp/srs/`, and every
+> citation in `webapp/`'s own docs, test headers and scripts points there.

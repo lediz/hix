@@ -1,7 +1,7 @@
 /*
  * probe_pwcost.prg - measure the cost of _PwHash() at several iteration counts
  *
- * Adhoc tool, lives inside the project folder (srs/DEV-compliance.md).
+ * Adhoc tool, lives inside the project folder (webapp/srs/DEV-compliance.md).
  * Harbour core only (hb_sha256), no contrib, no SQL.
  *
  * Purpose: PW_HASH_ITERATIONS is a login-time work factor.  Raising it raises
