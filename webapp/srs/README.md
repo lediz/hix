@@ -47,6 +47,8 @@ the repository root and from `webapp/`:
 | `BRUTE-FORCE-PENTEST-PLAN.md` | Brute-force / timing probe plan; `test/bf_harness.sh` implements it against the local app only |
 | `STATUS-USERS-MODULE.md` | Users-module status report (D-01…D-16), report-only |
 | `TEST-RESULTS-USERS-MODULE.md` · `TEST-RESULTS-CUSTOMER-MODULE.md` | End-to-end functional test results |
+| `TEST-REPORT-2026-10-06.md` | What `../../tests/run.sh` found, cluster by cluster (C1…C9), with the fix recommendations and a §14 addendum for the suite-side fixes that landed after it. Produced by the suite, never the other way round |
+| `PRODUCTION-BLOCKERS-2026-10-07.md` | The same findings ranked by what blocks shipping (B1…B7): two suites that verify nothing, and the session-store mode being a launcher obligation. Report-only |
 | `DAL-CHECKLIST.md` | Review of the app against the DAL and Harbour-HIX SRSs |
 | `CHANGELOG-CUSTOMER-FIXES.md` | Customer-module fix log |
 | `BUG-UPDATE-FLASH-ERROR.md` | Single-defect report: the update flash error |
