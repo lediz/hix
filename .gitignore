@@ -53,3 +53,9 @@ webapp/regenerate_data
 # they are added back. Re-instate with `git add -f tests/` plus the paths you
 # want, and drop this rule.
 tests/
+
+# Same for the ad-hoc probes and harnesses under webapp/test/ — local tooling,
+# not part of what ships. Untracked on 2026-10-07 (12 paths, staged with `git
+# rm -r --cached webapp/test/`); everything still lives on disk and the probes
+# still run. Re-instate with `git add -f webapp/test/` and drop this rule.
+webapp/test/
