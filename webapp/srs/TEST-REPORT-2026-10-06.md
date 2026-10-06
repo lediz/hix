@@ -1,7 +1,7 @@
 # HIX test suite — failure report and fix recommendations
 
 Run: `./tests/run.sh --fresh`
-Tree: `d8d1d1a` (branch `enhance`) · started 2026-10-06T21:18:11+08:00 · elapsed 499 s
+Tree: `068f11d` (branch `enhance`) · started 2026-10-06T21:36:28+08:00 · elapsed 500 s
 Result: **25 slices, 415 case rows, 324 PASS, 48 FAIL, 12 ERROR, 31 NOTE** — `run.sh` exit **1**
 (no slice aborted: every recorded rc is 0 or 1)
 Of the 60 failing rows the suite counts **9 as defects (5 still unexplained)** and
@@ -355,7 +355,7 @@ works against the self-signed dev certificate because the slice exports
 
 ## 8. Cluster C7 — `33-wa-verify`: 3 failures, only one of them about the app
 
-`33-wa-verify` is the healthiest webapp suite (127 cases, 123 pass) and the only one
+`33-wa-verify` is the healthiest webapp suite (127 cases, 124 pass) and the only one
 that authenticates against the TLS app. Its three failures are:
 
 ### 8.1 `D-09f rejected rename left record 2 unchanged` — stale fixture, not a defect
@@ -526,7 +526,7 @@ on first run (`tests/unit/go_gcc.sh` auto-generates them). `.gitignore` covers
    the answer may well be "no action" — but the decision should be recorded, not
    inferred from a NOTE row.
 3. `perm.session_files` is C7.3; no separate fix.
-4. `data.residue` PASS (20 rows, 0 residue) is worth keeping in view: the suites do
+4. `data.residue` PASS (21 rows, 0 residue) is worth keeping in view: the suites do
    clean up their own rows. The residue problem in this tree is not DBF rows, it is
    **mutated seed rows** (C7.1, C7.2) — a check that compares seed rows against the
    seeder's expectations would catch what `data.residue` cannot.

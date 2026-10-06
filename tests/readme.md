@@ -33,7 +33,7 @@ tests/
     common.sh         paths, env resolution, hix_case, hix_parse, hix_classify
     cap.sh            the byte-budget filter every stdout goes through
     rules.tsv         the only thing allowed to call a failure "not a defect"
-    classify.awk    <id>.tsv   -> <id>.cls.tsv: class + basis per row
+    classify.awk      <id>.tsv -> <id>.cls.tsv: the class + basis of each row
     index.awk         aggregates the classified rows into the index table
     count_class.awk   one per-slice summary line (used by slice.sh --list)
     parse_unit.awk    `tests/unit/app --cli` output  -> case rows
@@ -67,7 +67,7 @@ tests/
 ./tests/run.sh --wa                 # webapp slices only
 ./tests/run.sh --bf                 # add the 10 brute-force phases (slow)
 ./tests/run.sh --build              # compile framework / unit app / webapp first
-./tests/run.sh --fw-ref             # + the whole unit suite in one process, as reference
+./tests/run.sh --fw-ref             # (default) the whole unit suite in one process, as reference
 ./tests/run.sh --no-fw-ref          # without it, slice-order failures stay counted
 ./tests/run.sh 33-wa-verify         # one slice
 ./tests/run.sh --fail-only          # index lists failing cases only
@@ -223,9 +223,9 @@ The per-cluster root-cause analysis and fix recommendations live in
 `webapp/srs/TEST-REPORT-2026-10-06.md`; this section is what the suite
 itself recorded, in its own words.
 
-Measured on the `enhance` branch, tree `d8d1d1a`, 2026-10-06, with
-`./tests/run.sh --fresh`: 25 slices, 415 case rows, 323 pass, 48 fail,
-12 error, 32 note, 501 s wall clock, 19.0 KB of stdout against a 65536
+Measured on the `enhance` branch, tree `068f11d`, 2026-10-06, with
+`./tests/run.sh --fresh`: 25 slices, 415 case rows, 324 pass, 48 fail,
+12 error, 31 note, 500 s wall clock, 19.0 KB of stdout against a 65536
 byte budget. Of those failures, **9 are counted as defects (5 of them
 still unexplained) and 51 are attributed** — `order=15 + harness=41 +
 tool=2` — each one citing the rule and the check that justified it.
@@ -283,7 +283,7 @@ tool     Transport/SSL    SSL: curl.exe no localizado — tests HTTPS saltados
   never stored. T01–T09 pass; T10–T36 and T44 fail with 302 — 28 rows,
   all class `harness` (check `customer.cookie.jar` counts the
   authenticating POSTs that send a CSRF token and save no jar).
-- `33-wa-verify` — 127 cases, 123 pass, **3 fail, all counted**:
+- `33-wa-verify` — 127 cases, 124 pass, **3 fail, all counted**:
   `D-09f rejected rename left record 2 unchanged` (expected `carles`, got
   `carlesX`), `D-16d mixed-case seed name logs in as JOHN` (200 expected,
   302 got), `H-05c session files written by this run are 0600`
@@ -302,7 +302,7 @@ and `tests/unit/hix_test.key` are untracked and matched by no
 (PASS). Git history has seen those two test files added at some point
 (`secret.history` NOTE).
 
-**6. `users.dbf` residue.** 10 rows, 0 residue rows (`data.residue` PASS)
+**6. `users.dbf` residue.** 21 rows, 0 residue rows (`data.residue` PASS)
 at the time of this run. The rule that would class residue `env`
 (check `test.rows.are.test.rows`) stands ready but had nothing to explain.
 
@@ -311,7 +311,7 @@ at the time of this run. The rule that would class residue `env`
 ## Cost
 
 On this machine, `./tests/run.sh` (framework + webapp, app already
-running): 501 s, of which `33-wa-verify` is 444 s — it is rate-limit aware
+running): 500 s, of which `33-wa-verify` is 444 s — it is rate-limit aware
 and sleeps between requests. `--fw` alone is 26 s. `--build` adds the
 compile steps. `--bf` adds the brute-force phases, which are bounded by
 the app's own lockout timings.
