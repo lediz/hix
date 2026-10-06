@@ -1,19 +1,19 @@
 # Comparative analysis: `origin/enhance` vs `origin/main`
 
-Generated: 2026-10-06T14:09:02+08:00 · by `compare-branches.sh`
+Generated: 2026-10-06T14:42:10+08:00 · by `compare-branches.sh`
 
 | Ref | SHA | Commits | Files | Tree size |
 |---|---|---|---|---|
-| `origin/enhance` | `c8045ec` | 107 | 832 | 39280094 B |
+| `origin/enhance` | `626e135` | 115 | 825 | 39205193 B |
 | `origin/main` | `ab31bb4` | 65 | 692 | 38177445 B |
 
 ## 1. Topology
 
 | Metric | Value |
 |---|---|
-| Relationship | **fast-forward: origin/enhance is ahead of origin/main by 42** |
+| Relationship | **fast-forward: origin/enhance is ahead of origin/main by 50** |
 | Merge base | `ab31bb4 — 2.3.10 Move /dll to /resources/dll (2026-10-05)` |
-| Unique to `origin/enhance` | 42 |
+| Unique to `origin/enhance` | 50 |
 | Unique to `origin/main` | 0 |
 | `origin/main` ⊆ `origin/enhance` | yes |
 | `origin/enhance` ⊆ `origin/main` | no |
@@ -22,42 +22,41 @@ Generated: 2026-10-06T14:09:02+08:00 · by `compare-branches.sh`
 
 | Metric | Value |
 |---|---|
-| Files added / modified / deleted / renamed | 139 / 10 / 0 / 0 |
-| Lines inserted / deleted | +20065 / -34 |
-| Binary files changed | 13 |
-| Shortstat | 149 files changed, 20065 insertions(+), 34 deletions(-) |
+| Files added / modified / deleted / renamed | 132 / 10 / 0 / 0 |
+| Lines inserted / deleted | +19423 / -34 |
+| Binary files changed | 7 |
+| Shortstat | 142 files changed, 19423 insertions(+), 34 deletions(-) |
 | Excluded from the delta | COMPARISON-enhance-vs-main.md |
 
 ### Top-level entries only in one side
 
-- only in `origin/enhance`: compare-branches.sh GIT_AUTH_PLAN.md GIT_REMOTE_MIGRATION_PLAN.md srs UNIFIED.md webapp 
+- only in `origin/enhance`: compare-branches.sh GIT_AUTH_PLAN.md GIT_REMOTE_MIGRATION_PLAN.md UNIFIED.md webapp 
 - only in `origin/main`: —
 
 ### Largest content changes
 
 ```
-900	0	srs/SRS-Harbour-HIX.md
-887	0	srs/SRS-Harbour.md
+900	0	webapp/srs/SRS-Harbour-HIX.md
+887	0	webapp/srs/SRS-Harbour.md
 751	0	webapp/test/test_customer_module.prg
 735	0	webapp/www/controllers/masters/users.prg
 646	0	webapp/test/bf_harness.sh
 638	0	webapp/www/controllers/masters/customer.prg
 608	0	webapp/test/verify-users-fixes.sh
-589	0	srs/PNT-Harbour-HIX.md.MOE.3.6
-570	0	srs/PNT-Harbour-HIX.md.MOE.3.9
-510	0	srs/PNT-Harbour-HIX.md.MOE.3.8
+589	0	webapp/srs/PNT-Harbour-HIX.md.MOE.3.6
+570	0	webapp/srs/PNT-Harbour-HIX.md.MOE.3.9
+510	0	webapp/srs/PNT-Harbour-HIX.md.MOE.3.8
 469	0	webapp/BRUTE-FORCE-PENTEST-PLAN.md
 445	0	webapp/www/test/index.html
 445	0	webapp/test/test_customer_module.sh
 434	0	webapp/src/app.prg
-433	0	srs/PNT-Harbour-HIX.md
+433	0	webapp/srs/PNT-Harbour-HIX.md
 ```
 
 ### Changes by top-level directory
 
 ```
-120 webapp/
-15 srs/
+128 webapp/
 7 src/
 7 (root)
 ```
@@ -70,10 +69,18 @@ Generated: 2026-10-06T14:09:02+08:00 · by `compare-branches.sh`
 
 ## 3. Unique commits
 
-### Only in `origin/enhance` (42)
+### Only in `origin/enhance` (50)
 
 | Date | Author | Subject |
 |---|---|---|
+| 2026-10-06 | lediz | docs: move srs/ under webapp/ |
+| 2026-10-06 | lediz | webapp: stop tracking generated C from the .prg tools |
+| 2026-10-06 | lediz | webapp: retire migrate_dbf, give the adhoc tools .hbp build files |
+| 2026-10-06 | lediz | webapp: no tool hardcodes another checkout's data path |
+| 2026-10-06 | lediz | webapp: seeders resolve their data dir instead of a hardcoded stale path |
+| 2026-10-06 | lediz | chore: untrack webapp/data — the DBF/CDX files are runtime state |
+| 2026-10-06 | lediz | data: customers.cdx header byte 0x0b 0x66 -> 0x68 |
+| 2026-10-06 | lediz | compare-branches.sh: exclude the report's own output from the delta |
 | 2026-10-06 | lediz | tools: add compare-branches.sh; track the enhance-vs-main report |
 | 2026-10-06 | lediz | docs: record removing the upstream-hix remote; upstream is origin/enhance |
 | 2026-10-06 | lediz | docs: track the git-remote migration and auth plans |
@@ -128,7 +135,7 @@ _(none)_
 ### Authors — `origin/enhance`
 ```
 60 Carles Aubia <carles9000@gmail.com>
-42 lediz <14312216+lediz@users.noreply.github.com>
+50 lediz <14312216+lediz@users.noreply.github.com>
 4 Charly <carles9000@gmail.com>
 1 Giuseppe Bogetti <orangesocks@users.noreply.github.com>
 ```
@@ -143,7 +150,7 @@ _(none)_
 ### Committers — `origin/enhance`
 ```
 60 Carles Aubia <carles9000@gmail.com>
-42 lediz <14312216+lediz@users.noreply.github.com>
+50 lediz <14312216+lediz@users.noreply.github.com>
 5 GitHub <noreply@github.com>
 ```
 
@@ -170,7 +177,7 @@ v2.2 -> d8d66d9
 
 ## 6. Findings
 
-- fast-forward: origin/enhance is ahead of origin/main by 42
+- fast-forward: origin/enhance is ahead of origin/main by 50
 - `origin/enhance` can be merged into `origin/main` as a **fast-forward**.
 - Shared history below the merge base is common to both; commits there keep identical SHAs unless history is rewritten.
 - The content delta excludes COMPARISON-enhance-vs-main.md. The unique-commit count still includes the commit that carries this report — that one is unavoidable while the report is tracked.
@@ -180,16 +187,16 @@ v2.2 -> d8d66d9
 ```json
 {
   "left": "origin/enhance",
-  "left_sha": "c8045ecaa527e14e906cc945ae62e58400cce1fe",
+  "left_sha": "626e135203c68e8795cda2162064cfe19d87f559",
   "right": "origin/main",
   "right_sha": "ab31bb4d407204245adb2af62f1232a8b67e5b8a",
   "merge_base": "ab31bb4d407204245adb2af62f1232a8b67e5b8a",
-  "left_only": 42,
+  "left_only": 50,
   "right_only": 0,
   "fast_forward_possible": true,
   "diverged": false,
   "excluded": ["COMPARISON-enhance-vs-main.md"],
-  "files": {"added": 139, "modified": 10, "deleted": 0, "renamed": 0, "binary": 13},
-  "lines": {"insertions": 20065, "deletions": 34}
+  "files": {"added": 132, "modified": 10, "deleted": 0, "renamed": 0, "binary": 7},
+  "lines": {"insertions": 19423, "deletions": 34}
 }
 ```
