@@ -49,6 +49,8 @@ CREATE TABLE `stock_stocklocationtype` (
   `name` varchar(100) NOT NULL DEFAULT '',
   `description` varchar(250) NOT NULL DEFAULT '',
   `icon` varchar(100) NOT NULL DEFAULT '',
+  -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
+  `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   FULLTEXT KEY `ft_name` (`name`),
   FULLTEXT KEY `ft_description` (`description`)
@@ -65,6 +67,8 @@ CREATE TABLE `users_owner` (
   -- DECISION P1.2a: FK -> contenttypes_contenttype.id is not shipped -> plain int column, no index (HIX owns users, roles, scopes)
   `owner_type` int NULL  /* FK -> contenttypes_contenttype.id */,
   `owner_id` int NULL,
+  -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
+  `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`)
 );
 
@@ -92,6 +96,8 @@ CREATE TABLE `stock_stocklocation` (
   `tree_id` int NOT NULL DEFAULT 0  /* django-mptt TreeModel */,
   `lft` int NOT NULL DEFAULT 0  /* django-mptt TreeModel */,
   `rght` int NOT NULL DEFAULT 0  /* django-mptt TreeModel */,
+  -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
+  `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   KEY `fk_stock_stocklocation_parent` (`parent`)  /* -> stock_stocklocation.id */,
   KEY `fk_stock_stocklocation_owner` (`owner`)  /* -> users_owner.id */,
@@ -121,6 +127,8 @@ CREATE TABLE `part_partcategory` (
   `tree_id` int NOT NULL DEFAULT 0  /* django-mptt TreeModel */,
   `lft` int NOT NULL DEFAULT 0  /* django-mptt TreeModel */,
   `rght` int NOT NULL DEFAULT 0  /* django-mptt TreeModel */,
+  -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
+  `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   KEY `fk_part_partcategory_parent` (`parent`)  /* -> part_partcategory.id */,
   KEY `fk_part_partcategory_default_location` (`default_location`)  /* -> stock_stocklocation.id */,
@@ -183,6 +191,8 @@ CREATE TABLE `part_part` (
   `tree_id` int NOT NULL DEFAULT 0  /* django-mptt TreeModel */,
   `lft` int NOT NULL DEFAULT 0  /* django-mptt TreeModel */,
   `rght` int NOT NULL DEFAULT 0  /* django-mptt TreeModel */,
+  -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
+  `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   KEY `fk_part_part_variant_of` (`variant_of`)  /* -> part_part.id */,
   KEY `fk_part_part_category` (`category`)  /* -> part_partcategory.id */,
@@ -216,6 +226,8 @@ CREATE TABLE `part_partparametertemplate` (
   `selectionlist` int NULL  /* FK -> common_selectionlist.id */,
   `enabled` bool NOT NULL DEFAULT 1,
   `unique` int NOT NULL DEFAULT 0,
+  -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
+  `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   UNIQUE KEY `u_part_partparametertemplate_name` (`name`),
   FULLTEXT KEY `ft_name` (`name`),
@@ -241,6 +253,8 @@ CREATE TABLE `part_partparameter` (
   `data` varchar(500) NOT NULL DEFAULT '',
   `data_numeric` double NULL,
   `note` varchar(500) NOT NULL DEFAULT '',
+  -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
+  `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   KEY `fk_part_partparameter_template` (`template`)  /* -> part_partparametertemplate.id */
 );
@@ -258,6 +272,8 @@ CREATE TABLE `common_projectcode` (
   `description` varchar(200) NOT NULL DEFAULT '',
   `active` bool NOT NULL DEFAULT 1,
   `responsible` int NULL  /* FK -> users_owner.id */,
+  -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
+  `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   UNIQUE KEY `u_common_projectcode_code` (`code`),
   KEY `fk_common_projectcode_responsible` (`responsible`)  /* -> users_owner.id */,
@@ -291,6 +307,8 @@ CREATE TABLE `company_company` (
   `is_manufacturer` bool NOT NULL DEFAULT 0,
   `currency` varchar(3) NOT NULL DEFAULT '',
   `tax_id` varchar(50) NOT NULL DEFAULT '',
+  -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
+  `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   FULLTEXT KEY `ft_name` (`name`),
   FULLTEXT KEY `ft_description` (`description`)
@@ -316,6 +334,8 @@ CREATE TABLE `company_address` (
   `shipping_notes` varchar(100) NOT NULL DEFAULT '',
   `internal_shipping_notes` varchar(100) NOT NULL DEFAULT '',
   `link` varchar(2000) NOT NULL DEFAULT '',
+  -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
+  `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   KEY `fk_company_address_company` (`company`)  /* -> company_company.id */
 );
@@ -334,6 +354,8 @@ CREATE TABLE `company_contact` (
   `phone` varchar(100) NOT NULL DEFAULT '',
   `email` varchar(254) NOT NULL DEFAULT '',
   `role` varchar(100) NOT NULL DEFAULT '',
+  -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
+  `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   KEY `fk_company_contact_company` (`company`)  /* -> company_company.id */,
   FULLTEXT KEY `ft_name` (`name`)
@@ -373,6 +395,8 @@ CREATE TABLE `order_salesorder` (
   `shipment_date` date NULL,
   -- DECISION P1.2a: FK -> auth_user.id is not shipped -> plain int column, no index (HIX owns users, roles, scopes)
   `shipped_by` int NULL  /* FK -> auth_user.id */,
+  -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
+  `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   UNIQUE KEY `u_order_salesorder_reference` (`reference`),
   KEY `fk_order_salesorder_project_code` (`project_code`)  /* -> common_projectcode.id */,
@@ -449,6 +473,8 @@ CREATE TABLE `build_build` (
   `tree_id` int NOT NULL DEFAULT 0  /* django-mptt TreeModel */,
   `lft` int NOT NULL DEFAULT 0  /* django-mptt TreeModel */,
   `rght` int NOT NULL DEFAULT 0  /* django-mptt TreeModel */,
+  -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
+  `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   UNIQUE KEY `u_build_build_reference` (`reference`),
   KEY `fk_build_build_parent` (`parent`)  /* -> build_build.id */,
@@ -496,6 +522,8 @@ CREATE TABLE `order_purchaseorder` (
   `received_by` int NULL  /* FK -> auth_user.id */,
   `complete_date` date NULL,
   `destination` int NULL  /* FK -> stock_stocklocation.id */,
+  -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
+  `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   UNIQUE KEY `u_order_purchaseorder_reference` (`reference`),
   KEY `fk_order_purchaseorder_project_code` (`project_code`)  /* -> common_projectcode.id */,
@@ -525,6 +553,8 @@ CREATE TABLE `company_manufacturerpart` (
   `MPN` varchar(100) NULL,
   `link` varchar(2000) NULL,
   `description` varchar(250) NULL,
+  -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
+  `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   KEY `fk_company_manufacturerpart_part` (`part`)  /* -> part_part.id */,
   KEY `fk_company_manufacturerpart_manufacturer` (`manufacturer`)  /* -> company_company.id */,
@@ -561,6 +591,8 @@ CREATE TABLE `part_supplierpart` (
   `multiple` int NOT NULL DEFAULT 1,
   `available` decimal(10,3) NOT NULL DEFAULT 0,
   `availability_updated` datetime NULL,
+  -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
+  `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   KEY `fk_part_supplierpart_part` (`part`)  /* -> part_part.id */,
   KEY `fk_part_supplierpart_supplier` (`supplier`)  /* -> company_company.id */,
@@ -611,6 +643,8 @@ CREATE TABLE `stock_stockitem` (
   `purchase_price` decimal(19,6) NULL,
   `purchase_price_currency` char(3) NULL,
   `owner` int NULL  /* FK -> users_owner.id */,
+  -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
+  `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   KEY `fk_stock_stockitem_parent` (`parent`)  /* -> stock_stockitem.id */,
   KEY `fk_stock_stockitem_part` (`part`)  /* -> part_part.id */,
@@ -639,6 +673,8 @@ CREATE TABLE `part_supplierpricebreak` (
   `price` decimal(19,6) NULL,
   `price_currency` char(3) NULL,
   `part` int NOT NULL DEFAULT 0  /* FK -> part_supplierpart.id */,
+  -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
+  `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   KEY `fk_part_supplierpricebreak_part` (`part`)  /* -> part_supplierpart.id */
 );
@@ -668,6 +704,8 @@ CREATE TABLE `part_bomitem` (
   `validated` bool NOT NULL DEFAULT 0,
   `inherited` bool NOT NULL DEFAULT 0,
   `allow_variants` bool NOT NULL DEFAULT 0,
+  -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
+  `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   KEY `fk_part_bomitem_part` (`part`)  /* -> part_part.id */,
   KEY `fk_part_bomitem_sub_part` (`sub_part`)  /* -> part_part.id */
@@ -684,6 +722,8 @@ CREATE TABLE `part_bomitemsubstitute` (
   `metadata` json NULL,
   `bom_item` int NOT NULL DEFAULT 0  /* FK -> part_bomitem.id */,
   `part` int NOT NULL DEFAULT 0  /* FK -> part_part.id */,
+  -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
+  `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   KEY `fk_part_bomitemsubstitute_bom_item` (`bom_item`)  /* -> part_bomitem.id */,
   KEY `fk_part_bomitemsubstitute_part` (`part`)  /* -> part_part.id */
@@ -701,6 +741,8 @@ CREATE TABLE `part_partrelated` (
   `part_1` int NOT NULL DEFAULT 0  /* FK -> part_part.id */,
   `part_2` int NOT NULL DEFAULT 0  /* FK -> part_part.id */,
   `note` varchar(500) NOT NULL DEFAULT '',
+  -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
+  `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   KEY `fk_part_partrelated_part_1` (`part_1`)  /* -> part_part.id */,
   KEY `fk_part_partrelated_part_2` (`part_2`)  /* -> part_part.id */
@@ -754,6 +796,8 @@ CREATE TABLE `part_partpricing` (
   `sale_history_min_currency` char(3) NULL,
   `sale_history_max` decimal(19,6) NULL,
   `sale_history_max_currency` char(3) NULL,
+  -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
+  `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   KEY `fk_part_partpricing_part` (`part`)  /* -> part_part.id */
 );
@@ -783,6 +827,8 @@ CREATE TABLE `order_purchaseorderlineitem` (
   `purchase_price_currency` char(3) NULL,
   `build_order` int NULL  /* FK -> build_build.id */,
   `destination` int NULL  /* FK -> stock_stocklocation.id */,
+  -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
+  `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   KEY `fk_order_purchaseorderlineitem_project_code` (`project_code`)  /* -> common_projectcode.id */,
   KEY `fk_order_purchaseorderlineitem_order` (`order`)  /* -> order_purchaseorder.id */,
@@ -814,6 +860,8 @@ CREATE TABLE `order_salesorderlineitem` (
   `sale_price` decimal(19,6) NULL,
   `sale_price_currency` char(3) NULL,
   `shipped` decimal(15,5) NOT NULL DEFAULT 0,
+  -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
+  `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   KEY `fk_order_salesorderlineitem_project_code` (`project_code`)  /* -> common_projectcode.id */,
   KEY `fk_order_salesorderlineitem_order` (`order`)  /* -> order_salesorder.id */,
@@ -842,6 +890,8 @@ CREATE TABLE `order_salesordershipment` (
   `tracking_number` varchar(100) NOT NULL DEFAULT '',
   `invoice_number` varchar(100) NOT NULL DEFAULT '',
   `link` varchar(2000) NOT NULL DEFAULT '',
+  -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
+  `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   KEY `fk_order_salesordershipment_order` (`order`)  /* -> order_salesorder.id */,
   KEY `fk_order_salesordershipment_shipment_address` (`shipment_address`)  /* -> company_address.id */,
@@ -860,6 +910,8 @@ CREATE TABLE `order_salesorderallocation` (
   `shipment` int NULL  /* FK -> order_salesordershipment.id */,
   `item` int NOT NULL DEFAULT 0  /* FK -> stock_stockitem.id */,
   `quantity` decimal(15,5) NOT NULL DEFAULT 0,
+  -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
+  `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   KEY `fk_order_salesorderallocation_line` (`line`)  /* -> order_salesorderlineitem.id */,
   KEY `fk_order_salesorderallocation_shipment` (`shipment`)  /* -> order_salesordershipment.id */,
@@ -878,6 +930,8 @@ CREATE TABLE `build_buildline` (
   `bom_item` int NOT NULL DEFAULT 0  /* FK -> part_bomitem.id */,
   `quantity` decimal(15,5) NOT NULL DEFAULT 0,
   `consumed` decimal(15,5) NOT NULL DEFAULT 0,
+  -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
+  `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   UNIQUE KEY `u_build_buildline_build_bom_item` (`build`, `bom_item`),
   KEY `fk_build_buildline_build` (`build`)  /* -> build_build.id */,
@@ -897,6 +951,8 @@ CREATE TABLE `build_builditem` (
   `stock_item` int NOT NULL DEFAULT 0  /* FK -> stock_stockitem.id */,
   `quantity` decimal(15,5) NOT NULL DEFAULT 0,
   `install_into` int NULL  /* FK -> stock_stockitem.id */,
+  -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
+  `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   UNIQUE KEY `u_build_builditem_build_line_stock_item_install_into` (`build_line`, `stock_item`, `install_into`),
   KEY `fk_build_builditem_build_line` (`build_line`)  /* -> build_buildline.id */,
@@ -921,6 +977,8 @@ CREATE TABLE `part_partstocktake` (
   `cost_min_currency` char(3) NULL,
   `cost_max` decimal(19,6) NULL,
   `cost_max_currency` char(3) NULL,
+  -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
+  `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   KEY `fk_part_partstocktake_part` (`part`)  /* -> part_part.id */
 );
@@ -948,6 +1006,8 @@ CREATE TABLE `stock_stockitemtestresult` (
   `finished_datetime` datetime NULL,
   -- DECISION P1.1: NOT NULL date, no DEFAULT invented - the DAL must always supply it
   `date` datetime NOT NULL,
+  -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
+  `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   KEY `fk_stock_stockitemtestresult_stock_item` (`stock_item`)  /* -> stock_stockitem.id */
 );
@@ -969,6 +1029,8 @@ CREATE TABLE `stock_stockitemtracking` (
   -- DECISION P1.2a: FK -> auth_user.id is not shipped -> plain int column, no index (HIX owns users, roles, scopes)
   `user` int NULL  /* FK -> auth_user.id */,
   `deltas` json NULL,
+  -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
+  `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   KEY `fk_stock_stockitemtracking_item` (`item`)  /* -> stock_stockitem.id */,
   KEY `fk_stock_stockitemtracking_part` (`part`)  /* -> part_part.id */
@@ -984,6 +1046,8 @@ CREATE TABLE `common_inventreesetting` (
   `id` int NOT NULL AUTO_INCREMENT,
   `key` varchar(50) NOT NULL DEFAULT '',
   `value` varchar(2000) NOT NULL DEFAULT '',
+  -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
+  `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   UNIQUE KEY `u_common_inventreesetting_key` (`key`)
 );
@@ -1000,6 +1064,8 @@ CREATE TABLE `common_inventreeusersetting` (
   `value` varchar(2000) NOT NULL DEFAULT '',
   -- DECISION P1.2a: FK -> auth_user.id is not shipped -> plain int column, no index (HIX owns users, roles, scopes)
   `user` int NULL  /* FK -> auth_user.id */,
+  -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
+  `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`)
 );
 
@@ -1023,6 +1089,8 @@ CREATE TABLE `common_note` (
   `title` varchar(100) NOT NULL DEFAULT '',
   `description` varchar(250) NOT NULL DEFAULT '',
   `content` longtext NOT NULL,
+  -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
+  `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   FULLTEXT KEY `ft_description` (`description`)
 );
@@ -1048,6 +1116,8 @@ CREATE TABLE `common_attachment` (
   `upload_date` date NULL  /* auto_now_add */,
   `is_image` bool NOT NULL DEFAULT 0,
   `file_size` int NOT NULL DEFAULT 0,
+  -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
+  `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`)
 );
 
@@ -1068,6 +1138,8 @@ CREATE TABLE `common_barcodescanresult` (
   `context` json NULL,
   `response` json NULL,
   `result` bool NOT NULL DEFAULT 0,
+  -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
+  `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`)
 );
 
@@ -1095,6 +1167,8 @@ CREATE TABLE `users_userprofile` (
   `organisation` varchar(255) NULL,
   -- DECISION P1.2a: FK -> auth_group.id is not shipped -> plain int column, no index (HIX owns users, roles, scopes)
   `primary_group` int NULL  /* FK -> auth_group.id */,
+  -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
+  `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`)
 );
 
@@ -1113,6 +1187,8 @@ CREATE TABLE `users_ruleset` (
   `can_add` bool NOT NULL DEFAULT 0,
   `can_change` bool NOT NULL DEFAULT 0,
   `can_delete` bool NOT NULL DEFAULT 0,
+  -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
+  `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   FULLTEXT KEY `ft_name` (`name`)
 );
@@ -1232,42 +1308,42 @@ CREATE TABLE `users_ruleset` (
 -- ============================================================
 -- index
 -- ============================================================
--- stock_stocklocationtype                        5 cols   1 idx  2 added
--- users_owner                                    3 cols   1 idx  0 added
--- stock_stocklocation                           16 cols   4 idx  3 added
--- part_partcategory                             13 cols   3 idx  2 added
--- part_part                                     45 cols   6 idx  5 added
--- part_partparametertemplate                    11 cols   2 idx  2 added
--- part_partparameter                            10 cols   2 idx  0 added
--- common_projectcode                             6 cols   3 idx  1 added
--- company_company                               19 cols   1 idx  2 added
--- company_address                               13 cols   2 idx  0 added
--- company_contact                                7 cols   2 idx  1 added
--- order_salesorder                              24 cols   7 idx  2 added
--- build_build                                   31 cols   9 idx  1 added
--- order_purchaseorder                           25 cols   8 idx  2 added
--- company_manufacturerpart                       9 cols   3 idx  2 added
--- part_supplierpart                             21 cols   4 idx  3 added
--- stock_stockitem                               32 cols  12 idx  1 added
--- part_supplierpricebreak                        6 cols   2 idx  0 added
--- part_bomitem                                  18 cols   3 idx  0 added
--- part_bomitemsubstitute                         4 cols   3 idx  0 added
--- part_partrelated                               5 cols   3 idx  0 added
--- part_partpricing                              41 cols   2 idx  0 added
--- order_purchaseorderlineitem                   18 cols   6 idx  0 added
--- order_salesorderlineitem                      16 cols   4 idx  0 added
--- order_salesordershipment                      13 cols   3 idx  1 added
--- order_salesorderallocation                     5 cols   4 idx  0 added
--- build_buildline                                5 cols   4 idx  0 added
--- build_builditem                                6 cols   5 idx  0 added
--- part_partstocktake                             9 cols   2 idx  0 added
--- stock_stockitemtestresult                     13 cols   2 idx  0 added
--- stock_stockitemtracking                        8 cols   3 idx  0 added
--- common_inventreesetting                        3 cols   2 idx  0 added
--- common_inventreeusersetting                    4 cols   1 idx  0 added
--- common_note                                   11 cols   1 idx  1 added
--- common_attachment                             12 cols   1 idx  0 added
--- common_barcodescanresult                       8 cols   1 idx  0 added
--- users_userprofile                             15 cols   1 idx  0 added
--- users_ruleset                                  7 cols   1 idx  1 added
+-- stock_stocklocationtype                        6 cols   1 idx  2 added
+-- users_owner                                    4 cols   1 idx  0 added
+-- stock_stocklocation                           17 cols   4 idx  3 added
+-- part_partcategory                             14 cols   3 idx  2 added
+-- part_part                                     46 cols   6 idx  5 added
+-- part_partparametertemplate                    12 cols   2 idx  2 added
+-- part_partparameter                            11 cols   2 idx  0 added
+-- common_projectcode                             7 cols   3 idx  1 added
+-- company_company                               20 cols   1 idx  2 added
+-- company_address                               14 cols   2 idx  0 added
+-- company_contact                                8 cols   2 idx  1 added
+-- order_salesorder                              25 cols   7 idx  2 added
+-- build_build                                   32 cols   9 idx  1 added
+-- order_purchaseorder                           26 cols   8 idx  2 added
+-- company_manufacturerpart                      10 cols   3 idx  2 added
+-- part_supplierpart                             22 cols   4 idx  3 added
+-- stock_stockitem                               33 cols  12 idx  1 added
+-- part_supplierpricebreak                        7 cols   2 idx  0 added
+-- part_bomitem                                  19 cols   3 idx  0 added
+-- part_bomitemsubstitute                         5 cols   3 idx  0 added
+-- part_partrelated                               6 cols   3 idx  0 added
+-- part_partpricing                              42 cols   2 idx  0 added
+-- order_purchaseorderlineitem                   19 cols   6 idx  0 added
+-- order_salesorderlineitem                      17 cols   4 idx  0 added
+-- order_salesordershipment                      14 cols   3 idx  1 added
+-- order_salesorderallocation                     6 cols   4 idx  0 added
+-- build_buildline                                6 cols   4 idx  0 added
+-- build_builditem                                7 cols   5 idx  0 added
+-- part_partstocktake                            10 cols   2 idx  0 added
+-- stock_stockitemtestresult                     14 cols   2 idx  0 added
+-- stock_stockitemtracking                        9 cols   3 idx  0 added
+-- common_inventreesetting                        4 cols   2 idx  0 added
+-- common_inventreeusersetting                    5 cols   1 idx  0 added
+-- common_note                                   12 cols   1 idx  1 added
+-- common_attachment                             13 cols   1 idx  0 added
+-- common_barcodescanresult                       9 cols   1 idx  0 added
+-- users_userprofile                             16 cols   1 idx  0 added
+-- users_ruleset                                  8 cols   1 idx  1 added
 -- 38 tables

@@ -70,6 +70,15 @@ FOREIGN_TARGETS = {"auth_user", "auth_group", "contenttypes_contenttype"}
 FULLTEXT_COLS = ("name", "description", "keywords")
 LOOKUP_COLS = ("IPN", "SKU", "barcode_hash")
 
+# P3.7 of INVENTREE-MYSQL-PLAN.md: optimistic concurrency. The plan says
+# "add a version int DEFAULT 0 column to the mutable tables (a deliberate
+# deviation from the artefact, recorded)". It is applied to EVERY table of
+# the shipped subset, not to a judgement of which tables are mutable -
+# P4.7 edits the support tables through plain CRUD too, and a per-table
+# judgement would be an unrecordled guess. The column is what Update
+# matches on: UPDATE ... WHERE id = ? AND version = ? + Affected_Rows().
+VERSION_COL = ("version", "int", "NOT NULL DEFAULT 0")
+
 # ---------------------------------------------------------------------
 # Column types, as the artefact spells them.
 # ---------------------------------------------------------------------
@@ -211,6 +220,17 @@ def transform(name, body, dropped_cols):   # dropped_cols: col -> target table
         if c in colnames and c not in have:
             added.append(f"  KEY `ix_{c}` (`{c}`)")
     stats["indexes_added"] = added
+
+    #  P3.7 of INVENTREE-MYSQL-PLAN.md: optimistic concurrency (SRS 5.2).
+    #  Added to EVERY table of the shipped subset, not to a judgement of
+    #  which tables are mutable - P4.7 edits the support tables through
+    #  plain CRUD too, and a per-table judgement would be an unrecorded
+    #  guess. Update matches on it: UPDATE ... WHERE id = ? AND version = ?
+    #  plus Affected_Rows(), and 0 rows affected is a 409, not an overwrite.
+    out_cols.append("  -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact")
+    out_cols.append(f"  `{VERSION_COL[0]}` {VERSION_COL[1]} {VERSION_COL[2]}")
+    stats["version"] = 1
+
     return out_cols, out_keys, added
 
 

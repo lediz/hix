@@ -61,6 +61,10 @@ probe_mysql
 create_mysql_sql
 seed_inventree
 
+# P3 harness binary (the harness source lives in webapp/test/, which is
+# already ignored; the binary lands in this folder, so name it here)
+probe_dalmysql
+
 # P1.7: sql/ is SOURCE and stays tracked - webapp/sql/inventree.sql is the
 # schema that ships, webapp/sql/fixtures/*.csv is the seed corpus (the CSV
 # equivalent of InvenTree's own Django fixtures). Nothing under sql/ is

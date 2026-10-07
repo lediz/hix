@@ -161,6 +161,29 @@ RETURN
 
 
 // ============================================================
+// APP_MYSQL_BERROR - P3.6: the pool's error handler, reached through
+// hParams["berror"] (a NAME, resolved by _WdoResolveBErrorFromName).
+// Non-STATIC on purpose: hb_isFunction() has to find it in the symbol
+// table. It logs the server's words and returns nothing usable to the
+// client - the response text is the SRS banner, decided by the DAL
+// (www/models/tdalmysql.prg Errors()), never by the server (SRS 5.3).
+// ============================================================
+FUNCTION APP_MYSQL_BERROR( oErr, oConn )
+
+   LOCAL cMsg := ""
+
+   IF ValType( oErr ) == 'O'
+      cMsg := hb_defaultValue( oErr:description, "" )
+   ELSE
+      cMsg := hb_defaultValue( oErr, "" )
+   ENDIF
+
+   _l( "mysql berror: " + cMsg, 4, "mysql" )
+
+RETURN NIL
+
+
+// ============================================================
 // _EnvOr - an environment value with a default. hb_getEnv() answers
 // "" (an empty string, not NIL) for a variable that is not in the
 // environment, and hb_defaultValue() only substitutes through a by-
@@ -325,6 +348,13 @@ STATIC FUNCTION _DbPoolEnsure()
    hParams[ "read_timeout_s" ]   := nRead
    hParams[ "connect_timeout_s" ] := nConnect
    hParams[ "dll" ]              := cDll
+   //  P3.6: the pool's error handler. berror is a Harbour function NAME -
+   //  _WdoResolveBErrorFromName (src/wdo/wdo_config.prg) builds
+   //  {|oErr, oConn| NAME( oErr, oConn ) } and hb_isFunction() probes the
+   //  symbol table first, so the function has to be statically linked and
+   //  NOT static in this file. Absent this, a MySQL error surfaces
+   //  wherever the driver puts it, and the server's words name tables.
+   hParams[ "berror" ]           := "APP_MYSQL_BERROR"
 
    //  P2.2, stated where it is set: the read timeout has to exceed the
    //  dispatcher's exec_timeout_ms or the slot becomes a zombie.
