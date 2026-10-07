@@ -63,6 +63,7 @@ and only the nine renames below (§ *Formerly*) changed any name.  The plan behi
 | `INVENTREE-MYSQL-SCHEMA.sql` | InvenTree's database as MySQL 8 — 79 tables / 895 columns / 165 foreign keys, derived from its Django models (InvenTree ships no schema file). Reference artefact, never loaded by anything here; regenerate with `gen-inventree-mysql-schema.py` |
 | `INVENTREE-MYSQL-SCHEMA.md` | Provenance for that `.sql`: how it was derived, the Django→MySQL mapping, the companion columns, and the gaps it does not paper over |
 | `INVENTREE-MYSQL-PLAN.md` | Plan: put that schema into `webapp/` as a MySQL-backed DAL carrying InvenTree's functional flow — phases, steps, the T1…T8 grading of each, and the three DBF blockers MySQL actually removes; **plan only, applies nothing** |
+| `FK-POLICY-DECISIONS.md` | The decisions the delete policy actually requires, measured on the shipped schema (78 edges, 26 with a NOT NULL FK column, 7 self-edges), with the one already taken (D4, atomicity) and the minimum set that blocks P4.2; **report only** |
 | `gen-inventree-mysql-schema.py` | The generator behind `INVENTREE-MYSQL-SCHEMA.sql` — reads InvenTree's model source with `ast`, no Django and no database |
 
 ## `03-implementation/`

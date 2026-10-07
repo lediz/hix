@@ -91,6 +91,12 @@ with no shared key space, which is a correctness surface, not a convenience.
    400 `Part` rows is a user-visible bug. Decide per table, record in the plan, before writing
    `delete_action@…`.
 
+   The decisions that follow from that, with the counts measured on the shipped schema and the
+   one already taken, are in **`FK-POLICY-DECISIONS.md`** (D1 the per-edge values · D2 `NULL`
+   is not expressible on 26 of the 78 edges, now refused by the DAL · D3 recursion over 7
+   self-edges · D4 atomicity, **taken** · D5 preview vs perform · D6 orphans · D7 the 52
+   FK columns with no `KEY` · D8 tables with no delete surface).
+
 ---
 
 ## 2. What "implement this MySQL schema into webapp" means, precisely
