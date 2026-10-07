@@ -63,10 +63,10 @@
                   <p class="lead">Are you sure you want to delete user <strong>{{ HB_HGetDef( hRow, 'name', '' ) }}</strong>?</p>
                   <p class="text-muted">This action cannot be undone.</p>
                   
-                  <form method="POST" action="{{ URoute( 'users.delete', HB_HGetDef( hRow, '_recno', 0 ) ) }}">
+                  <form method="POST" action="{{ URoute( 'users.delete', HB_HGetDef( hRow, 'id', 0 ) ) }}">
                      <!-- N-01: users.delete is guarded by MyAppAuthRoleEdit -> HIX_MwCsrfCheck -->
                      @CSRF
-                     <input type="hidden" name="id" value="{{ HB_HGetDef( hRow, '_recno', 0 ) }}">
+                     <input type="hidden" name="id" value="{{ HB_HGetDef( hRow, 'id', 0 ) }}">
                      <div class="d-flex gap-2">
                         <button type="submit" class="btn btn-danger">
                            <i class="bi bi-trash"></i>&nbsp;Yes, Delete

@@ -1,0 +1,23 @@
+# ============================================================
+# probe_mysql.hbp — P0 host probe (CLI, not the WebApp)
+#
+# Same link shape as app.hbp: the WDO MySQL driver lives in the
+# framework (src/wdo/mysql/*.prg -> hix_server.hbx + lib/gcc/
+# libhix_server.a), so the probe needs the framework, not contrib
+# libraries. Built with hbmk2 only, like every other tool here.
+# Build it with:  hix=<framework root> hbmk2 probe_mysql.hbp
+# ============================================================
+
+-n
+-w1
+-es2
+-mt
+-workdir=.hbmk/${hb_compiler}/probe_mysql
+-hbexe
+-oprobe_mysql
+
+test/probe_mysql.prg
+
+${hix}/hix_server.hbx
+${hix}/hix_server.hbc
+${hb_root}/include/harbour.hbx

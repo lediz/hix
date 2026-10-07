@@ -13,8 +13,8 @@ application that runs on it. Everything `enhance` adds to the imported upstream 
 |---|---|
 | Branch | `enhance`, tracking `origin/enhance` (`https://github.com/lediz/hix.git`) |
 | Base | `origin/main` = the imported upstream history, left at `ab31bb4` |
-| Delta | `./compare-branches.sh` → [`webapp/srs/COMPARISON-enhance-vs-main.md`](webapp/srs/COMPARISON-enhance-vs-main.md) |
-| Provenance of the merge | [`webapp/srs/UNIFIED.md`](webapp/srs/UNIFIED.md) — how the two histories were joined, and the git rules learned the hard way |
+| Delta | `./compare-branches.sh` → [`webapp/srs/06-release/COMPARISON-enhance-vs-main.md`](webapp/srs/06-release/COMPARISON-enhance-vs-main.md) |
+| Provenance of the merge | [`webapp/srs/00-meta/UNIFIED.md`](webapp/srs/00-meta/UNIFIED.md) — how the two histories were joined, and the git rules learned the hard way |
 
 ---
 
@@ -104,8 +104,9 @@ src/                     framework: the seven enhanced files above
 examples/web/crud/       upstream example, unchanged
 webapp/                  the application (controllers, models, views, routes, tests, tools)
 webapp/srs/              the corpus: SRS + compliance, audit reports, test records, plans,
-                         analyses, and UNIFIED.md (how this repo was assembled)
-compare-branches.sh      regenerates webapp/srs/COMPARISON-enhance-vs-main.md
+                         analyses, and UNIFIED.md (how this repo was assembled) — filed in
+                         phase folders 00-meta … 07-maintenance (see 00-meta/SDLC-REORGANIZATION-PLAN.md)
+compare-branches.sh      regenerates webapp/srs/06-release/COMPARISON-enhance-vs-main.md
 ```
 
 ## How to check any of it
@@ -117,7 +118,7 @@ cd webapp && ./go_gcc.sh --port 9090               # app: build + run (TLS requi
 ```
 
 Reading order for the reasoning behind the app-side changes:
-[`webapp/srs/PENTEST-REPORT.md`](webapp/srs/PENTEST-REPORT.md) (remediation record, §1…§10) →
-[`webapp/srs/STATUS-USERS-MODULE.md`](webapp/srs/STATUS-USERS-MODULE.md) (D-01…D-16) →
-[`webapp/srs/COMPARATIVE-ANALYSIS.md`](webapp/srs/COMPARATIVE-ANALYSIS.md) (example vs app) →
-[`webapp/srs/UNIFIED.md`](webapp/srs/UNIFIED.md) (repository assembly).
+[`webapp/srs/05-audit/PENTEST-REPORT.md`](webapp/srs/05-audit/PENTEST-REPORT.md) (remediation record, §1…§10) →
+[`webapp/srs/03-implementation/STATUS-USERS-MODULE.md`](webapp/srs/03-implementation/STATUS-USERS-MODULE.md) (D-01…D-16) →
+[`webapp/srs/02-design/COMPARATIVE-ANALYSIS.md`](webapp/srs/02-design/COMPARATIVE-ANALYSIS.md) (example vs app) →
+[`webapp/srs/00-meta/UNIFIED.md`](webapp/srs/00-meta/UNIFIED.md) (repository assembly).

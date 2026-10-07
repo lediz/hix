@@ -37,7 +37,9 @@
                script execution unless app.env == "dev".
 
                Credentials: admin/1234  carles/1234  maria/1234
-                            John/5678    jane/9012abcd   (see regenerate_users.prg)
+                            John/5678    jane/9012abcd   (seeded into users_users by
+                            ./seed_users_mysql - the store is the MySQL table in
+                            sql/hix_users.sql, not data/users.dbf)
  -----------------------------------------------------------*/
 
 #include "hbclass.ch"

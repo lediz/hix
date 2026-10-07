@@ -2,9 +2,12 @@
 
 > **Record of a run.** This file reports what was executed on this checkout. It
 > implements **P4.1 only** of `webapp/srs/02-design/INVENTREE-MYSQL-PLAN.md` — the
-> `part` module — and it is **half verified**: the reads and the create path are
-> proven against real state, the update (conflict) and delete paths are not.
-> P4.2–P4.7 were not started. Nothing is committed.
+> `part` module. §1–§6 are the record of the first pass, which was **half
+> verified**: the reads and the create path were proven against real state, the
+> update (conflict) and delete paths were not. §7 closes that pass: the two
+> unproven verbs were made provable, six defects found by running them were
+> fixed, and the module now verifies 38/0 on state. P4.2–P4.7 were not started.
+> Nothing in §7 is committed yet.
 
 ---
 
@@ -123,3 +126,76 @@ P4.2 must not assume:
    `customer` and `users`.
 6. **that the harness is part of what ships.** `webapp/test/test_part_module.sh`
    is local tooling; the shipped verification harness is P7.1's sliced suite.
+
+---
+
+## 7. Closing P4.1 — the two verbs, and what had to be broken to prove them
+
+The first pass left `update` and `delete` unverified because the suite could not
+address the row it had created. With reads now carrying `id` (§3), the same suite
+runs that half — and running it against the real server found six things. Each is
+a defect in what §2 shipped, not in the harness.
+
+| # | Found by running it | Where | Fixed by |
+|---|---|---|---|
+| 1 | `URoute( 'part.show' )` and `URoute( 'part.edit' )` answer `""` — both routes are parameterised (`/part/:id`, `/part/:id/edit`), and `URoute` refuses without the arguments (`src/hix_router.prg:787`). The redirect was `"" + "?id=1"`, a relative URL, so the browser landed back on the verb just called and a `GET` there is **405**. Log: `URoute: ruta 'part.edit' requiere 1 parámetro(s)` | `Update()` | `URoute( 'part.show', nId )` — the audited module's form (`customer.prg:209`) |
+| 2 | a write that **omits** `version` was accepted: `Val( UPost( 'version', '' ) )` is `0`, which matches every record still at `version 0` — a row nobody read was overwritten. Measured: `POST /part/1/update` with only a name renamed the fixture part and cleared its `IPN`/`description` | `Update()` | the posted `version` must be present; absent it the write is refused and sent back to the form |
+| 3 | a write that omits `name` **cleared** it — the handler read the fields with `UPost()` and never validated the body, unlike `Store()` | `Update()` | `UValidatePost` on the same rules create uses |
+| 4 | `delete_action` claimed success whatever the verb did: `Delete()` answers `{ "deleted" => n }` and the handler ignored it, so deleting a row that is not there said "was deleted!" | `delete_action()` | 0 rows deleted is a failure: "That part is not there." |
+| 5 | the conflict said "it is shown again below" and redirected to the **edit** form — which renders only the fields the caller posted, i.e. nothing. SRS 5.2's warning was not delivered | `Update()` | the conflict redirects to the **show** page: it renders the record with its current `version`, which is also where the next write must re-read from |
+| 6 | every request logged `WDO_ReleaseAllThread: reclaiming 1 leaked connection(s)`. The slot was returned only by `Destroy()`, and Harbour runs the destructor after the dispatcher's hook (`src/hix_dispatcher.prg:808`), so the hook — the framework's safety net for a handler that forgot — was doing the release every time. P3.4's "Close() on every exit path" was true only by the net, not by the handler | all ten verbs | each verb returns through `Finish()`, which closes the slot **before** returning. `Destroy()` is idempotent, so the destructor running later is harmless |
+
+### 7.1 What P4.1 proves now
+
+| Verb | Route | Proven against |
+|---|---|---|
+| `part.grid` | `GET /part/grid` | 200, the 14 fixture parts, paged |
+| `part.search` | `GET /part/search?q=M2` | finds `M2x4 LPHS` — the OR-of-LIKEs matched |
+| `part.show` | `GET /part/:id` | the record, with `id` and `version` |
+| `part.create` | `GET /part/create` | the form renders |
+| `part.edit` | `GET /part/:id/edit` | the form renders |
+| `part.store` | `POST /part/store` | `part_part` rows **14 → 15**, and the new row is addressable by the `id` the read returns |
+| `part.update` | `POST /part/:id/update` | **carrying the version read**: the row changes and `version` 0 → 1; **carrying a stale version**: the row is unchanged, `version` stays 1, the flash says nothing was overwritten and the redirect is the record; **carrying no version**: refused, row unchanged; **omitting the name**: refused, row unchanged |
+| `part.delete_confirm` | `GET /part/:id/delete_confirm` | the cascade table on a part that **has** dependents — `part_supplierpart` 4, `stock_stockitem` 2, `part_bomitem` 1, total 8, every mode `KEEP` |
+| `part.delete` | `POST /part/:id/delete` | rows **15 → 14**, the row is gone, and a second delete of the same id says it is not there |
+| *(any write)* | without a CSRF token | refused, and no row was created (N-01) |
+
+### 7.2 The run
+
+```
+$ ./create_mysql_sql recreate && ./seed_inventree seed   # corpus at its base
+$ ./app                                                  # DB_PWD from .mysql/credentials
+$ ./test/test_part_module.sh
+  part_part rows before: 14
+  ... 38 assertions, every one on DB state or on the rendered page
+PASS 38  FAIL 0
+
+$ ./seed_inventree verify        RESULT : ok             # 14 parts / 29 stock items
+$ ./gen_mysql_db.sh status       running
+$ grep -c reclaiming .logs/hix.log                       0   # for the whole run
+$ curl -k .../health/db          {"ok":true,...,"size":8,"busy":0,"free":8}
+```
+
+The corpus is back at its seeded base: the suite deletes only the row it created,
+and `seed_inventree verify` says so.
+
+### 7.3 What §6's "P4.2 must not assume" list now looks like
+
+Item 1 ("that the update or delete verbs work") is **closed** by §7 — they are
+proven, and P4.2 may build on them. Item 2 (a conflict is a flash + redirect, not
+409) still holds, with the redirect now landing on the show page. Items 3–6 still
+hold; item 5 is overtaken by the Step 0.2 decision recorded in
+`02-design/INVENTREE-MYSQL-PLAN.md` — `users` moves to MySQL, `customer` stays on
+RDDCDX as the deliberate proof-of-concept, so `auto_close_dbf` keeps its `true`
+while that POC is in the app.
+
+### 7.4 Compliance of what §7 changed
+
+Same eight tests as §5 and the same verdicts: the fixes are inside
+`www/controllers/masters/part.prg` (runtime-loaded, so **no build** — T7 holds by
+the same argument), the suite is gitignored local tooling (T5), nothing outside
+`webapp/` was touched (T6), and the pool was only borrowed, never reconfigured
+(T8, port 9090 untouched). Item 6 of the table is the one place where the fix
+could have been made in `src/` (the dispatcher's hook is framework code); it was
+not — the handler is what P3.4 says is responsible, and the framework was left
+alone.

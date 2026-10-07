@@ -65,6 +65,9 @@ seed_inventree
 # already ignored; the binary lands in this folder, so name it here)
 probe_dalmysql
 
+# P4.8 seeder binary, built from seed_users_mysql.hbp next to its sources
+seed_users_mysql
+
 # P1.7: sql/ is SOURCE and stays tracked - webapp/sql/inventree.sql is the
 # schema that ships, webapp/sql/fixtures/*.csv is the seed corpus (the CSV
 # equivalent of InvenTree's own Django fixtures). Nothing under sql/ is

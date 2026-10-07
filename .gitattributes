@@ -8,3 +8,5 @@
 *.cdx binary
 *.hbx binary
 *.hrb binary
+*.sql text eol=lf
+*.py text eol=lf

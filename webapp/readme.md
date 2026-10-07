@@ -51,7 +51,7 @@ every CSRF token, session id and resource id issued before it - delete
 `hix.keys.json` (or one key inside it) and restart to rotate.
 
 All three files are gitignored.  The HIX admin panel is disabled
-(`hix.json -> admin.enabled = false`); see `srs/PENTEST-REPORT.md` for the full
+(`hix.json -> admin.enabled = false`); see `srs/05-audit/PENTEST-REPORT.md` for the full
 remediation record.
 
 ## Starting the server
@@ -63,7 +63,7 @@ HIX writes session files with `hb_MemoWrit()` + `FRename()` and never sets a
 mode, so they inherit the process umask; Harbour core has no `umask()` or
 `chmod()` (they fail to link: `HB_FUN_UMASK` / `HB_FUN_CHMOD`), so the app
 cannot tighten them itself.  Under the usual `0022` the store is created 0755
-and its records 0644 - world-readable session data (`srs/PENTEST-REPORT.md` §7).
+and its records 0644 - world-readable session data (`srs/05-audit/PENTEST-REPORT.md` §7).
 With the launcher umask the store is 0700 and every session file is 0600,
 which `test/verify-users-fixes.sh` checks as H-05a / H-05c.
 
@@ -76,7 +76,7 @@ The suites need **two different server modes** - start the app twice:
 | `test/test_users_module.sh` | plain HTTP on 9090 (`hix.json -> server.ssl: false`); `API` is hardcoded, no override | `./test/test_users_module.sh` |
 | `test/test_customer_module.sh` | plain HTTP; honours `TEST_API=` but its `curl` has no `-k`, so it cannot reach the self-signed TLS server | `TEST_API=http://localhost:9090 ./test/test_customer_module.sh` |
 | `test/verify-users-fixes.sh` | TLS (`server.ssl: true`); asserts block C-009 | `./test/verify-users-fixes.sh` |
-| `test/bf_harness.sh` | TLS, `app.env = prod`; brute-force / timing probe against **this** local app only - never a deployed instance | see `srs/BRUTE-FORCE-PENTEST-PLAN.md` |
+| `test/bf_harness.sh` | TLS, `app.env = prod`; brute-force / timing probe against **this** local app only - never a deployed instance | see `srs/02-design/BRUTE-FORCE-PENTEST-PLAN.md` |
 
 Restore `server.ssl: true` afterwards. Current results (identical before and after the repo
 unification): users 55/60, customer 20/50, verify 125/0. The customer failures are mostly `/auth`

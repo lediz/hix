@@ -65,6 +65,20 @@ clause that changes; T1, T3, T5, T7, T8 do not.**
 **Recommendation: A**, because option B leaves the FK graph (165 edges) split across two stores
 with no shared key space, which is a correctness surface, not a convenience.
 
+**Decision taken on 2026-10-07 (Step 0.2)** — **A for `users`, B kept for `customer`**:
+
+* **`users` → MySQL.** The credential store stops being a `data/users.dbf` record and becomes
+  a table the pool serves, so `www/controllers/masters/users.prg`, `www/models/modeluser.prg`
+  (the login path) and the role/scope source all move onto `www/models/tdalmysql.prg`. The
+  audited defect closures in that module (D-01…D-16) are properties of the *verbs*, so they
+  have to be re-proven over the new store, not assumed to have carried over.
+* **`customer` stays on `UDbf()`/RDDCDX, deliberately.** It is the surviving proof-of-concept
+  that the DBF path still works end-to-end — the only RDDCDX surface left in the app — and the
+  thing a new HIX app starts from (`examples/web/crud/`). It is not a defect to fix; retiring
+  the POC is a separate product decision, not part of this plan.
+* Consequence: `hix.json → app.auto_close_dbf` keeps its `true` while the POC is in the app, so
+  **P5.5 stays open**; `data/*.dbf` is state for `customer`/`states` only, never for users.
+
 **Step 0.3** — Write the two decisions that invalidate later work if left open (mirroring
 `INVENTREE-RESEARCH.md` §6, which lists the DBF-side equivalents):
 
@@ -191,6 +205,7 @@ Order of modules = order of risk, cheapest first, and **the verification harness
 | **P4.5** | `order` (receive / allocate) | **one transaction per verb**: `oConn:BeginTrans()` … `Commit()`, or `oConn:Transaction(bCode)`; `TRY/CATCH/FINALLY` with `Rollback` in `CATCH` and `Close()` in `FINALLY` (`transactions.md`) | ✅ |
 | **P4.6** | `build`, `stocktake`, `test results` | same | ✅ |
 | **P4.7** | settings / notes / attachments / project codes | plain CRUD; attachments keep files on disk (`HIX_SafePathAllowed`) and store only the path in `varchar(100)` | ✅ |
+| **P4.8** | `users` — the app's own store, not InvenTree's (Step 0.2's Option A) | a shipped table for the credential store (the artefact's `auth_user` was dropped by P1.2a because HIX owns users, so the table is HIX's and its addition is a recorded decision), `www/controllers/masters/users.prg` re-implemented on the DAL, `www/models/modeluser.prg` (login) reading it, a Harbour seeder replacing `regenerate_users.prg`, and D-01…D-16 re-proven over the new store | ✅ **done 2026-10-07** — see `03-implementation/P4-8-USERS-RESULTS-2026-10-07.md` |
 
 ### Phase P5 — the machinery MySQL replaces
 

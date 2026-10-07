@@ -8,7 +8,7 @@
 > [`webapp/srs/`](webapp/srs/).
 > What this branch enhances — in the framework and in the application — is [ENHANCE.md](ENHANCE.md);
 > build order, remotes (push-disabled), history rules and the test matrix are in
-> [webapp/srs/UNIFIED.md](webapp/srs/UNIFIED.md).
+> [webapp/srs/00-meta/UNIFIED.md](webapp/srs/00-meta/UNIFIED.md).
 
 **HIX** is a lightweight, versatile web server built to fit the way you work. Whether you're 
 after total freedom or a structured, rock-solid architecture, HIX gives you the tools you need 

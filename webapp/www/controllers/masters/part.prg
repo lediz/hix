@@ -46,6 +46,7 @@ CLASS PartControllers
    METHOD FlashFail( cMessage, hErrors, hInput )
    METHOD FlashOk( cMessage )
    METHOD TakeFlash()
+   METHOD Finish( xRet )
 
 ENDCLASS
 
@@ -92,6 +93,21 @@ METHOD Destroy() CLASS PartControllers
    ENDIF
 
 RETURN NIL
+
+
+//  P3.4, made explicit: every verb returns through Finish(), which gives
+//  the slot back BEFORE the verb returns. Harbour's destructor runs when
+//  the object's reference dies, and the dispatcher calls WDO_ReleaseAllThread()
+//  in the child thread before that happens - so a handler that only relies on
+//  Destroy() leaves the connection still borrowed when the hook runs, and the
+//  hook logs a reclaim for every request ("reclaiming 1 leaked connection").
+//  Destroy() is idempotent, so calling it here and being called again later
+//  is harmless.
+METHOD Finish( xRet ) CLASS PartControllers
+
+   Self:Destroy()
+
+RETU xRet
 
 
 // -------------------------------------------------------------- //
@@ -141,7 +157,7 @@ METHOD Grid() CLASS PartControllers
    LOCAL nI, aCols
 
    IF Self:Slot() == NIL
-      RETURN URedirect( URoute( 'part.grid' ) )
+      RETURN Self:Finish( URedirect( URoute( 'part.grid' ) ) )
    ENDIF
 
    nPage := Iif( Empty( UGet( 'page', '' ) ), 1, Val( UGet( 'page', '' ) ) )
@@ -192,8 +208,8 @@ METHOD Grid() CLASS PartControllers
 
    oDal:Close()
 
-RETURN UView( 'masters/part/grid.html', aGrid, aPages, nPage, nTotalPages, ;
-              nTotal, cSort, cDir, cQ, Self:TakeFlash() )
+RETURN Self:Finish( UView( 'masters/part/grid.html', aGrid, aPages, nPage, nTotalPages, ;
+              nTotal, cSort, cDir, cQ, Self:TakeFlash() ) )
 
 
 METHOD Search() CLASS PartControllers
@@ -203,12 +219,12 @@ METHOD Search() CLASS PartControllers
    LOCAL nI, aCols
 
    IF Self:Slot() == NIL
-      RETURN URedirect( URoute( 'part.grid' ) )
+      RETURN Self:Finish( URedirect( URoute( 'part.grid' ) ) )
    ENDIF
 
    cQ := Trim( UGet( 'q', '' ) )
    IF EMPTY( cQ )
-      RETURN URedirect( URoute( 'part.grid' ) )
+      RETURN Self:Finish( URedirect( URoute( 'part.grid' ) ) )
    ENDIF
 
    aCols := Self:Cols( "part_part" )
@@ -227,8 +243,8 @@ METHOD Search() CLASS PartControllers
 
    oDal:Close()
 
-RETURN UView( 'masters/part/grid.html', aAll, { 1 }, 1, 1, nTotal, ;
-              'name', 'ASC', cQ, Self:TakeFlash() )
+RETURN Self:Finish( UView( 'masters/part/grid.html', aAll, { 1 }, 1, 1, nTotal, ;
+              'name', 'ASC', cQ, Self:TakeFlash() ) )
 
 
 METHOD Show() CLASS PartControllers
@@ -242,7 +258,7 @@ METHOD Show() CLASS PartControllers
 
    IF ! oVal:Make() .OR. oVal:Get( 'id' ) == 0
       Self:FlashFail( "That part is not there.", { => }, NIL )
-      RETURN URedirect( URoute( 'part.grid' ) )
+      RETURN Self:Finish( URedirect( URoute( 'part.grid' ) ) )
    ENDIF
 
    nId  := oVal:Get( 'id' )
@@ -253,10 +269,10 @@ METHOD Show() CLASS PartControllers
 
    IF hRow == NIL
       Self:FlashFail( "That part is not there.", { => }, NIL )
-      RETURN URedirect( URoute( 'part.grid' ) )
+      RETURN Self:Finish( URedirect( URoute( 'part.grid' ) ) )
    ENDIF
 
-RETURN UView( 'masters/part/show.html', .T., hRow, Self:TakeFlash() )
+RETURN Self:Finish( UView( 'masters/part/show.html', .T., hRow, Self:TakeFlash() ) )
 
 
 // -------------------------------------------------------------- //
@@ -275,7 +291,7 @@ METHOD Edit() CLASS PartControllers
    } )
 
    IF ! oVal:Make() .OR. oVal:Get( 'id' ) == 0
-      RETURN URedirect( URoute( 'part.grid' ) )
+      RETURN Self:Finish( URedirect( URoute( 'part.grid' ) ) )
    ENDIF
 
    nId  := oVal:Get( 'id' )
@@ -285,18 +301,18 @@ METHOD Edit() CLASS PartControllers
 
    IF hRow == NIL
       Self:FlashFail( "That part is not there.", { => }, NIL )
-      RETURN URedirect( URoute( 'part.grid' ) )
+      RETURN Self:Finish( URedirect( URoute( 'part.grid' ) ) )
    ENDIF
 
    //  the version the form shows is the version the write must carry back
-RETURN UView( 'masters/part/edit.html', 'edit', .T., hRow, ;
-              Self:TakeFlash(), hRow[ "version" ] )
+RETURN Self:Finish( UView( 'masters/part/edit.html', 'edit', .T., hRow, ;
+              Self:TakeFlash(), hRow[ "version" ] ) )
 
 
 METHOD Create() CLASS PartControllers
 
-RETURN UView( 'masters/part/edit.html', 'create', .F., { => }, ;
-              Self:TakeFlash(), 0 )
+RETURN Self:Finish( UView( 'masters/part/edit.html', 'create', .F., { => }, ;
+              Self:TakeFlash(), 0 ) )
 
 
 METHOD Store() CLASS PartControllers
@@ -313,11 +329,11 @@ METHOD Store() CLASS PartControllers
    IF ! oVal:Make()
       Self:FlashFail( "The name is required.", oVal:GetErrors(), ;
         oVal:Resume() )
-      RETURN URedirect( URoute( 'part.create' ) )
+      RETURN Self:Finish( URedirect( URoute( 'part.create' ) ) )
    ENDIF
 
    IF Self:Slot() == NIL
-      RETURN URedirect( URoute( 'part.grid' ) )
+      RETURN Self:Finish( URedirect( URoute( 'part.grid' ) ) )
    ENDIF
 
    hData[ "name" ] := AllTrim( oVal:Get( 'name' ) )
@@ -330,18 +346,18 @@ METHOD Store() CLASS PartControllers
 
    IF nNew > 0
       Self:FlashOk( 'Part ' + hb_NToS( nNew ) + ' was created!' )
-      RETURN URedirect( URoute( 'part.grid' ) )
+      RETURN Self:Finish( URedirect( URoute( 'part.grid' ) ) )
    ENDIF
 
    Self:FlashFail( "System temporarily unavailable. Please try again later.", ;
      { => }, NIL )
 
-RETURN URedirect( URoute( 'part.create' ) )
+RETURN Self:Finish( URedirect( URoute( 'part.create' ) ) )
 
 
 METHOD Update() CLASS PartControllers
 
-   LOCAL oVal, nId, nVersion, hData := { => }, lOk, hErr
+   LOCAL oVal, nId, nVersion, cVersion, hData := { => }, lOk, hErr
    LOCAL oDal
 
    oVal := UValidateParams( { ;
@@ -349,22 +365,43 @@ METHOD Update() CLASS PartControllers
    } )
 
    IF ! oVal:Make() .OR. oVal:Get( 'id' ) == 0
-      RETURN URedirect( URoute( 'part.grid' ) )
+      RETURN Self:Finish( URedirect( URoute( 'part.grid' ) ) )
    ENDIF
 
    nId := oVal:Get( 'id' )
 
    IF Self:Slot() == NIL
-      RETURN URedirect( URoute( 'part.grid' ) )
+      RETURN Self:Finish( URedirect( URoute( 'part.grid' ) ) )
    ENDIF
 
-   //  the version the caller READ is what the write must match (P3.7).
-   //  Absent it, the write is refused rather than blind.
-   nVersion := Val( UPost( 'version', '' ) )
+   //  P3.7: the write must carry the version the caller READ. Absent it the
+   //  write is refused - Val( '' ) is 0, which would have matched every record
+   //  still at version 0, i.e. a blind overwrite of a row nobody read.
+   cVersion := UPost( 'version', '' )
+   IF Empty( cVersion )
+      Self:FlashFail( "Send the version you read with the change - " ;
+        + "nothing was written.", { => }, NIL )
+      RETURN Self:Finish( URedirect( URoute( 'part.edit', nId ) ) )
+   ENDIF
+   nVersion := Val( cVersion )
 
-   hData[ "name" ] := AllTrim( UPost( 'name', '' ) )
-   hData[ "description" ] := AllTrim( UPost( 'description', '' ) )
-   hData[ "IPN" ] := AllTrim( UPost( 'IPN', '' ) )
+   //  the same validation create does: a write that omits the name must not
+   //  clear it (the audited module validates the POST body, not the URL)
+   oVal := UValidatePost( { ;
+      "name"        => "required|string|max:100|field", ;
+      "description" => "string|max:250|field", ;
+      "IPN"         => "string|max:100|field" ;
+   } )
+
+   IF ! oVal:Make()
+      Self:FlashFail( "The name is required.", oVal:GetErrors(), ;
+        oVal:Resume() )
+      RETURN Self:Finish( URedirect( URoute( 'part.edit', nId ) ) )
+   ENDIF
+
+   hData[ "name" ] := AllTrim( oVal:Get( 'name' ) )
+   hData[ "description" ] := AllTrim( oVal:Get( 'description', '' ) )
+   hData[ "IPN" ] := AllTrim( oVal:Get( 'IPN', '' ) )
 
    oDal := Self:Dal( "part_part" )
    lOk  := oDal:Update( nId, nVersion, hData )
@@ -373,29 +410,35 @@ METHOD Update() CLASS PartControllers
 
    IF lOk
       Self:FlashOk( 'Part ' + hb_NToS( nId ) + ' was updated!' )
-      RETURN URedirect( URoute( 'part.show' ) + "?id=" + hb_NToS( nId ) )
+      //  URoute resolves the parameter itself: 'part.show' is /part/:id, so
+      //  URoute( 'part.show' ) alone answers "" and the redirect lands back
+      //  on the verb that was just called (405 on GET).
+      RETURN Self:Finish( URedirect( URoute( 'part.show', nId ) ) )
    ENDIF
 
    //  SRS 5.2: a conflict is a warning that shows the record again, not a
    //  blind overwrite. The audited app signals writes through flash +
    //  redirect, so the conflict is a flash of its own kind - see the
-   //  deviation note in P4-PART-RESULTS.
+   //  deviation note in P4-PART-RESULTS. It goes to the SHOW page, not back
+   //  to the edit form: the edit form renders only the fields the caller
+   //  posted, so it cannot "show the record again" - show does, and the next
+   //  write has to re-read the version from it.
    IF hErr != NIL .AND. hErr[ "reason" ] == "conflict"
       Self:FlashFail( "Someone changed this part after you read it. " ;
         + "It is shown again below - nothing was overwritten.", ;
         { => }, NIL )
-      RETURN URedirect( URoute( 'part.edit' ) + "?id=" + hb_NToS( nId ) )
+      RETURN Self:Finish( URedirect( URoute( 'part.show', nId ) ) )
    ENDIF
 
    IF hErr != NIL .AND. hErr[ "reason" ] == "not found"
       Self:FlashFail( "That part is not there.", { => }, NIL )
-      RETURN URedirect( URoute( 'part.grid' ) )
+      RETURN Self:Finish( URedirect( URoute( 'part.grid' ) ) )
    ENDIF
 
    Self:FlashFail( "System temporarily unavailable. Please try again later.", ;
      { => }, NIL )
 
-RETURN URedirect( URoute( 'part.edit' ) + "?id=" + hb_NToS( nId ) )
+RETURN Self:Finish( URedirect( URoute( 'part.edit', nId ) ) )
 
 
 // -------------------------------------------------------------- //
@@ -414,13 +457,13 @@ METHOD delete_confirm() CLASS PartControllers
    } )
 
    IF ! oVal:Make() .OR. oVal:Get( 'id' ) == 0
-      RETURN URedirect( URoute( 'part.grid' ) )
+      RETURN Self:Finish( URedirect( URoute( 'part.grid' ) ) )
    ENDIF
 
    nId := oVal:Get( 'id' )
 
    IF Self:Slot() == NIL
-      RETURN URedirect( URoute( 'part.grid' ) )
+      RETURN Self:Finish( URedirect( URoute( 'part.grid' ) ) )
    ENDIF
 
    oDal := Self:Dal( "part_part" )
@@ -430,11 +473,11 @@ METHOD delete_confirm() CLASS PartControllers
 
    IF hRow == NIL
       Self:FlashFail( "That part is not there.", { => }, NIL )
-      RETURN URedirect( URoute( 'part.grid' ) )
+      RETURN Self:Finish( URedirect( URoute( 'part.grid' ) ) )
    ENDIF
 
-RETURN UView( 'masters/part/delete.html', .T., hRow, hPrev, ;
-              Self:TakeFlash(), nId )
+RETURN Self:Finish( UView( 'masters/part/delete.html', .T., hRow, hPrev, ;
+              Self:TakeFlash(), nId ) )
 
 
 METHOD delete_action() CLASS PartControllers
@@ -447,22 +490,28 @@ METHOD delete_action() CLASS PartControllers
    } )
 
    IF ! oVal:Make() .OR. oVal:Get( 'id' ) == 0
-      RETURN URedirect( URoute( 'part.grid' ) )
+      RETURN Self:Finish( URedirect( URoute( 'part.grid' ) ) )
    ENDIF
 
    nId := oVal:Get( 'id' )
 
    IF Self:Slot() == NIL
-      RETURN URedirect( URoute( 'part.grid' ) )
+      RETURN Self:Finish( URedirect( URoute( 'part.grid' ) ) )
    ENDIF
 
    oDal := Self:Dal( "part_part" )
    hRes := oDal:Delete( nId, NIL )
    oDal:Close()
 
+   //  the verb says what it did: 0 rows deleted is not a success
+   IF ValType( hRes ) != 'H' .OR. hb_HGetDef( hRes, "deleted", 0 ) == 0
+      Self:FlashFail( "That part is not there.", { => }, NIL )
+      RETURN Self:Finish( URedirect( URoute( 'part.grid' ) ) )
+   ENDIF
+
    Self:FlashOk( 'Part ' + hb_NToS( nId ) + ' was deleted!' )
 
-RETURN URedirect( URoute( 'part.grid' ) )
+RETURN Self:Finish( URedirect( URoute( 'part.grid' ) ) )
 
 
 // -------------------------------------------------------------- //

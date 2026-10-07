@@ -1,25 +1,44 @@
 // --------------------------------------------------------------------------------
-// UsersController — CRUD for users.dbf
-// Pattern: follows www/controllers/masters/customer.prg
-// Complies with DEV-compliance.md: HIX framework only, no SQL, local git
+// Users — CRUD for the credential store, on the MySQL DAL
 //
-// Defect closures in this file:
-//   D-05  credentials never projected into a grid/show/edit hash
-//   D-06  free-text grid search restricted to an allow-list of fields
-//   D-07  passwords stored as salted, iterated SHA-256 (see models/hpassword.prg)
-//   D-08  column sort uses the same key case as the grid hash keys
-//   D-09  NAME uniqueness enforced on create and update
-//   D-10  flash is drained (cleared) once it has been consumed
-//   D-11  Destroy() closes only this module's alias, not every workarea
-//   D-13  oVal:Get('id') used consistently
-//   +     new records get an ID (Insert() used to leave ID = 0)
+// P4.8 of webapp/srs/02-design/INVENTREE-MYSQL-PLAN.md (Step 0.2, Option A for
+// `users`). The shape follows the audited www/controllers/masters/customer.prg
+// and www/controllers/masters/part.prg - the same nine verbs, the same
+// middleware pair, the same flash + redirect for writes. What changes is what
+// sits behind the verbs: the pool and www/models/tdalmysql.prg instead of
+// UDbf(), over users_users, the table shipped in webapp/sql/hix_users.sql.
+//
+// Defect closures carried over from the DBF module, restated for the new store:
+//   D-05  the digest and the salt never reach a view: the read whitelist is
+//         {name, roles} only, so no hRow the module hands a view can carry
+//         them (this replaces TUsers():Hide( {'pass','salt'} ))
+//   D-06  free-text search is restricted to an allow-list of columns (the
+//         LIKE terms go over name and roles, never over an arbitrary column)
+//   D-08  the sort key uses the same case as the grid's hash keys
+//   D-09  NAME is the login identity: a duplicate is refused on create and on
+//         update. The UNIQUE KEY ix_name in the schema is the backstop; the
+//         refusal here is what makes it a message instead of a server error
+//   D-10  the flash is drained once it has been read
+//   D-11  one pool slot per request, returned by the verb that took it
+//         (Finish() - see part.prg for why the destructor alone is not enough)
+//   D-13  oVal:Get( 'id' ) is named explicitly, never implied
+//   D-16  the name is normalised once; the store's collation (utf8mb4_unicode_ci,
+//         P0.4) does the case-insensitive match and the exact confirmation is
+//         done here, because a collated equality answers for a longer key too
+//   N-01  every write form carries a CSRF token (@CSRF in the views; the
+//         MyAppAuthRoleEdit middleware enforces it)
+//   P3.7  a write carries the version it read; a stale one is refused
+//
+// The password is hashed here, not in a view and never stored in the clear:
+// www/models/hpassword.prg (D-07). A write that leaves the password blank keeps
+// the current digest - the store is never silently re-hashed.
 // --------------------------------------------------------------------------------
 
 #include 'hbclass.ch'
 
-CLASS UsersController
+CLASS UsersControllers
 
-   DATA oUsers INIT NIL      // D-11: the single DAL instance owned by this request
+   DATA oConn INIT NIL
 
    METHOD New()           CONSTRUCTOR
    METHOD End()
@@ -34,360 +53,292 @@ CLASS UsersController
    METHOD delete_action()
    METHOD Destroy()
 
-   METHOD OpenDbf()
-   METHOD TakeFlash()
+   METHOD Slot()
+   METHOD Finish( xRet )
+   METHOD Dal( cTable, aCols )
    METHOD NameExists( cName, nExclude )
-   METHOD NextId()
-   METHOD ScrubResume( hResume )
    METHOD FlashFail( cMessage, hErrors, hInput )
+   METHOD FlashOk( cMessage )
+   METHOD TakeFlash()
 
 ENDCLASS
 
 // -------------------------------------------------------------- //
 
-METHOD New() CLASS UsersController
+METHOD New() CLASS UsersControllers
 
-   _d( 'NEW() -->> ' + Self:ClassName() )
-
-RETURN SELF
-
-// -------------------------------------------------------------- //
-
-METHOD End() CLASS UsersController
+   ::oConn := NIL
 
 RETURN SELF
 
-// -------------------------------------------------------------- //
-// D-11: the previous implementation called dbcloseall(), which closed every
-// alias in the worker thread (pool_http.workers = 64), including aliases owned
-// by other modules and by HIX itself.  Close only the alias we opened.
-// HIX already runs HIX_CloseDbfAreas() after each action (auto_close_dbf), so
-// this is the belt-and-braces half: it makes the module correct on its own.
 
-METHOD Destroy() CLASS UsersController
+METHOD End() CLASS UsersControllers
 
-   IF ValType( ::oUsers ) == 'O'
-      ::oUsers:Close()
-      ::oUsers := NIL
-   ENDIF
+RETURN SELF
 
-RETURN nil
 
 // -------------------------------------------------------------- //
-// Open the users DAL once per request and reuse it across helper calls.
-
-METHOD OpenDbf() CLASS UsersController
-
-   IF ! ValType( ::oUsers ) == 'O'
-      ::oUsers := TUsers()
-   ENDIF
-
-RETURN ::oUsers
-
-// -------------------------------------------------------------- //
-// D-10: read the users flash AND clear it, so a validation re-render cannot
-// reappear on a later, unrelated request.
-
-METHOD TakeFlash() CLASS UsersController
-
-   LOCAL oFlash := UFlash( 'users' )
-   LOCAL hFlash := { => }
-
-   hFlash[ 'type' ]    := oFlash:Get( 'type' )
-   hFlash[ 'message' ] := oFlash:Get( 'message' )
-   hFlash[ 'input' ]   := oFlash:Get( 'input' )
-   hFlash[ 'errors' ]  := oFlash:Get( 'errors', { => } )
-
-   oFlash:Clear()
-   oFlash:Save()
-
-RETURN hFlash
-
-// -------------------------------------------------------------- //
-// D-05: never put a submitted password into the flash — the flash is rendered
-// back into the form.
-
-METHOD ScrubResume( hResume ) CLASS UsersController
-
-   LOCAL hOut
-
-   IF ! ValType( hResume ) == 'H'
-      RETURN { => }
-   ENDIF
-
-   hOut := hb_HClone( hResume )
-
-   // Blank it rather than delete it: hb_HDelKey() is not linked into the
-   // HIX server binary, and an empty value is never rendered (edit.html
-   // always posts value="").
-   IF hb_HHasKey( hOut, 'pass' )
-      hOut[ 'pass' ] := ''
-   ENDIF
-
-RETURN hOut
-
+// D-11 / P3.4: one WDO_Get per request. Absent the pool the module
+// answers the SRS banner and nothing else - the server's words never
+// reach the client (P3.6).
 // -------------------------------------------------------------- //
 
-METHOD FlashFail( cMessage, hErrors, hInput ) CLASS UsersController
+METHOD Slot() CLASS UsersControllers
 
-   UFlash( 'users' ):Set( { ;
-      "type"    => 'danger',                    ;
-      "message" => cMessage,                    ;
-      "errors"  => iif( ValType( hErrors ) == 'H', hErrors, { => } ), ;
-      "input"   => Self:ScrubResume( hInput )   ;
-   } )
-
-RETURN nil
-
-// -------------------------------------------------------------- //
-// D-09: NAME uniqueness.  The 'name' CDX tag is keyed on Lower(name), so the
-// seek is exact once the result is confirmed with a strict ==.
-// A soft-deleted name still counts: re-creating it would resurrect an identity
-// that existing sessions/audit trails may still reference.
-
-METHOD NameExists( cName, nExclude ) CLASS UsersController
-
-   LOCAL o       := Self:OpenDbf()
-   LOCAL cAlias  := o:cAlias
-   LOCAL cKey    := Lower( AllTrim( UStr( cName ) ) )
-   LOCAL cFound
-
-   IF empty( cKey )
-      RETURN .F.
-   ENDIF
-
-   ( cAlias )->( DbSeek( cKey ) )
-
-   IF ( cAlias )->( Eof() )
-      RETURN .F.
-   ENDIF
-
-   cFound := Lower( AllTrim( ( cAlias )->( FieldGet( FieldPos( 'NAME' ) ) ) ) )
-
-   IF cFound != cKey
-      RETURN .F.
-   ENDIF
-
-   IF ValType( nExclude ) == 'N' .AND. ( cAlias )->( RecNo() ) == nExclude
-      RETURN .F.
-   ENDIF
-
-RETURN .T.
-
-// -------------------------------------------------------------- //
-// New records used to be appended with ID = 0 (DataFields() only carries the
-// validated POST fields).  ID is assigned as max(existing ID) + 1.
-
-METHOD NextId() CLASS UsersController
-
-   LOCAL o      := Self:OpenDbf()
-   LOCAL cAlias := o:cAlias
-   LOCAL nMax := 0, nId
-
-   ( cAlias )->( DbGoTop() )
-   DO WHILE ! ( cAlias )->( Eof() )
-      nId := ( cAlias )->( FieldGet( FieldPos( 'ID' ) ) )
-      IF nId > nMax
-         nMax := nId
+   IF ::oConn == NIL
+      ::oConn := WDO_Get( "mysql" )
+      IF ::oConn == NIL
+         Self:FlashFail( "System temporarily unavailable. Please try again later.", ;
+            { => }, NIL )
       ENDIF
-      ( cAlias )->( DbSkip() )
-   ENDDO
+   ENDIF
 
-RETURN nMax + 1
+RETU ::oConn
+
+
+METHOD Destroy() CLASS UsersControllers
+
+   //  the borrowed DAL objects never close it; the slot is returned once
+   IF ::oConn != NIL
+      ::oConn:Close()
+      ::oConn := NIL
+   ENDIF
+
+RETURN NIL
+
+
+//  P3.4 made explicit: the slot goes back before the verb returns.
+//  See part.prg for why Harbour's destructor is not enough - the
+//  dispatcher's WDO_ReleaseAllThread() hook runs before the object
+//  dies, so a handler that relies on it logs a reclaim per request.
+METHOD Finish( xRet ) CLASS UsersControllers
+
+   Self:Destroy()
+
+RETU xRet
+
 
 // -------------------------------------------------------------- //
+// Two whitelists, not one (D-05).
+//
+// READ: what a view may see. pass and salt are NOT in here, which is
+// what keeps them out of every hRow this module hands a view - the
+// replacement for TUsers():Hide( {'pass','salt'} ).
+//
+// WRITE: what the store may be given. Only Store()/Update() ask for
+// it, and the values are computed here (hpassword.prg), never taken
+// from a view.
+// -------------------------------------------------------------- //
 
-METHOD Search() CLASS UsersController
+METHOD Dal( cTable, aCols ) CLASS UsersControllers
 
-   LOCAL hFlash := Self:TakeFlash()
-   LOCAL hSearch := { => }
-   LOCAL nI
-   // Grid columns that get a search entry (kept identical to Grid())
-   LOCAL aFields := { 'name', 'roles' }
+   LOCAL oDal := NIL
 
-   // Pre-fill one search box per grid column (same list as Grid() / grid.html)
-   FOR nI := 1 TO Len( aFields )
+   IF Self:Slot() != NIL
+      oDal := TDalMySql():New( cTable, aCols )
+      oDal:Attach( ::oConn )
+   ENDIF
+
+RETU oDal
+
+
+// -------------------------------------------------------------- //
+// Reads. D-06: the LIKE terms go over the columns named here, so a
+// free-text query can never ask for an arbitrary column.
+// -------------------------------------------------------------- //
+
+METHOD Grid() CLASS UsersControllers
+
+   LOCAL nPage, nRows, nTotal, nTotalPages := 0
+   LOCAL aAll, aGrid := {}, aPages := {}
+   LOCAL cQ, hLike := { => }, cSort, cDir
+   LOCAL oDal
+   LOCAL nI, nJ, aFields := { "name", "roles" }, hQ := { => }, cSearchParams := ""
+   LOCAL aMatch := {}, lKeep, cTerm
+
+   IF Self:Slot() == NIL
+      RETURN Self:Finish( URedirect( URoute( 'users.grid' ) ) )
+   ENDIF
+
+   nPage := Iif( Empty( UGet( 'page', '' ) ), 1, Val( UGet( 'page', '' ) ) )
+   IF nPage < 1
+      nPage := 1
+   ENDIF
+   nRows := 20
+
+   cQ    := Trim( UGet( 'q', '' ) )
+   cSort := Lower( UGet( 'sort', 'name' ) )      // D-08: same case as the grid keys
+   cDir  := Upper( UGet( 'dir', 'ASC' ) )
+
+   //  D-06: ONE allow-list drives the projection, the column sort and the
+   //  per-column search - pass and salt are not in it, so nothing here can
+   //  read, sort, search or render a credential
+   IF Ascan( aFields, cSort ) == 0
+      cSort := "name"
+   ENDIF
+   IF cDir != "DESC"
+      cDir := "ASC"
+   ENDIF
+
+   //  FR-READ-3: one search entry per grid column (?_q_<column>)
+   FOR nI := 1 TO LEN( aFields )
+      hQ[ aFields[ nI ] ] := Trim( UGet( '_q_' + aFields[ nI ], '' ) )
+   NEXT
+
+   //  the free-text bar is an OR of LIKEs over the rendered columns (the DAL's
+   //  shape - see P4-PART-RESULTS §3); the per-column boxes narrow, so they are
+   //  applied as an AND below
+   IF ! EMPTY( cQ )
+      FOR nI := 1 TO LEN( aFields )
+         hLike[ aFields[ nI ] ] := cQ
+      NEXT
+   ENDIF
+
+   oDal := Self:Dal( "users_users", { "name", "roles" } )
+
+   aAll := oDal:FetchAll( NIL, hLike )
+   IF aAll == NIL
+      aAll := {}
+   ENDIF
+
+   //  narrow by column (AND), case-insensitively - the store's collation
+   //  already ignores case, but the comparison here is Harbour's own
+   FOR nI := 1 TO LEN( aAll )
+      lKeep := .T.
+      FOR nJ := 1 TO LEN( aFields )
+         cTerm := hb_HGetDef( hQ, aFields[ nJ ], "" )
+         IF ! EMPTY( cTerm ) .AND. ! _InSensitive( hb_HGetDef( aAll[ nI ], aFields[ nJ ], "" ), cTerm )
+            lKeep := .F.
+            EXIT
+         ENDIF
+      NEXT
+      IF lKeep
+         AADD( aMatch, aAll[ nI ] )
+      ENDIF
+   NEXT
+
+   aMatch := _SortRows( aMatch, cSort, cDir )
+
+   nTotal := LEN( aMatch )
+   IF nTotal > 0
+      nTotalPages := Int( ( nTotal + nRows - 1 ) / nRows )
+      IF nPage > nTotalPages
+         nPage := nTotalPages
+      ENDIF
+      FOR nI := ( nPage - 1 ) * nRows + 1 TO MIN( nPage * nRows, nTotal )
+         AADD( aGrid, aMatch[ nI ] )
+      NEXT
+   ENDIF
+
+   FOR nI := 1 TO MIN( nTotalPages, 10 )
+      AADD( aPages, nI )
+   NEXT
+
+   //  the active search is carried through the pagination and sort links
+   cSearchParams := ''
+   IF ! EMPTY( cQ )
+      cSearchParams += '&q=' + cQ
+   ENDIF
+   FOR nI := 1 TO LEN( aFields )
+      IF ! EMPTY( hb_HGetDef( hQ, aFields[ nI ], "" ) )
+         cSearchParams += '&_q_' + aFields[ nI ] + '=' + hb_HGetDef( hQ, aFields[ nI ], "" )
+      ENDIF
+   NEXT
+
+   oDal:Close()
+
+RETURN Self:Finish( UView( 'masters/users/grid.html', 'grid', aGrid, aPages, nPage, nTotalPages, ;
+              cSort, cDir, cQ, hQ, Self:TakeFlash(), { => }, cSearchParams ) )
+
+
+METHOD Search() CLASS UsersControllers
+
+   LOCAL hSearch := { => }, nI
+   LOCAL aFields := { "name", "roles" }      // same list as Grid()
+
+   //  FR-READ-3: one entry per grid column, kept identical to Grid()
+   FOR nI := 1 TO LEN( aFields )
       hSearch[ aFields[ nI ] ] := Trim( UGet( '_q_' + aFields[ nI ], '' ) )
    NEXT
 
-RETURN UView( 'masters/users/search.html', hSearch, hFlash )
+RETURN Self:Finish( UView( 'masters/users/search.html', hSearch, Self:TakeFlash() ) )
+
+
+METHOD Show() CLASS UsersControllers
+
+   LOCAL oVal, nId, hRow := NIL
+   LOCAL oDal
+
+   oVal := UValidateParams( { ;
+      "id" => { "required|number|min:0", "Id", "" } ;
+   } )
+
+   IF ! oVal:Make() .OR. oVal:Get( 'id' ) == 0      // D-13
+      Self:FlashFail( "That user is not there.", { => }, NIL )
+      RETURN Self:Finish( URedirect( URoute( 'users.grid' ) ) )
+   ENDIF
+
+   nId  := oVal:Get( 'id' )
+   oDal := Self:Dal( "users_users", { "name", "roles" } )
+
+   hRow := oDal:Show( nId )
+   oDal:Close()
+
+   IF hRow == NIL
+      Self:FlashFail( "That user is not there.", { => }, NIL )
+      RETURN Self:Finish( URedirect( URoute( 'users.grid' ) ) )
+   ENDIF
+
+RETURN Self:Finish( UView( 'masters/users/show.html', .T., hRow, Self:TakeFlash() ) )
+
 
 // -------------------------------------------------------------- //
+// Writes. The form (edit/create) renders and the POST verb (store/update)
+// performs - the audited split, kept so the CSRF middleware and the scope
+// stay on the write side only.
+// -------------------------------------------------------------- //
 
-METHOD Show() CLASS UsersController
+METHOD Edit() CLASS UsersControllers
 
-   LOCAL hRow := { => }
-   LOCAL oVal, lFound
+   LOCAL oVal, nId, hRow := NIL
+   LOCAL oDal
 
    oVal := UValidateParams( { ;
       "id" => { "required|number|min:0", "Id", "" } ;
    } )
 
    IF ! oVal:Make() .OR. oVal:Get( 'id' ) == 0
-      Self:FlashFail( 'Error validacion', oVal:GetErrors(), oVal:Resume() )
-      RETURN URedirect( URoute( 'users.search' ) )
+      RETURN Self:Finish( URedirect( URoute( 'users.grid' ) ) )
    ENDIF
 
-   lFound := Self:OpenDbf():GetRecno( oVal:Get( 'id' ), @hRow, NIL, .T. )
+   nId  := oVal:Get( 'id' )
+   oDal := Self:Dal( "users_users", { "name", "roles" } )
+   hRow := oDal:Show( nId )
+   oDal:Close()
 
-   // PASS and SALT are hidden on the DAL (models/tusers.prg), so hRow can
-   // never carry a credential into the view (D-05).
-   IF ! lFound
-      hRow := Self:OpenDbf():Blank( .t. )
+   IF hRow == NIL
+      Self:FlashFail( "That user is not there.", { => }, NIL )
+      RETURN Self:Finish( URedirect( URoute( 'users.grid' ) ) )
    ENDIF
 
-RETURN UView( 'masters/users/show.html', lFound, hRow, Self:TakeFlash() )
+   //  the version the form shows is the version the write must carry back
+RETURN Self:Finish( UView( 'masters/users/edit.html', 'edit', .T., hRow, ;
+              Self:TakeFlash(), { => } ) )
 
-// -------------------------------------------------------------- //
 
-METHOD Edit() CLASS UsersController
+METHOD Create() CLASS UsersControllers
 
-   LOCAL oVal, lFound
-   LOCAL hMessage := { => }
-   LOCAL hRow := { => }
-   LOCAL hErrors := { => }
-   LOCAL hInput
-   LOCAL hFlash
+RETURN Self:Finish( UView( 'masters/users/edit.html', 'create', .F., { => }, ;
+              Self:TakeFlash(), { => } ) )
 
-   oVal := UValidateParams( { "id" => { "required|number|min:0", "Id" } } )
 
-   IF ! oVal:Make()
-      RETURN URedirect( URoute( 'users.search' ) )
-   ENDIF
+METHOD Store() CLASS UsersControllers
 
-   // Recover data flash if it exists — and drain it (D-10)
-   hFlash  := Self:TakeFlash()
-   hInput  := hFlash[ 'input' ]
-   hErrors := hFlash[ 'errors' ]
+   LOCAL oVal, cName, cPass, cSalt, hData := { => }, nNew
+   LOCAL oDal
 
-   hMessage[ 'type' ]    := hFlash[ 'type' ]
-   hMessage[ 'message' ] := hFlash[ 'message' ]
-
-   IF !empty( hInput )
-      IF ! ValType( hErrors ) == 'H'
-         hErrors := { => }
-      ENDIF
-      RETURN UView( 'masters/users/edit.html', 'edit', .T., hInput, hMessage, hErrors )
-   ENDIF
-
-   lFound := Self:OpenDbf():GetRecno( oVal:Get( 'id' ), @hRow, NIL, .T. )  // .T. == to String Web
-
-   IF !lFound
-      hRow := Self:OpenDbf():Blank( .t. )
-   ENDIF
-
-   IF empty( hErrors )
-      hErrors := { => }
-   ENDIF
-
-RETURN UView( 'masters/users/edit.html', 'edit', lFound, hRow, hMessage, hErrors )
-
-// -------------------------------------------------------------- //
-
-METHOD Create() CLASS UsersController
-
-   LOCAL hRow
-   LOCAL hMessage := { => }
-   LOCAL hErrors := { => }
-   LOCAL hInput
-   LOCAL hFlash
-
-   hFlash  := Self:TakeFlash()
-   hInput  := hFlash[ 'input' ]
-   hErrors := hFlash[ 'errors' ]
-
-   hMessage[ 'type' ]    := hFlash[ 'type' ]
-   hMessage[ 'message' ] := hFlash[ 'message' ]
-
-   IF ValType( hInput ) == 'H'
-      hRow := hInput
-   ELSE
-      hRow := Self:OpenDbf():Blank( .t. )  // .t. == to web string
-   ENDIF
-
-   IF ! ValType( hErrors ) == 'H'
-      hErrors := { => }
-   ENDIF
-
-RETURN UView( 'masters/users/edit.html', 'create', .F., hRow, hMessage, hErrors )
-
-// -------------------------------------------------------------- //
-
-METHOD Update() CLASS UsersController
-
-   LOCAL oVal, oPost, nId, cError, lSuccess, cName, cPass, cSalt
-   LOCAL oUsers
-   LOCAL hChanges
-
-   // Get ID from URL route parameter
-   oVal := UValidateParams( { ;
-      "id" => { "required|number|min:0", "Id", "" } ;
-   } )
-
-   IF ! oVal:Make() .OR. oVal:Get( 'id' ) == 0
-      RETURN URedirect( URoute( 'users.search' ) )
-   ENDIF
-
-   nId := oVal:Get( 'id' )     // D-13: always name the field
-
-   // 'pass' is deliberately NOT marked as |field: it must never be written
-   // verbatim to the DBF.  An empty value means "keep the current password".
-   oPost := UValidatePost( { ;
-      "name"    => "required|string|max:40|field", ;
-      "pass"    => "string|min:4|max:40",          ;
-      "roles"   => "required|string|max:255|field" ;
-   } )
-
-   IF ! oPost:Make()
-      Self:FlashFail( 'Error validacion', oPost:GetErrors(), oPost:Resume() )
-      RETURN URedirect( URoute( 'users.edit', nId ) )
-   ENDIF
-
-   oUsers := Self:OpenDbf()
-
-   cName := AllTrim( oPost:Get( 'name' ) )
-
-   // D-09: reject a rename that collides with another account
-   IF Self:NameExists( cName, nId )
-      Self:FlashFail( 'Name ' + cName + ' is already in use', ;
-                      { 'name' => 'Name already in use' }, oPost:Resume() )
-      RETURN URedirect( URoute( 'users.edit', nId ) )
-   ENDIF
-
-   hChanges := oPost:DataFields()      // name + roles only
-
-   // D-07: hash with a fresh salt only when a new password was supplied
-   cPass := oPost:Get( 'pass' )
-   IF !empty( cPass )
-      cSalt            := _PwSalt()
-      hChanges[ 'salt' ] := cSalt
-      hChanges[ 'pass' ] := _PwHash( AllTrim( cPass ), cSalt )
-   ENDIF
-
-   lSuccess := oUsers:Update( nId, hChanges, @cError )
-
-   IF lSuccess
-      UFlash( "users" ):Set( { ;
-         "type"    => 'success',                              ;
-         "message" => 'User ' + ltrim(str(nId)) + ' was updated!' ;
-      } )
-      RETURN URedirect( URoute( 'users.show', nId ) )
-   ELSE
-      Self:FlashFail( cError, { => }, NIL )
-      RETURN URedirect( URoute( 'users.edit', nId ) )
-   ENDIF
-
-RETURN nil
-
-// -------------------------------------------------------------- //
-
-METHOD Store() CLASS UsersController
-
-   LOCAL oVal, cError, lSuccess, nRecno, cName, cPass
-   LOCAL oUsers
-   LOCAL hData
-
-   // 'pass' is not |field — see Update() for the reason (D-07).
+   // 'pass' is not |field - it is never copied into the store as posted
+   // (D-07): it is salted and hashed below before it is bound.
    oVal := UValidatePost( { ;
       "name"    => "required|string|max:40|field", ;
       "pass"    => "required|string|min:4|max:40", ;
@@ -396,340 +347,380 @@ METHOD Store() CLASS UsersController
 
    IF ! oVal:Make()
       Self:FlashFail( 'Error validacion', oVal:GetErrors(), oVal:Resume() )
-      RETURN URedirect( URoute( 'users.create' ) )
+      RETURN Self:Finish( URedirect( URoute( 'users.create' ) ) )
    ENDIF
 
    cName := AllTrim( oVal:Get( 'name' ) )
    cPass := AllTrim( oVal:Get( 'pass' ) )
 
-   // D-09: NAME is the login identity and the CDX key — duplicates make
-   // DbSeek ambiguous, so they are refused outright.
+   IF Self:Slot() == NIL
+      RETURN Self:Finish( URedirect( URoute( 'users.grid' ) ) )
+   ENDIF
+
+   // D-09: NAME is the login identity - a duplicate is refused outright,
+   // with the message, rather than left to the UNIQUE KEY in the schema.
    IF Self:NameExists( cName, NIL )
       Self:FlashFail( 'Name ' + cName + ' is already in use', ;
-                      { 'name' => 'Name already in use' }, oVal:Resume() )
-      RETURN URedirect( URoute( 'users.create' ) )
+        { 'name' => 'Name already in use' }, oVal:Resume() )
+      RETURN Self:Finish( URedirect( URoute( 'users.create' ) ) )
    ENDIF
 
-   oUsers := Self:OpenDbf()
+   cSalt := _PwSalt()
 
-   hData            := hb_HClone( oVal:DataFields() )
-   hData[ 'id' ]    := Self:NextId()
-   hData[ 'salt' ]  := _PwSalt()
-   hData[ 'pass' ]  := _PwHash( cPass, hData[ 'salt' ] )
+   hData[ "name" ]  := cName
+   hData[ "pass" ]  := _PwHash( cPass, cSalt )   // D-07: the digest, never the password
+   hData[ "salt" ]  := cSalt
+   hData[ "roles" ] := AllTrim( oVal:Get( 'roles' ) )
 
-   lSuccess := oUsers:Insert( hData, @cError, @nRecno )
+   oDal := Self:Dal( "users_users", { "name", "pass", "salt", "roles" } )
+   nNew := oDal:Insert( hData )
+   oDal:Close()
 
-   IF lSuccess
-      UFlash( "users" ):Set( { ;
-         "type"    => 'success',                                 ;
-         "message" => 'User ' + ltrim(str(nRecno)) + ' was created!' ;
-      } )
-      RETURN URedirect( URoute( 'users.grid' ) )
-   ELSE
-      Self:FlashFail( cError, { => }, oVal:Resume() )
-      RETURN URedirect( URoute( 'users.create' ) )
+   IF nNew > 0
+      Self:FlashOk( 'User ' + hb_NToS( nNew ) + ' was created!' )
+      RETURN Self:Finish( URedirect( URoute( 'users.grid' ) ) )
    ENDIF
 
-RETURN nil
+   Self:FlashFail( "System temporarily unavailable. Please try again later.", ;
+     { => }, NIL )
+
+RETURN Self:Finish( URedirect( URoute( 'users.create' ) ) )
+
+
+METHOD Update() CLASS UsersControllers
+
+   LOCAL oVal, nId, cVersion, nVersion, cPass, cSalt, cName, hData := { => }, lOk, hErr
+   LOCAL oDal
+
+   oVal := UValidateParams( { ;
+      "id" => { "required|number|min:0", "Id", "" } ;
+   } )
+
+   IF ! oVal:Make() .OR. oVal:Get( 'id' ) == 0
+      RETURN Self:Finish( URedirect( URoute( 'users.grid' ) ) )
+   ENDIF
+
+   nId := oVal:Get( 'id' )
+
+   IF Self:Slot() == NIL
+      RETURN Self:Finish( URedirect( URoute( 'users.grid' ) ) )
+   ENDIF
+
+   //  P3.7: the write must carry the version the caller READ. Absent it the
+   //  write is refused - Val( '' ) is 0, which would have matched every
+   //  account still at version 0, i.e. an account nobody read.
+   cVersion := UPost( 'version', '' )
+   IF Empty( cVersion )
+      Self:FlashFail( "Send the version you read with the change - " ;
+        + "nothing was written.", { => }, NIL )
+      RETURN Self:Finish( URedirect( URoute( 'users.edit', nId ) ) )
+   ENDIF
+   nVersion := Val( cVersion )
+
+   oVal := UValidatePost( { ;
+      "name"  => "required|string|max:40|field", ;
+      "pass"  => "string|max:40", ;
+      "roles" => "required|string|max:255|field" ;
+   } )
+
+   IF ! oVal:Make()
+      Self:FlashFail( 'Error validacion', oVal:GetErrors(), oVal:Resume() )
+      RETURN Self:Finish( URedirect( URoute( 'users.edit', nId ) ) )
+   ENDIF
+
+   // D-09 on the update side: renaming onto a name another account already
+   // uses is refused. The account itself is excluded - a write that keeps its
+   // own name is not a collision.
+   cName := AllTrim( oVal:Get( 'name' ) )
+   IF Self:NameExists( cName, nId )
+      Self:FlashFail( 'Name ' + cName + ' is already in use', ;
+        { 'name' => 'Name already in use' }, oVal:Resume() )
+      RETURN Self:Finish( URedirect( URoute( 'users.edit', nId ) ) )
+   ENDIF
+
+   hData[ "name" ]  := cName
+   hData[ "roles" ] := AllTrim( oVal:Get( 'roles' ) )
+
+   //  the form says "leave blank to keep the current password": a write that
+   //  does not carry one must not re-hash, and must not clear, the digest
+   cPass := AllTrim( oVal:Get( 'pass', '' ) )
+   IF ! EMPTY( cPass )
+      cSalt := _PwSalt()
+      hData[ "pass" ] := _PwHash( cPass, cSalt )
+      hData[ "salt" ] := cSalt
+   ENDIF
+
+   oDal := Self:Dal( "users_users", { "name", "pass", "salt", "roles" } )
+   lOk  := oDal:Update( nId, nVersion, hData )
+   hErr := oDal:Errors()
+   oDal:Close()
+
+   IF lOk
+      Self:FlashOk( 'User ' + hb_NToS( nId ) + ' was updated!' )
+      //  URoute resolves the parameter itself: 'users.show' is /users/:id
+      RETURN Self:Finish( URedirect( URoute( 'users.show', nId ) ) )
+   ENDIF
+
+   //  SRS 5.2: a conflict is a warning that shows the record again, not a
+   //  blind overwrite. It goes to the show page - the edit form renders only
+   //  what the caller posted, so it cannot show the record.
+   IF hErr != NIL .AND. hErr[ "reason" ] == "conflict"
+      Self:FlashFail( "Someone changed this account after you read it. " ;
+        + "It is shown again below - nothing was overwritten.", ;
+        { => }, NIL )
+      RETURN Self:Finish( URedirect( URoute( 'users.show', nId ) ) )
+   ENDIF
+
+   IF hErr != NIL .AND. hErr[ "reason" ] == "not found"
+      Self:FlashFail( "That user is not there.", { => }, NIL )
+      RETURN Self:Finish( URedirect( URoute( 'users.grid' ) ) )
+   ENDIF
+
+   Self:FlashFail( "System temporarily unavailable. Please try again later.", ;
+     { => }, NIL )
+
+RETURN Self:Finish( URedirect( URoute( 'users.edit', nId ) ) )
+
 
 // -------------------------------------------------------------- //
+// Delete. confirm renders what the delete WOULD touch before the
+// destructive verb runs (SRS FR-DELETE-1..4). users_users has no
+// foreign key pointing at it, so the preview is empty by construction
+// - that is the honest answer, not a missing check.
+// -------------------------------------------------------------- //
 
-METHOD delete_confirm() CLASS UsersController
+METHOD delete_confirm() CLASS UsersControllers
 
-   LOCAL oVal
-   LOCAL hRow := { => }
+   LOCAL oVal, nId, hRow
+   LOCAL oDal
+
+   oVal := UValidateParams( { ;
+      "id" => { "required|number|min:0", "Id", "" } ;
+   } )
+
+   IF ! oVal:Make() .OR. oVal:Get( 'id' ) == 0
+      RETURN Self:Finish( URedirect( URoute( 'users.grid' ) ) )
+   ENDIF
+
+   nId := oVal:Get( 'id' )
+
+   IF Self:Slot() == NIL
+      RETURN Self:Finish( URedirect( URoute( 'users.grid' ) ) )
+   ENDIF
+
+   oDal := Self:Dal( "users_users", { "name", "roles" } )
+   hRow := oDal:Show( nId )
+   oDal:Close()
+
+   IF hRow == NIL
+      Self:FlashFail( "That user is not there.", { => }, NIL )
+      RETURN Self:Finish( URedirect( URoute( 'users.grid' ) ) )
+   ENDIF
+
+RETURN Self:Finish( UView( 'masters/users/delete.html', .T., hRow ) )
+
+
+METHOD delete_action() CLASS UsersControllers
+
+   LOCAL oVal, nId, hRes
+   LOCAL oDal
+
+   oVal := UValidateParams( { ;
+      "id" => { "required|number|min:0", "Id", "" } ;
+   } )
+
+   IF ! oVal:Make() .OR. oVal:Get( 'id' ) == 0
+      RETURN Self:Finish( URedirect( URoute( 'users.grid' ) ) )
+   ENDIF
+
+   nId := oVal:Get( 'id' )
+
+   IF Self:Slot() == NIL
+      RETURN Self:Finish( URedirect( URoute( 'users.grid' ) ) )
+   ENDIF
+
+   oDal := Self:Dal( "users_users", { "name", "roles" } )
+   hRes := oDal:Delete( nId, NIL )
+   oDal:Close()
+
+   //  the verb says what it did: 0 rows deleted is not a success
+   IF ValType( hRes ) != 'H' .OR. hb_HGetDef( hRes, "deleted", 0 ) == 0
+      Self:FlashFail( "That user is not there.", { => }, NIL )
+      RETURN Self:Finish( URedirect( URoute( 'users.grid' ) ) )
+   ENDIF
+
+   Self:FlashOk( 'User ' + hb_NToS( nId ) + ' was deleted!' )
+
+RETURN Self:Finish( URedirect( URoute( 'users.grid' ) ) )
+
+
+// -------------------------------------------------------------- //
+// D-09: the name is the login identity. The check is a bound equality
+// over the store (the collation makes it case-insensitive, which is what
+// the CDX tag keyed on Lower(NAME) used to give) and the row is confirmed
+// by id so a write that keeps its own name is not a collision.
+// -------------------------------------------------------------- //
+
+METHOD NameExists( cName, nExclude ) CLASS UsersControllers
+
+   LOCAL oDal, aRows, nI, nGot
    LOCAL lFound := .F.
 
-   oVal := UValidateParams( { ;
-      "id" => { "required|number|min:0", "Id", "" } ;
+   IF EMPTY( cName )
+      RETU .F.
+   ENDIF
+
+   oDal := Self:Dal( "users_users", { "name" } )
+   IF oDal == NIL
+      RETU .F.
+   ENDIF
+
+   aRows := oDal:FetchAll( { "name" => cName }, NIL )
+   oDal:Close()
+
+   IF EMPTY( aRows )
+      RETU .F.
+   ENDIF
+
+   FOR nI := 1 TO LEN( aRows )
+      nGot := hb_HGetDef( aRows[ nI ], "id", 0 )
+      IF nExclude == NIL .OR. nGot != nExclude
+         RETU .T.
+      ENDIF
+   NEXT
+
+RETU lFound
+
+
+// -------------------------------------------------------------- //
+// Flash: the module's own, drained once read (D-10).
+// -------------------------------------------------------------- //
+
+METHOD FlashFail( cMessage, hErrors, hInput ) CLASS UsersControllers
+
+   UFlash( 'users' ):Set( { ;
+      "type"    => 'danger', ;
+      "message" => cMessage, ;
+      "errors"  => iif( ValType( hErrors ) == 'H', hErrors, ;
+                        { => } ) ;
    } )
 
-   IF ! oVal:Make() .OR. oVal:Get( 'id' ) == 0
-      RETURN URedirect( URoute( 'users.grid' ) )
-   ENDIF
+RETURN NIL
 
-   lFound := Self:OpenDbf():GetRecno( oVal:Get( 'id' ), @hRow, NIL, .T. )
 
-RETURN UView( 'masters/users/delete.html', lFound, hRow )
+METHOD FlashOk( cMessage ) CLASS UsersControllers
 
-// -------------------------------------------------------------- //
-
-METHOD delete_action() CLASS UsersController
-
-   LOCAL oVal, nId, lIsDeleted
-   LOCAL oUsers
-   LOCAL hRow := { => }
-
-   oVal := UValidateParams( { ;
-      "id" => { "required|number|min:0", "Id", "" } ;
+   UFlash( 'users' ):Set( { ;
+      "type"    => 'success', ;
+      "message" => cMessage ;
    } )
 
-   IF ! oVal:Make() .OR. oVal:Get( 'id' ) == 0
-      RETURN URedirect( URoute( 'users.grid' ) )
-   ENDIF
+RETURN NIL
 
-   nId := oVal:Get( 'id' )     // D-13: always name the field
 
-   oUsers := Self:OpenDbf()
+METHOD TakeFlash() CLASS UsersControllers
 
-   IF ! oUsers:GetRecno( nId, @hRow )
-      RETURN URedirect( URoute( 'users.grid' ) )
-   ENDIF
+   LOCAL oFlash := UFlash( 'users' )
+   LOCAL hFlash := { => }
 
-   oUsers:Delete( nId, .T., @lIsDeleted )
+   hFlash[ 'type' ]    := oFlash:Get( 'type' )
+   hFlash[ 'message' ] := oFlash:Get( 'message' )
+   hFlash[ 'errors' ]  := oFlash:Get( 'errors', { => } )
 
-RETURN URedirect( URoute( 'users.grid' ) )
+   oFlash:Clear()
+   oFlash:Save()
+
+RETURN hFlash
 
 // -------------------------------------------------------------- //
+// File-level helpers (no state of their own).
+//
+//  _InSensitive: a substring test that ignores case - what the CDX tag
+//  keyed on Lower(NAME) used to give the per-column search boxes.
+//
+//  _SortRows: the grid's column sort. The DAL orders by id; the audited
+//  module ordered the filtered list, and the grid's sort parameter is a
+//  user-visible column, so the order happens here, over the allow-listed
+//  column only (D-06/D-08).
+// -------------------------------------------------------------- //
 
-METHOD Grid() CLASS UsersController
+STATIC FUNCTION _InSensitive( cHay, cNeedle )
 
-   LOCAL nPage, nRows, nTotalPages := 0
-   LOCAL aPages, aGrid, aAll
-   LOCAL cSort, cDir, cSearch
-   LOCAL hMessage := { => }
-   LOCAL cAction := 'grid'
-   LOCAL hErrors := { => }
-   LOCAL hSearch := { => }
-   LOCAL cSearchUpper
-   LOCAL nTotal, nStart, nEnd, nI
-   LOCAL lMatch, lHit
-   LOCAL cAlias, hRec, nJ, cSearchParams
-   LOCAL oUsers
-   LOCAL hFlash
-   // D-05 / D-06: ONE allow-list drives the grid projection, the column sort
-   // and the per-field search.  pass and salt are not in it, so neither can be
-   // read, sorted, searched or rendered.
-   // This list IS the set of grid columns: every column rendered by grid.html
-   // gets a search entry, and every search entry maps to a visible column.
-   // Adding a column to the grid means adding it here - the search bar follows.
-   LOCAL aFields := { 'name', 'roles' }
-   // Column-sort allow-list: the same list, named separately so the intent is
-   // explicit - sorting may only touch a column the grid actually renders.
-   LOCAL aSortOk := aFields
-
-   // --- Pagination params ---
-   nPage    := Iif( Empty( UGet( 'page', '' ) ), 1, Val( UGet( 'page', '' ) ) )
-   IF nPage < 1
-      nPage := 1
+   IF EMPTY( cNeedle )
+      RETU .T.
    ENDIF
-   nRows    := 20   // default page size per FR-READ-2 (DAL SRS)
-   // D-08: grid hash keys are lowercase, so the sort key must be too
-   cSort    := Lower( UGet( 'sort', 'name' ) )
-   IF Ascan( aSortOk, cSort ) == 0
-      cSort := 'name'
-   ENDIF
-   cDir     := Upper( UGet( 'dir', 'ASC' ) )
-   IF cDir != 'DESC'
-      cDir := 'ASC'
-   ENDIF
-   cSearch  := Trim( UGet( 'q', '' ) )
-   cSearchUpper := Upper( cSearch )
 
-   // --- FR-READ-3: one search entry per grid column, ?_q_<column> ---
-   FOR nI := 1 TO Len( aFields )
-      hSearch[ aFields[ nI ] ] := Trim( UGet( '_q_' + aFields[ nI ], '' ) )
-   NEXT
+RETU _PosIn( Upper( cHay ), Upper( cNeedle ) ) > 0
 
-   // --- Carry the active search through pagination and column-sort links ---
-   cSearchParams := ''
-   IF !empty( cSearch )
-      cSearchParams += '&q=' + EncParam( cSearch )
+STATIC FUNCTION _PosIn( cHay, cNeedle )
+
+   LOCAL nLen := LEN( cNeedle ), i
+
+   IF EMPTY( cNeedle )
+      RETU 0
    ENDIF
-   FOR nI := 1 TO Len( aFields )
-      IF !empty( hSearch[ aFields[ nI ] ] )
-         cSearchParams += '&_q_' + aFields[ nI ] + '=' + EncParam( hSearch[ aFields[ nI ] ] )
+
+   FOR i := 1 TO LEN( cHay ) - nLen + 1
+      IF SUBSTR( cHay, i, nLen ) == cNeedle
+         RETU i
       ENDIF
    NEXT
 
-   // --- Recover flash messages (cleared after reading, D-10) ---
-   hFlash := Self:TakeFlash()
-   hMessage[ 'type' ]    := hFlash[ 'type' ]
-   hMessage[ 'message' ] := hFlash[ 'message' ]
+RETU 0
 
-   // --- Open Data Access Layer ---
-   oUsers := Self:OpenDbf()
+STATIC FUNCTION _SortRows( aRows, cKey, cDir )
 
-   // --- FR-READ-1/2/3: read the whole table, apply the search, sort, and only
-   // then paginate the result.  The previous order cut the page out of the raw
-   // table first and filtered only that page, so a match sitting on a later
-   // page was invisible and the page count ignored the filter.
-   cAlias := oUsers:cAlias
-   aAll := {}
-   ( cAlias )->( DbGoTop() )
-   DO WHILE ( cAlias )->( !Eof() )
-      // Soft-deleted records are not part of the user list
-      IF ! ( cAlias )->( Deleted() )
-         hRec := { => }
-         hRec[ '_recno' ]   := ( cAlias )->( RecNo() )
-         hRec[ '_deleted' ] := ( cAlias )->( Deleted() )
-         FOR nJ := 1 TO Len( aFields )
-            hRec[ aFields[ nJ ] ] := ( cAlias )->( FieldGet( ( cAlias )->( FieldPos( aFields[ nJ ] ) ) ) )
-         NEXT
+   LOCAL nI, nJ, nCmp, xSwap := NIL, aOut := {}
 
-         lMatch := .T.
+   FOR nI := 1 TO LEN( aRows )
+      AADD( aOut, aRows[ nI ] )
+   NEXT
 
-         // Free-text 'q': D-06 - it may only touch allow-listed (visible)
-         // columns.  Containment direction: the query must be a substring of
-         // the field (the original order tested name $ query, which matches
-         // only when the whole name is typed).
-         IF !empty( cSearchUpper )
-            lHit := .F.
-            FOR nJ := 1 TO Len( aFields )
-               IF cSearchUpper $ Upper( HB_HGetDef( hRec, aFields[ nJ ], '' ) )
-                  lHit := .T.
-               ENDIF
-            NEXT
-            IF !lHit
-               lMatch := .F.
-            ENDIF
+   FOR nI := 2 TO LEN( aOut )
+      xSwap := aOut[ nI ]
+      nJ := nI - 1
+      WHILE nJ >= 1
+         nCmp := _CompareVal( hb_HGetDef( aOut[ nJ ], cKey, "" ), ;
+                              hb_HGetDef( xSwap, cKey, "" ) )
+         IF cDir == "DESC"
+            nCmp := -nCmp
          ENDIF
-
-         // Per-field entries: AND between fields, containment within the field
-         FOR nJ := 1 TO Len( aFields )
-            IF !empty( hSearch[ aFields[ nJ ] ] )
-               IF ! ( Upper( hSearch[ aFields[ nJ ] ] ) $ Upper( HB_HGetDef( hRec, aFields[ nJ ], '' ) ) )
-                  lMatch := .F.
-               ENDIF
-            ENDIF
-         NEXT
-
-         IF lMatch
-            aAdd( aAll, hRec )
+         IF nCmp <= 0
+            EXIT
          ENDIF
+         aOut[ nJ + 1 ] := aOut[ nJ ]
+         nJ--
+      END
+      aOut[ nJ + 1 ] := xSwap
+   NEXT
+
+RETU aOut
+
+STATIC FUNCTION _CompareVal( xA, xB )
+
+   LOCAL cA, cB
+
+   IF ValType( xA ) == 'N' .AND. ValType( xB ) == 'N'
+      IF xA < xB
+         RETU -1
       ENDIF
-      ( cAlias )->( DbSkip() )
-   ENDDO
-
-   // --- Apply column sort (FR-READ-4) to the whole filtered set ---
-   IF Len( aAll ) > 1
-      aAll := SortGrid( aAll, cSort, cDir )
-   ENDIF
-
-   // --- Paginate the filtered, sorted set ---
-   nTotal := Len( aAll )
-   IF nTotal == 0
-      nTotalPages := 0
-   ELSE
-      nTotalPages := Int( ( nTotal + nRows - 1 ) / nRows )
-   ENDIF
-   IF nPage > nTotalPages
-      nPage := nTotalPages
-   ENDIF
-   // A search that matches nothing leaves nTotalPages = 0; keep the page index
-   // valid so the slice below is never asked for a negative subscript.
-   IF nPage < 1
-      nPage := 1
-   ENDIF
-   nStart := ( ( nPage - 1 ) * nRows ) + 1
-   nEnd   := MIN( nStart + nRows - 1, nTotal )
-   aGrid := {}
-   FOR nI := nStart TO nEnd
-      aAdd( aGrid, aAll[ nI ] )
-   NEXT
-
-   // --- Pagination links ---
-   IF nTotalPages > 0
-      aPages := PageLinks( nPage, nTotalPages )
-   ELSE
-      aPages := {}
-   ENDIF
-
-   // --- Render view ---
-RETURN UView( 'masters/users/grid.html', cAction, aGrid, aPages, nPage, nTotalPages, ;
-              cSort, cDir, cSearch, hSearch, hMessage, hErrors, cSearchParams )
-
-// -------------------------------------------------------------- //
-// Helper: EncParam — percent-encode a search value so it survives being
-// re-emitted inside pagination / column-sort links.
-// -------------------------------------------------------------- //
-
-FUNCTION EncParam( cVal )
-
-RETURN hb_StrReplace( cVal, { '%', '&', '#', '+', ' ' }, { '%25', '%26', '%23', '%2B', '%20' } )
-
-// -------------------------------------------------------------- //
-// Helper: SortGrid — sort an array of hashes by a field name
-// Parameters: aGrid, cField (lowercase, allow-listed by Grid()), cDir (ASC|DESC)
-// Returns: sorted array of hashes
-// -------------------------------------------------------------- //
-
-FUNCTION SortGrid( aGrid, cField, cDir )
-
-   LOCAL aCopy := {}, nI, nLen, nJ
-   LOCAL cKey, cValI, cValJ
-   LOCAL lSwap
-
-   // Guard: empty array - no sort needed
-   IF Empty( aGrid )
-      RETURN {}
-   ENDIF
-
-   FOR nI := 1 TO Len( aGrid )
-      aAdd( aCopy, aGrid[ nI ] )
-   NEXT
-
-   nLen := Len( aCopy )
-
-   // Bubble sort (fine for page-sized arrays of 20)
-   FOR nI := 1 TO nLen - 1
-      lSwap := .F.
-      FOR nJ := 1 TO nLen - nI
-         cKey := aCopy[ nJ ]
-         cValI := HB_HGetDef( cKey, cField, '' )
-         cValJ := HB_HGetDef( aCopy[ nJ + 1 ], cField, '' )
-
-         IF cDir == 'ASC'
-            IF cValI > cValJ
-               lSwap := .T.
-            ENDIF
-         ELSE
-            IF cValI < cValJ
-               lSwap := .T.
-            ENDIF
-         ENDIF
-
-         IF lSwap
-            aCopy[ nJ ] := aCopy[ nJ + 1 ]
-            aCopy[ nJ + 1 ] := cKey
-         ENDIF
-      NEXT
-   NEXT
-
-RETURN aCopy
-
-// -------------------------------------------------------------- //
-// Helper: PageLinks — generate pagination link array
-// Parameters: nCurrentPage, nTotalPages
-// Returns: array of page numbers to display
-// -------------------------------------------------------------- //
-
-FUNCTION PageLinks( nPage, nTotalPages )
-
-   LOCAL aPages := {}
-   LOCAL nStart, nEnd, nI
-
-   IF nTotalPages <= 10
-      nStart := 1
-      nEnd   := nTotalPages
-   ELSE
-      nStart := nPage - 4
-      IF nStart < 1
-         nStart := 1
+      IF xA > xB
+         RETU 1
       ENDIF
-      nEnd := nStart + 9
-      IF nEnd > nTotalPages
-         nEnd := nTotalPages
-      ENDIF
+      RETU 0
    ENDIF
 
-   FOR nI := nStart TO nEnd
-      aAdd( aPages, nI )
-   NEXT
+   cA := Upper( iif( ValType( xA ) == 'C', xA, hb_NToS( xA ) ) )
+   cB := Upper( iif( ValType( xB ) == 'C', xB, hb_NToS( xB ) ) )
 
-RETURN aPages
+   IF cA < cB
+      RETU -1
+   ENDIF
+   IF cA > cB
+      RETU 1
+   ENDIF
 
-// -------------------------------------------------------------- //
+RETU 0
 
-#include 'models/tusers.prg'
 #include 'models/hpassword.prg'
+#include 'models/tdalmysql.prg'

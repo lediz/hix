@@ -7,7 +7,7 @@
 #
 #   ./compare-branches.sh [LEFT] [RIGHT] [OUTPUT]
 #   ./compare-branches.sh --no-fetch origin/enhance origin/main COMPARISON.md
-#   ./compare-branches.sh --exclude webapp/srs/COMPARISON-enhance-vs-main.md
+#   ./compare-branches.sh --exclude webapp/srs/06-release/COMPARISON-enhance-vs-main.md
 #
 # The report's own output file is always excluded from the content delta: it
 # changes on every run, so counting it would make the numbers self-referential.
@@ -31,7 +31,7 @@ done
 
 LEFT="${1:-origin/enhance}"
 RIGHT="${2:-origin/main}"
-OUT="${3:-webapp/srs/COMPARISON-enhance-vs-main.md}"
+OUT="${3:-webapp/srs/06-release/COMPARISON-enhance-vs-main.md}"
 
 ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || { echo "error: not inside a git repository" >&2; exit 2; }
 norm_rel() { case "$1" in /*) realpath -m --relative-to="$ROOT" "$1" ;; *) printf '%s' "${1#./}" ;; esac }

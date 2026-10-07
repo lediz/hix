@@ -136,16 +136,16 @@
                         <td>{{ HB_HGetDef( hRow, 'name', '' ) }}</td>
                         <td>{{ HB_HGetDef( hRow, 'roles', '' ) }}</td>
                         <td>
-                           <a href="{{ URoute( 'users.show', HB_HGetDef( hRow, '_recno' ) ) }}" class="btn btn-sm btn-outline-primary" title="Show">
+                           <a href="{{ URoute( 'users.show', HB_HGetDef( hRow, 'id' ) ) }}" class="btn btn-sm btn-outline-primary" title="Show">
                               <i class="bi bi-eye"></i>
                            </a>
                            @if UHasRole( 'users', 'edit' )
-                           <a href="{{ URoute( 'users.edit', HB_HGetDef( hRow, '_recno' ) ) }}" class="btn btn-sm btn-outline-secondary" title="Edit">
+                           <a href="{{ URoute( 'users.edit', HB_HGetDef( hRow, 'id' ) ) }}" class="btn btn-sm btn-outline-secondary" title="Edit">
                               <i class="bi bi-pencil"></i>
                            </a>
                            @endif
                            @if UHasRole( 'users', 'delete' )
-                           <a href="{{ URoute( 'users.delete_confirm', HB_HGetDef( hRow, '_recno' ) ) }}" class="btn btn-sm btn-outline-danger" title="Delete">
+                           <a href="{{ URoute( 'users.delete_confirm', HB_HGetDef( hRow, 'id' ) ) }}" class="btn btn-sm btn-outline-danger" title="Delete">
                               <i class="bi bi-trash"></i>
                            </a>
                            @endif
