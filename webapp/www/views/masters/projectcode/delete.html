@@ -1,5 +1,10 @@
 @args lFound := .F., hRow := {=>}, hPrev := {=>}, hFlash := {=>}, nId := 0
 @view 'common/header.html'
+@view 'common/navbar.html'
+
+	<!-- Offcanvas Sidebar -->
+
+@view 'common/sidebar.html', 'projectcode'
 <h1>Deleting project code {{ nId }}</h1>
 <p class="flash">{{ HB_HGetDef( hFlash, 'message', '' ) }}</p>
 <table border="1">

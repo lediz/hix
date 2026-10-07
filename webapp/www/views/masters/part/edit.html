@@ -9,6 +9,10 @@
 
 @view 'common/navbar.html'
 
+	<!-- Offcanvas Sidebar -->
+
+@view 'common/sidebar.html', 'part'
+
 <main>
 
   @if !empty( hb_HGetDef( hFlash, 'message', '' ) )

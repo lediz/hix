@@ -1,5 +1,10 @@
 @args aGrid := {=>}, aPages := {=>}, nPage := 1, nTotalPages := 1, nTotal := 0, cQ := '', hFlash := {=>}
 @view 'common/header.html'
+@view 'common/navbar.html'
+
+	<!-- Offcanvas Sidebar -->
+
+@view 'common/sidebar.html', 'supplier'
 <h1>Supplier (Grid)</h1>
 <p class="flash">{{ HB_HGetDef( hFlash, 'message', '' ) }} - {{ nTotal }} record(s), page {{ nPage }} of {{ nTotalPages }}. Filter: {{ cQ }}</p>
 <table border="1">

@@ -1,5 +1,10 @@
 @args cMode := 'edit', lFound := .F., hRow := {=>}, hFlash := {=>}, nVersion := 0
 @view 'common/header.html'
+@view 'common/navbar.html'
+
+	<!-- Offcanvas Sidebar -->
+
+@view 'common/sidebar.html', 'orderline'
 <h1>{{ if( cMode == 'create', 'Create', 'Edit' ) }} order line</h1>
 <p class="flash">{{ HB_HGetDef( hFlash, 'message', '' ) }} version {{ nVersion }}</p>
 <form method="POST" action="{{ if( cMode == 'create', '/orderline/store', '/orderline/' + HB_HGetDef( hRow, 'id', 0 ) + '/update' ) }}">

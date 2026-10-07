@@ -1,5 +1,10 @@
 @args lFound := .F., hRow := {=>}, hFlash := {=>}
 @view 'common/header.html'
+@view 'common/navbar.html'
+
+	<!-- Offcanvas Sidebar -->
+
+@view 'common/sidebar.html', 'order'
 <h1>Order #{{ HB_HGetDef( hRow, 'id', '' ) }}</h1>
 <p class="flash">{{ HB_HGetDef( hFlash, 'message', '' ) }}</p>
 @if lFound
