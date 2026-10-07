@@ -1,0 +1,28 @@
+# ============================================================
+# create_mysql_sql.hbp - P1.5 of INVENTREE-MYSQL-PLAN.md
+#
+# CLI loader: sql/inventree.sql -> the MariaDB host under .mysql/.
+# Same link shape as app.hbp / probe_mysql.hbp: the WDO MySQL driver
+# is framework code (src/wdo/mysql/*.prg -> hix_server.hbx), so this
+# tool needs the framework and nothing else. Built with hbmk2 only,
+# like every other tool in this folder.
+#
+# Build:  hix=<framework root> hbmk2 create_mysql_sql.hbp
+# Run  :  ./create_mysql_sql [load|recreate|verify]   (MYSQL_PWD from
+#         .mysql/credentials, kept by ./gen_mysql_db.sh)
+# ============================================================
+
+-n
+-w1
+-es2
+-mt
+-workdir=.hbmk/${hb_compiler}/create_mysql_sql
+
+-hbexe
+-ocreate_mysql_sql
+
+create_mysql_sql.prg
+
+${hix}/hix_server.hbx
+${hix}/hix_server.hbc
+${hb_root}/include/harbour.hbx

@@ -1,0 +1,12 @@
+id,part,supplier,SKU,manufacturer_part,pack_quantity,pack_quantity_native
+10,3,2,MPN456-APPEL,2,,\N
+11,3,3,MPN456-ZERG,2,,\N
+1,1,1,ACME0001,\N,,\N
+2,1,1,ACME0002,\N,,\N
+3,1,1,ACME0003,\N,,\N
+100,25,1,ACME-WIDGET,\N,,\N
+101,25,2,ZERG-WIDGET,\N,,\N
+7,1,3,ZERGLPHS,\N,,\N
+4,2,2,ZERGM312,\N,,\N
+5,4,2,R_4K7_0603,\N,,\N
+6,4,2,R_4K7_0603.100PCK,\N,100,100

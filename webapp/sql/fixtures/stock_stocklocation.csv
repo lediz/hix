@@ -1,0 +1,8 @@
+id,name,description,parent,external,tree_id,lft,rght
+1,Home,My house,\N,0,1,1,6
+2,Bathroom,Where I keep my bath,1,0,1,2,3
+3,Dining Room,A table lives here,1,0,1,4,5
+4,Office,Place of work,\N,1,2,1,8
+5,Drawer_1,In my desk,4,0,2,2,3
+6,Drawer_2,Also in my desk,4,0,2,4,5
+7,Drawer_3,"Again, in my desk",4,0,2,6,7

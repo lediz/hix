@@ -1,0 +1,7 @@
+id,part,sub_part,raw_amount,quantity,reference,allow_variants
+1,100,1,10,10,,1
+2,100,3,40,40,,0
+3,100,5,25,25,ABCDE,0
+4,100,50,3,3,VWXYZ,0
+5,1,5,3,3,LMNOP,0
+6,101,100,10,10,,0

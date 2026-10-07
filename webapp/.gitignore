@@ -47,6 +47,26 @@ tmp/
 # Backups (git is the rollback mechanism - see D-14)
 *.bak
 
+# P0 MySQL/MariaDB runtime: the database itself, its log, its socket,
+# the server binaries unpacked from the distribution package, and the
+# account password. State, never source - same discipline as hix.keys.json
+# and certs/. Created by ./gen_mysql_db.sh.
+.mysql/
+
+# P0 probe binary, built from probe_mysql.hbp like the other probes here
+probe_mysql
+
+# P1 tool binaries, built from the .hbp files next to their sources
+# (hbmk2 drops them in this folder, like every other adhoc tool here)
+create_mysql_sql
+seed_inventree
+
+# P1.7: sql/ is SOURCE and stays tracked - webapp/sql/inventree.sql is the
+# schema that ships, webapp/sql/fixtures/*.csv is the seed corpus (the CSV
+# equivalent of InvenTree's own Django fixtures). Nothing under sql/ is
+# generated at runtime; the database itself is .mysql/ above, which is
+# ignored. Do not add a rule for sql/.
+
 # Node (pi tooling, not part of the Harbour/HIX app)
 node_modules/
 package-lock.json
