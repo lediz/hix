@@ -1,0 +1,48 @@
+@args aGrid := {=>}, aPages := {=>}, nPage := 1, nTotalPages := 1, nTotal := 0, cSort := 'name', cDir := 'ASC', cQ := '', hFlash := {=>}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+   @view 'common/header.html'
+</head>
+<body>
+
+@view 'common/navbar.html'
+
+<main>
+
+  @if !empty( hb_HGetDef( hFlash, 'message', '' ) )
+  <div class="flash {{ hb_HGetDef( hFlash, 'type', 'info' ) }}">{{ hb_HGetDef( hFlash, 'message', '' ) }}</div>
+  @endif
+
+  <p>Parts — {{ nTotal }} record(s), page {{ nPage }} of {{ nTotalPages }}.
+     Filter: <code>{{ cQ }}</code>, sorted by <code>{{ cSort }}</code> {{ cDir }}.</p>
+
+  <table>
+   <thead>
+    <tr><th>id</th><th>name</th><th>IPN</th><th>description</th><th>version</th></tr>
+   </thead>
+   <tbody>
+    @foreach hRow IN aGrid
+    <tr>
+      <td>{{ HB_HGetDef( hRow, 'id', '' ) }}</td>
+      <td><a href="/part/{{ HB_HGetDef( hRow, 'id', '' ) }}">{{ HB_HGetDef( hRow, 'name', '' ) }}</a></td>
+      <td>{{ HB_HGetDef( hRow, 'IPN', '' ) }}</td>
+      <td>{{ HB_HGetDef( hRow, 'description', '' ) }}</td>
+      <td>{{ HB_HGetDef( hRow, 'version', '' ) }}</td>
+    </tr>
+    @endforeach
+    @if empty( aGrid )
+    <tr><td colspan="5">No records found</td></tr>
+    @endif
+   </tbody>
+  </table>
+
+  @if nPage < nTotalPages
+  <a href="/part/grid?page={{ nPage + 1 }}&q={{ cQ }}">next page</a>
+  @endif
+
+</main>
+
+</body>
+</html>

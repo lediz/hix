@@ -67,9 +67,9 @@ CLASS TDalMySql
    METHOD New( cTable, aCols )      CONSTRUCTOR
    METHOD Open()
    METHOD Close()
-   METHOD Count( hFilter )
-   METHOD FetchAll( hFilter )
-   METHOD FetchPaged( nLimit, nOffset, hFilter )
+   METHOD Count( hFilter, hLike )
+   METHOD FetchAll( hFilter, hLike )
+   METHOD FetchPaged( nLimit, nOffset, hFilter, hLike )
    METHOD Show( nId )
    METHOD Insert( hFields )
    METHOD Update( nId, nVersion, hFields )
@@ -325,6 +325,57 @@ RETU cOut
 STATIC FUNCTION _DalFilterKeys( oDal, hFilter )
 
 RETU _DalColsOk( oDal, hFilter )
+
+
+//  the LIKE half of a query: the column name is code-known (whitelisted),
+//  the pattern is external and bound. The % wildcards are part of the VALUE,
+//  not of the SQL text (prepared.md's "LIKE with wildcards" row) - putting
+//  them in the SQL would be the injection the row warns about.
+STATIC FUNCTION _DalSqlLike( oDal, aKeys )
+
+   LOCAL cOut := "", nI
+
+   FOR nI := 1 TO LEN( aKeys )
+      IF nI > 1
+         cOut += " OR "
+      ENDIF
+      cOut += _DalQ( aKeys[ nI ] ) + " LIKE ?"
+   NEXT
+
+   //  the OR is parenthesised so an equality filter ANDed with it cannot
+   //  bind tighter than intended
+   IF LEN( aKeys ) > 1
+      cOut := "( " + cOut + " )"
+   ENDIF
+
+RETU cOut
+
+
+STATIC FUNCTION _DalLikeVals( oDal, aKeys, hLike )
+
+   LOCAL aOut := {}, nI, cCol, cVal
+
+   FOR nI := 1 TO LEN( aKeys )
+      cCol  := aKeys[ nI ]
+      cVal  := _DalVal( hLike, cCol )
+      IF cVal == NIL
+         cVal := ""
+      ENDIF
+      AADD( aOut, { "%" + cVal + "%", "s" } )
+   NEXT
+
+RETU aOut
+
+
+STATIC FUNCTION _DalAppend( aTo, aFrom )
+
+   LOCAL nI
+
+   FOR nI := 1 TO LEN( aFrom )
+      AADD( aTo, aFrom[ nI ] )
+   NEXT
+
+RETU aTo
 
 
 STATIC FUNCTION _DalSqlFilter( oDal, aKeys )
@@ -587,23 +638,36 @@ RETU "conflict"
 //  The verbs.
 // -------------------------------------------------------------- //
 
-METHOD Count( hFilter ) CLASS TDalMySql
+METHOD Count( hFilter, hLike ) CLASS TDalMySql
 
-   LOCAL aKeys, cSql, aRows := NIL, aVals := {}
+   LOCAL aKeys, aLikeKeys, cSql, aRows := NIL, aVals := {}
+   LOCAL cWhere := ""
 
    IF ::oConn == NIL
       _DalFail( SELF, DAL_BANNER, "Count() called with no slot" )
       RETU -1
    ENDIF
 
-   aKeys := _DalFilterKeys( SELF, hFilter )
-   cSql  := "SELECT COUNT(*) FROM " + _DalQ( ::cTable )
+   aKeys     := _DalFilterKeys( SELF, hFilter )
+   aLikeKeys := _DalFilterKeys( SELF, hLike )
+   cSql      := "SELECT COUNT(*) FROM " + _DalQ( ::cTable )
 
    IF ! EMPTY( aKeys )
-      cSql += " WHERE " + _DalSqlFilter( SELF, aKeys )
-      aVals := _DalFilterVals( SELF, aKeys, hFilter )
-      //  the filter carries values, so this SQL is not constant: it is
-      //  prepared, not Query()
+      cWhere := _DalSqlFilter( SELF, aKeys )
+      aVals  := _DalFilterVals( SELF, aKeys, hFilter )
+   ENDIF
+
+   IF ! EMPTY( aLikeKeys )
+      IF ! EMPTY( cWhere )
+         cWhere += " AND "
+      ENDIF
+      cWhere += _DalSqlLike( SELF, aLikeKeys )
+      aVals  := _DalAppend( aVals, _DalLikeVals( SELF, aLikeKeys, hLike ) )
+   ENDIF
+
+   IF ! EMPTY( cWhere )
+      cSql += " WHERE " + cWhere
+      //  the query carries values, so it is prepared, not Query()
       aRows := _DalPrepared( SELF, cSql, aVals )
       IF aRows == NIL
          RETU -1
@@ -624,9 +688,10 @@ METHOD Count( hFilter ) CLASS TDalMySql
 RETU _DalRowNum( aRows[ 1 ] )
 
 
-METHOD FetchAll( hFilter ) CLASS TDalMySql
+METHOD FetchAll( hFilter, hLike ) CLASS TDalMySql
 
-   LOCAL aKeys, cSql, aRows := NIL, aVals := {}
+   LOCAL aKeys, aLikeKeys, cSql, aRows := NIL, aVals := {}
+   LOCAL cWhere := ""
 
    IF ::oConn == NIL
       _DalFail( SELF, DAL_BANNER, "FetchAll() called with no slot" )
@@ -634,11 +699,27 @@ METHOD FetchAll( hFilter ) CLASS TDalMySql
    ENDIF
 
    aKeys := _DalFilterKeys( SELF, hFilter )
-   cSql  := "SELECT " + _DalSqlCols( ::aCols ) + " FROM " + _DalQ( ::cTable )
+   aLikeKeys := _DalFilterKeys( SELF, hLike )
+   //  id and version are always returned: the id is what the routes
+   //  address and the version is what the next write has to carry back
+   cSql  := "SELECT " + _DalQ( DAL_IDCOL ) + ", " + _DalQ( DAL_VERSION ) + ", " ;
+     + _DalSqlCols( ::aCols ) + " FROM " + _DalQ( ::cTable )
 
    IF ! EMPTY( aKeys )
-      cSql += " WHERE " + _DalSqlFilter( SELF, aKeys )
-      aVals := _DalFilterVals( SELF, aKeys, hFilter )
+      cWhere := _DalSqlFilter( SELF, aKeys )
+      aVals  := _DalFilterVals( SELF, aKeys, hFilter )
+   ENDIF
+
+   IF ! EMPTY( aLikeKeys )
+      IF ! EMPTY( cWhere )
+         cWhere += " AND "
+      ENDIF
+      cWhere += _DalSqlLike( SELF, aLikeKeys )
+      aVals  := _DalAppend( aVals, _DalLikeVals( SELF, aLikeKeys, hLike ) )
+   ENDIF
+
+   IF ! EMPTY( cWhere )
+      cSql += " WHERE " + cWhere
    ENDIF
 
    cSql += " ORDER BY " + _DalQ( DAL_IDCOL )
@@ -651,9 +732,10 @@ METHOD FetchAll( hFilter ) CLASS TDalMySql
 RETU aRows
 
 
-METHOD FetchPaged( nLimit, nOffset, hFilter ) CLASS TDalMySql
+METHOD FetchPaged( nLimit, nOffset, hFilter, hLike ) CLASS TDalMySql
 
-   LOCAL aKeys, cSql, aRows := NIL, aVals := {}
+   LOCAL aKeys, aLikeKeys, cSql, aRows := NIL, aVals := {}
+   LOCAL cWhere := ""
 
    IF ::oConn == NIL
       _DalFail( SELF, DAL_BANNER, "FetchPaged() called with no slot" )
@@ -661,11 +743,27 @@ METHOD FetchPaged( nLimit, nOffset, hFilter ) CLASS TDalMySql
    ENDIF
 
    aKeys := _DalFilterKeys( SELF, hFilter )
-   cSql  := "SELECT " + _DalSqlCols( ::aCols ) + " FROM " + _DalQ( ::cTable )
+   aLikeKeys := _DalFilterKeys( SELF, hLike )
+   //  id and version are always returned: the id is what the routes
+   //  address and the version is what the next write has to carry back
+   cSql  := "SELECT " + _DalQ( DAL_IDCOL ) + ", " + _DalQ( DAL_VERSION ) + ", " ;
+     + _DalSqlCols( ::aCols ) + " FROM " + _DalQ( ::cTable )
 
    IF ! EMPTY( aKeys )
-      cSql += " WHERE " + _DalSqlFilter( SELF, aKeys )
-      aVals := _DalFilterVals( SELF, aKeys, hFilter )
+      cWhere := _DalSqlFilter( SELF, aKeys )
+      aVals  := _DalFilterVals( SELF, aKeys, hFilter )
+   ENDIF
+
+   IF ! EMPTY( aLikeKeys )
+      IF ! EMPTY( cWhere )
+         cWhere += " AND "
+      ENDIF
+      cWhere += _DalSqlLike( SELF, aLikeKeys )
+      aVals  := _DalAppend( aVals, _DalLikeVals( SELF, aLikeKeys, hLike ) )
+   ENDIF
+
+   IF ! EMPTY( cWhere )
+      cSql += " WHERE " + cWhere
    ENDIF
 
    //  the page bounds are external too (they come from a query string)

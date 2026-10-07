@@ -1,0 +1,40 @@
+@args cMode := 'edit', lFound := .F., hRow := {=>}, hFlash := {=>}, nVersion := 0
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+   @view 'common/header.html'
+</head>
+<body>
+
+@view 'common/navbar.html'
+
+<main>
+
+  @if !empty( hb_HGetDef( hFlash, 'message', '' ) )
+  <div class="flash {{ hb_HGetDef( hFlash, 'type', 'info' ) }}">{{ hb_HGetDef( hFlash, 'message', '' ) }}</div>
+  @endif
+
+  <form method="POST" action="{{ if( cMode == 'create', URoute( 'part.store' ), URoute( 'part.update', HB_HGetDef( hRow, 'id', 0 ) ) ) }}">
+
+     @CSRF
+
+     @if cMode == 'edit'
+     <input type="hidden" name="version" value="{{ nVersion }}">
+     @endif
+
+     <label for="name">Name</label>
+     <input type="text" name="name" value="{{ HB_HGetDef( hRow, 'name', '' ) }}">
+
+     <label for="description">Description</label>
+     <input type="text" name="description" value="{{ HB_HGetDef( hRow, 'description', '' ) }}">
+
+     <label for="IPN">IPN</label>
+     <input type="text" name="IPN" value="{{ HB_HGetDef( hRow, 'IPN', '' ) }}">
+
+  </form>
+
+</main>
+
+</body>
+</html>

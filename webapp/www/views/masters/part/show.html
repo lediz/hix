@@ -1,0 +1,38 @@
+@args lFound := .F., hRow := {=>}, hFlash := {=>}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+   @view 'common/header.html'
+</head>
+<body>
+
+@view 'common/navbar.html'
+
+<main>
+
+  @if !empty( hb_HGetDef( hFlash, 'message', '' ) )
+  <div class="flash {{ hb_HGetDef( hFlash, 'type', 'info' ) }}">{{ hb_HGetDef( hFlash, 'message', '' ) }}</div>
+  @endif
+
+  @if lFound
+  <dl>
+    <dt>id</dt><dd>{{ HB_HGetDef( hRow, 'id', '' ) }}</dd>
+    <dt>name</dt><dd>{{ HB_HGetDef( hRow, 'name', '' ) }}</dd>
+    <dt>IPN</dt><dd>{{ HB_HGetDef( hRow, 'IPN', '' ) }}</dd>
+    <dt>description</dt><dd>{{ HB_HGetDef( hRow, 'description', '' ) }}</dd>
+    <dt>keywords</dt><dd>{{ HB_HGetDef( hRow, 'keywords', '' ) }}</dd>
+    <dt>category</dt><dd>{{ HB_HGetDef( hRow, 'category', '' ) }}</dd>
+    <dt>default_location</dt><dd>{{ HB_HGetDef( hRow, 'default_location', '' ) }}</dd>
+    <dt>version</dt><dd>{{ HB_HGetDef( hRow, 'version', '' ) }}</dd>
+  </dl>
+  <p><a href="/part/edit?id={{ HB_HGetDef( hRow, 'id', '' ) }}">edit</a> ·
+     <a href="/part/{{ HB_HGetDef( hRow, 'id', '' ) }}/delete_confirm">delete</a></p>
+  @else
+  <p class="flash danger">That part is not there.</p>
+  @endif
+
+</main>
+
+</body>
+</html>
