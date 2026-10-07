@@ -139,3 +139,11 @@ Verification after the change: `probe_dalmysql` **29/0** (step 14 now passes an
 explicit `KEEP` and step 15 relies on the schema's `policy=CASCADE`, which is
 what proves the schema is the source), `test_part_module` **38/0**,
 `test_users_mysql` **39/0**, corpus back at its seeded base.
+
+## Owner answers, 2026-10-07
+
+| # | Question | Answer | What it changed |
+|---|---|---|---|
+| 1 | The 13 CASCADE edges — review them | **follow the rule** | nothing: the derived set stands (`company_manufacturerpart.part`, `part_supplierpart.part`, `part_supplierpart.supplier`, `part_supplierpricebreak.part`, `stock_stockitem.part`, `part_bomitem.part/sub_part`, `part_bomitemsubstitute.part/bom_item`, `part_partpricing.part`, `company_address.company`, `company_contact.company`, `part_partparameter.template`). The three-hop removal from one part delete is accepted, and `delete_confirm` + the transaction's own numbers are what make it visible before and after |
+| 2 | The 21 pre-existing orphans — close the corpus or null the fixtures | **FK-closed** | the corpus was already FK-closed: the 21 were a **measurement bug**, not a fixture gap. `OrphansEdge()` built an unaliased `EXISTS`, and for the 7 self-edges (`parent`, `variant_of`, `belongs_to`) MariaDB resolves the outer column to the **inner** row, so `EXISTS` answered for the wrong row. Aliasing both sides (`… AS _o … AS _i`) gives **0 orphans across 78 edges**. Detection is proven, not assumed: the aliased shape counts **14** `part_part` rows against a target id that does not exist, and **0** against the seeded corpus |
+| 3 | The subtree verb (`/stock/location/prune?depth=N`) | **keep it out** | nothing built. Tree edges carry `policy=KEEP`; `Delete()` and `Cascade()` stay one level. A subtree delete stays a separate decision with a separate surface, not a default behind a click |

@@ -1186,11 +1186,17 @@ METHOD OrphansEdge( cCol, cTgt ) CLASS TDalMySql
 
    //  a row whose FK value is set but whose target row is gone.
   //  EXISTS is the shape MariaDB answers here; SHOW-family
-  //  introspection does not parse through this driver (P1 record)
-   cSql := "SELECT COUNT(*) FROM " + _DalQ( ::cTable ) + " WHERE " ;
-     + _DalQ( cCol ) + " IS NOT NULL AND NOT EXISTS ( SELECT 1 FROM " ;
-     + _DalQ( cTgt ) + " WHERE " + _DalQ( DAL_IDCOL ) + " = " ;
-     + _DalQ( cCol ) + " )"
+  //  introspection does not parse through this driver (P1 record).
+  //
+  //  BOTH sides are aliased on purpose. Unaliased, a self-edge (parent,
+  //  variant_of, belongs_to - 7 of the 78) shadows the outer column inside
+  //  the subquery: MariaDB resolves `parent` to the INNER row, so EXISTS
+  //  answers for the wrong row and the count is wrong - measured as 6
+  //  orphans on part_partcategory when the seeded corpus has none
+   cSql := "SELECT COUNT(*) FROM " + _DalQ( ::cTable ) + " AS _o WHERE " ;
+     + "_o." + _DalQ( cCol ) + " IS NOT NULL AND NOT EXISTS ( SELECT 1 FROM " ;
+     + _DalQ( cTgt ) + " AS _i WHERE _i." + _DalQ( DAL_IDCOL ) + " = " ;
+     + "_o." + _DalQ( cCol ) + " )"
 
    aRows := _DalRun( SELF, cSql )
    IF aRows == NIL
