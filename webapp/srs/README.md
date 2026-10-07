@@ -78,6 +78,7 @@ and only the nine renames below (§ *Formerly*) changed any name.  The plan behi
 | `P2-POOL-RESULTS-2026-10-07.md` | What P2 actually did: the pool, the app starting with it, and the framework's two `Inkey( 0 )` abort paths that hang a non-interactive start |
 | `P3-DAL-RESULTS-2026-10-07.md` | What P3 actually did: the DAL, its verbs, the FK graph read from the shipped schema, the delete policy at the schema edge, and the borrowed slot |
 | `P4-PART-RESULTS-2026-10-07.md` | What P4.1 actually did — and §7, which **closes** it: the six defects found by running the two unproven verbs, the fixes, and the 38/0 state run |
+| `P4-2-STOCK-RESULTS-2026-10-07.md` | What P4.2 actually did: the `stock` module on the DAL, the FK policy made observable, and the four things a template-based module had to be written by hand |
 | `P4-8-USERS-RESULTS-2026-10-07.md` | What P4.8 actually did: `users` and the login path on the MySQL DAL, the credential table, the runtime-hashing seeder, the retirement of the DBF users store, and the 39/0 re-proving of D-05…D-16 over the new store |
 | `P7-2-FKCHECK-RESULTS-2026-10-07.md` | What P7.2 actually did: the `/hix-fk-check` route, the 78 `policy=` declarations, the self-edge `EXISTS` aliasing bug that made a green corpus look orphaned, the proof that the check detects rather than answers 0, and the owner answers to the three open FK questions |
 

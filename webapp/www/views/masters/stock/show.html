@@ -1,0 +1,19 @@
+@args lFound := .F., hRow := {=>}, hFlash := {=>}
+@view 'common/header.html'
+<h1>Stock item #{{ HB_HGetDef( hRow, 'id', '' ) }}</h1>
+<p class="flash">{{ HB_HGetDef( hFlash, 'message', '' ) }}</p>
+@if lFound
+<dl>
+  <dt>id</dt><dd>{{ HB_HGetDef( hRow, 'id', '' ) }}</dd>
+  <dt>part</dt><dd>{{ HB_HGetDef( hRow, 'part', '' ) }}</dd>
+  <dt>location</dt><dd>{{ HB_HGetDef( hRow, 'location', '' ) }}</dd>
+  <dt>quantity</dt><dd>{{ HB_HGetDef( hRow, 'quantity', '' ) }}</dd>
+  <dt>serial</dt><dd>{{ HB_HGetDef( hRow, 'serial', '' ) }}</dd>
+  <dt>barcode</dt><dd>{{ HB_HGetDef( hRow, 'barcode_hash', '' ) }}</dd>
+  <dt>version</dt><dd>{{ HB_HGetDef( hRow, 'version', '' ) }}</dd>
+</dl>
+<p><a href="/stock/{{ HB_HGetDef( hRow, 'id', '' ) }}/edit">edit</a> &middot;
+   <a href="/stock/{{ HB_HGetDef( hRow, 'id', '' ) }}/delete_confirm">delete</a></p>
+@else
+<p class="flash danger">That stock item is not there.</p>
+@endif

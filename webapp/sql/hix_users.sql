@@ -34,7 +34,13 @@ CREATE TABLE `users_users` (
   `name` varchar(40) NOT NULL DEFAULT '',
   `pass` varchar(128) NOT NULL DEFAULT '',
   `salt` varchar(32) NOT NULL DEFAULT '',
-  `roles` varchar(255) NOT NULL DEFAULT '',
+  -- DECISION P4.2..P4.7: the scope string grows with the module surface -
+  --  the admin's roles carry search;show;create;edit;delete for every module,
+  --  which is 504 characters on 11 modules. varchar(255) (the DBF field's
+  --  width) silently truncates, and a truncated scope string is an account
+  --  that quietly loses access, so the column is widened rather than the
+  --  string being shortened.
+  `roles` varchar(1024) NOT NULL DEFAULT '',
   `active` bool NOT NULL DEFAULT 1,
   -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
   `version` int NOT NULL DEFAULT 0,

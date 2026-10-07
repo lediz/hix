@@ -44,7 +44,7 @@
 //  four characters (the prefix-login probe).
 STATIC aName := { "admin", "carles", "maria", "John", "jane" }
 STATIC aPass := { "1234", "1234", "1234", "5678", "9012abcd" }
-STATIC aRole := { "customers:search;show;edit;delete;recall;create|users:search;show;edit;delete;create|parts:search;show;create;edit;delete|sys:fkcheck", "customers:search;show", "customers:search;show;edit", "customers:search;show", "customers:search;show;edit" }
+STATIC aRole := { "customers:search;show;edit;delete;recall;create|users:search;show;edit;delete;create|parts:search;show;create;edit;delete|sys:fkcheck|bom:search;show;create;edit;delete|build:search;show;create;edit;delete|company:search;show;create;edit;delete|note:search;show;create;edit;delete|order:search;show;create;edit;delete|project:search;show;create;edit;delete|stock:search;show;create;edit;delete|supplier:search;show;create;edit;delete|test:search;show;create;edit;delete", "customers:search;show", "customers:search;show;edit", "customers:search;show", "customers:search;show;edit" }
 
 //  hpassword.prg brings in functions, and a file-level STATIC may not
 //  follow them - so the include sits below the seed data, not above it

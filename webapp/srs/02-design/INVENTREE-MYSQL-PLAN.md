@@ -205,7 +205,7 @@ Order of modules = order of risk, cheapest first, and **the verification harness
 | Step | Module | Steps inside it | Grade |
 |---|---|---|---|
 | **P4.1** | `part` (12 tables in play) | routes in `www/routes/web.json` (the `customer.*` block is the template: `grid` `search` `create` `store` `show` `edit` `update` `delete_confirm` `delete`), controllers `controllers/masters/*@part.prg`, views `masters/part/{grid,edit,delete}.html`, middleware `MyAppAuthRole`/`MyAppAuthRoleEdit`, scope `parts:search`/`parts:create`/`parts:edit`/`parts:delete` | ✅ |
-| **P4.2** | `stock` | same shape; `stock_stockitem` FKs to `part_part` and `stock_stocklocation` make the FK-policy decision from Step 0.3 observable — test delete here | ✅ |
+| **P4.2** | `stock` | same shape; `stock_stockitem` FKs to `part_part` and `stock_stocklocation` make the FK-policy decision from Step 0.3 observable — test delete here | ✅ **done 2026-10-07** — see `03-implementation/P4-2-STOCK-RESULTS-2026-10-07.md` |
 | **P4.3** | `company` + `part_supplierpart` | price breaks, currency columns (`price` + `price_currency` `char(3)`) | ✅ |
 | **P4.4** | `bom` | recursive resolve with a depth cap and a cycle guard; **aggregates now come from SQL** (`SUM`, `COUNT`, `AVG`) instead of the counter tables the DBF plan needed | ✅ |
 | **P4.5** | `order` (receive / allocate) | **one transaction per verb**: `oConn:BeginTrans()` … `Commit()`, or `oConn:Transaction(bCode)`; `TRY/CATCH/FINALLY` with `Rollback` in `CATCH` and `Close()` in `FINALLY` (`transactions.md`) | ✅ |
