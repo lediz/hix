@@ -73,8 +73,10 @@ CLASS TDalMySql
    METHOD Show( nId )
    METHOD Insert( hFields )
    METHOD Update( nId, nVersion, hFields )
-   METHOD Delete( nId, hPolicy )
+   METHOD Delete( nId, hOverride )
+   METHOD Cascade( nId, hOverride )
    METHOD Orphans()
+   METHOD Attach( oConn )
    METHOD Errors()
    METHOD Destroy()
 
@@ -87,6 +89,7 @@ CLASS TDalMySql
    DATA cLastReason    INIT ""
    DATA nLastId        INIT 0
    DATA nRowAffected   INIT 0
+   DATA lBorrow        INIT .F.
 
 ENDCLASS
 
@@ -100,6 +103,7 @@ METHOD New( cTable, aCols ) CLASS TDalMySql
    ::cErrSafe    := ""
    ::cErrRaw     := ""
    ::cLastReason := ""
+   ::lBorrow     := .F.
 
 RETU SELF
 
@@ -109,6 +113,15 @@ RETU SELF
 // -------------------------------------------------------------- //
 
 METHOD Open() CLASS TDalMySql
+
+   //  P3.4: one WDO_Get per HANDLER, not per DAL object. A module that
+   //  touches several tables attaches to the handler's slot (Attach)
+   //  instead of taking one each - twelve tables against a pool of eight
+   //  would block on the ninth WDO_Get against the pool timeout rather
+   //  than fail.
+   IF ::lBorrow
+      RETU ::oConn != NIL
+   ENDIF
 
    IF ::lOwn .AND. ::oConn != NIL
       RETU .T.
@@ -126,14 +139,30 @@ METHOD Open() CLASS TDalMySql
 RETU .T.
 
 
+METHOD Attach( oConn ) CLASS TDalMySql
+
+   //  borrow the handler's slot: this object uses the connection but
+   //  never returns it to the pool - the handler that acquired it does,
+   //  once, in its own FINALLY
+   ::oConn   := oConn
+   ::lBorrow := .T.
+   ::lOwn    := .F.
+
+RETU NIL
+
+
 METHOD Close() CLASS TDalMySql
 
-   IF ::oConn != NIL
+   //  only an owned slot is returned. A borrowed connection is left as
+   //  it is: closing it here would hand the pool slot back while the
+   //  handler still holds other DAL objects on it
+   IF ::oConn != NIL .AND. ::lOwn
       ::oConn:Close()
       ::oConn := NIL
+      ::lOwn  := .F.
    ENDIF
 
-   ::lOwn := .F.
+   ::lBorrow := .F.
 
 RETU NIL
 
@@ -326,7 +355,7 @@ RETU cOut
 STATIC FUNCTION _DalGraph()
 
    LOCAL aLines, cLine, cTable := "", cCol, cTgt
-   LOCAL hFk := { => }, hRev := { => }, hOut
+   LOCAL hFk := { => }, hRev := { => }, hPol := { => }, hOut
    STATIC s_hGraph := NIL
 
    IF s_hGraph != NIL
@@ -352,6 +381,18 @@ STATIC FUNCTION _DalGraph()
             ENDIF
             hFk[ cTable ][ cCol ] := cTgt
 
+            //  Step 0.3: the delete policy is a property of the EDGE, and
+            //  the edges into one table come from ten different modules, so
+            //  it is declared here - next to the relation, in the file that
+            //  is the single source of the graph - and not in a controller.
+            //  Absent means KEEP: the dependent row keeps a dangling value
+            //  and Orphans()/Cascade() make that visible instead of the DAL
+            //  guessing a policy the artefact never states per FK.
+            IF ! hb_HHasKey( hPol, cTable )
+               hPol[ cTable ] := { => }
+            ENDIF
+            hPol[ cTable ][ cCol ] := _DalPolicy( cLine )
+
             IF ! hb_HHasKey( hRev, cTgt )
                hRev[ cTgt ] := {}
             ENDIF
@@ -362,7 +403,7 @@ STATIC FUNCTION _DalGraph()
 
    NEXT
 
-   s_hGraph := { "fk" => hFk, "rev" => hRev }
+   s_hGraph := { "fk" => hFk, "rev" => hRev, "pol" => hPol }
 
 RETU s_hGraph
 
@@ -550,7 +591,7 @@ METHOD Count( hFilter ) CLASS TDalMySql
 
    LOCAL aKeys, cSql, aRows := NIL, aVals := {}
 
-   IF ! ::lOwn .OR. ::oConn == NIL
+   IF ::oConn == NIL
       _DalFail( SELF, DAL_BANNER, "Count() called with no slot" )
       RETU -1
    ENDIF
@@ -587,7 +628,7 @@ METHOD FetchAll( hFilter ) CLASS TDalMySql
 
    LOCAL aKeys, cSql, aRows := NIL, aVals := {}
 
-   IF ! ::lOwn .OR. ::oConn == NIL
+   IF ::oConn == NIL
       _DalFail( SELF, DAL_BANNER, "FetchAll() called with no slot" )
       RETU NIL
    ENDIF
@@ -614,7 +655,7 @@ METHOD FetchPaged( nLimit, nOffset, hFilter ) CLASS TDalMySql
 
    LOCAL aKeys, cSql, aRows := NIL, aVals := {}
 
-   IF ! ::lOwn .OR. ::oConn == NIL
+   IF ::oConn == NIL
       _DalFail( SELF, DAL_BANNER, "FetchPaged() called with no slot" )
       RETU NIL
    ENDIF
@@ -645,7 +686,7 @@ METHOD Show( nId ) CLASS TDalMySql
 
    LOCAL cSql, aRows := NIL, aVals := {}
 
-   IF ! ::lOwn .OR. ::oConn == NIL
+   IF ::oConn == NIL
       _DalFail( SELF, DAL_BANNER, "Show() called with no slot" )
       RETU NIL
    ENDIF
@@ -674,7 +715,7 @@ METHOD Insert( hFields ) CLASS TDalMySql
 
    LOCAL aCols, cSql, aVals := {}, aRows := NIL, nNew := 0, nI, cCol
 
-   IF ! ::lOwn .OR. ::oConn == NIL
+   IF ::oConn == NIL
       _DalFail( SELF, DAL_BANNER, "Insert() called with no slot" )
       RETU 0
    ENDIF
@@ -712,7 +753,7 @@ METHOD Update( nId, nVersion, hFields ) CLASS TDalMySql
 
    LOCAL aCols, aVals := {}, cSql, aRows := NIL, nAffected := 0, nI, cCol
 
-   IF ! ::lOwn .OR. ::oConn == NIL
+   IF ::oConn == NIL
       _DalFail( SELF, DAL_BANNER, "Update() called with no slot" )
       RETU .F.
    ENDIF
@@ -761,21 +802,104 @@ METHOD Update( nId, nVersion, hFields ) CLASS TDalMySql
 RETU .T.
 
 
-METHOD Delete( nId, hPolicy ) CLASS TDalMySql
+//  the mode for one edge: an override (a caller that decides for this
+//  call) beats the policy declared in the schema, which beats KEEP.
+//  Only the three modes Step 0.3 names are possible.
+STATIC FUNCTION _DalMode( cOther, cCol, hOverride )
+
+   LOCAL cMode := "KEEP"
+   LOCAL hGraph := _DalGraph()
+   LOCAL hTab
+
+   hTab := hb_HGetDef( hGraph[ "pol" ], cOther, NIL )
+
+   IF ValType( hTab ) == 'H'
+      cMode := hb_HGetDef( hTab, cCol, "KEEP" )
+      IF EMPTY( cMode )
+         cMode := "KEEP"
+      ENDIF
+   ENDIF
+
+   IF ValType( hOverride ) == 'H' .AND. hb_HHasKey( hOverride, cOther )
+      cMode := Upper( hb_HGetDef( hOverride, cOther, cMode ) )
+   ENDIF
+
+   IF cMode != "CASCADE" .AND. cMode != "NULL"
+      cMode := "KEEP"
+   ENDIF
+
+RETU cMode
+
+
+//  what a delete WOULD do: per referring table, the mode that applies and
+//  how many rows it touches. delete_confirm shows this before the
+//  destructive verb runs (SRS FR-DELETE-1..4) - with 15 edges into part_part
+//  the user has to see "400 stock items" before clicking, not after.
+METHOD Cascade( nId, hOverride ) CLASS TDalMySql
+
+   LOCAL hGraph, aRev, cOther, cCol, cMode, cSql, aRows
+   LOCAL hOut := { => }, hEdge, nTotal := 0, nI
+
+   IF ::oConn == NIL
+      _DalFail( SELF, DAL_BANNER, "Cascade() called with no connection" )
+      RETU { "total" => -1 }
+   ENDIF
+
+   hGraph := _DalGraph()
+
+   IF ! hb_HHasKey( hGraph[ "rev" ], ::cTable )
+      RETU { "total" => 0 }
+   ENDIF
+
+   aRev := hGraph[ "rev" ][ ::cTable ]
+
+   FOR nI := 1 TO LEN( aRev )
+
+      cOther := aRev[ nI ][ 1 ]
+      cCol   := aRev[ nI ][ 2 ]
+      cMode  := _DalMode( cOther, cCol, hOverride )
+
+      cSql  := "SELECT COUNT(*) FROM " + _DalQ( cOther ) + " WHERE " ;
+        + _DalQ( cCol ) + " = ?"
+
+      aRows := _DalPrepared( SELF, cSql, { { nId, "i" } } )
+
+      IF aRows == NIL
+         RETU { "total" => -1 }
+      ENDIF
+
+      hEdge := { "mode" => cMode, "rows" => 0 }
+      IF ! EMPTY( aRows )
+         hEdge[ "rows" ] := _DalRowNum( aRows[ 1 ] )
+      ENDIF
+
+      hOut[ cOther ] := hEdge
+      nTotal += hEdge[ "rows" ]
+
+   NEXT
+
+   hOut[ "total" ] := nTotal
+
+RETU hOut
+
+
+METHOD Delete( nId, hOverride ) CLASS TDalMySql
 
    LOCAL hGraph, aRev, hOut := { => }, cSql, aRows := NIL
    LOCAL nI, cOther, cCol, cMode, nDone := 0
 
-   IF ! ::lOwn .OR. ::oConn == NIL
+   IF ::oConn == NIL
       _DalFail( SELF, DAL_BANNER, "Delete() called with no slot" )
       RETU { "deleted" => 0 }
    ENDIF
 
    //  Step 0.3: MariaDB carries only the KEY index, so CASCADE / SET_NULL
-   //  / DO_NOTHING are this object's job. hPolicy maps a table that points
-   //  at this one to the mode for the edge; absent means DO_NOTHING, which
-   //  is the safe default - it leaves the orphan visible to Orphans()
-   //  instead of guessing a policy the artefact never states per FK.
+   //  / DO_NOTHING are applied here. The mode for an edge comes from the
+   //  policy declared in the shipped schema (the single source, keyed by
+   //  edge - see _DalMode), and hOverride is a per-call decision on top of
+   //  it. Absent both means KEEP: the dependent row keeps a dangling value
+   //  and Cascade()/Orphans() make that visible rather than the DAL
+   //  guessing a policy the artefact never states per FK.
    hGraph := _DalGraph()
 
    cSql := "DELETE FROM " + _DalQ( ::cTable ) + " WHERE " + _DalQ( DAL_IDCOL ) ;
@@ -796,11 +920,7 @@ METHOD Delete( nId, hPolicy ) CLASS TDalMySql
 
          cOther := aRev[ nI ][ 1 ]
          cCol   := aRev[ nI ][ 2 ]
-         cMode  := "KEEP"
-
-         IF ValType( hPolicy ) == 'H' .AND. hb_HHasKey( hPolicy, cOther )
-            cMode := Upper( hb_HGetDef( hPolicy, cOther, "KEEP" ) )
-         ENDIF
+         cMode  := _DalMode( cOther, cCol, hOverride )
 
          IF cMode == "CASCADE"
 
@@ -843,7 +963,7 @@ METHOD Orphans() CLASS TDalMySql
 
    LOCAL hGraph, hFk, cCol, cTgt, cSql, aRows, nTotal := 0, nOne
 
-   IF ! ::lOwn .OR. ::oConn == NIL
+   IF ::oConn == NIL
       _DalFail( SELF, DAL_BANNER, "Orphans() called with no slot" )
       RETU -1
    ENDIF
@@ -973,6 +1093,39 @@ STATIC FUNCTION _DalWord( cText )
    ENDIF
 
 RETU _DalUnq( cText )
+
+
+//  KEY `fk_part_part_category` (`category`)  /* -> part_partcategory.id */
+//  ->  part_partcategory ; the policy word after it, when present
+STATIC FUNCTION _DalPolicy( cLine )
+
+   LOCAL nPos := _DalFind( cLine, "policy=" )
+   LOCAL cRest, nSp, nStar, nEnd, cMode
+
+   IF nPos == 0
+      RETU ""
+   ENDIF
+
+   cRest := SUBSTR( cLine, nPos + 7 )
+
+   nSp   := _DalFind( cRest, " " )
+   nStar := _DalFind( cRest, "*" )
+   nEnd  := LEN( cRest )
+
+   IF nSp > 0 .AND. nSp < nEnd
+      nEnd := nSp
+   ENDIF
+   IF nStar > 0 .AND. nStar < nEnd
+      nEnd := nStar
+   ENDIF
+
+   cMode := Upper( ALLTRIM( SUBSTR( cRest, 1, nEnd - 1 ) ) )
+
+   IF cMode != "CASCADE" .AND. cMode != "NULL" .AND. cMode != "KEEP"
+      RETU ""
+   ENDIF
+
+RETU cMode
 
 
 //  KEY `fk_part_part_category` (`category`) ...  ->  category

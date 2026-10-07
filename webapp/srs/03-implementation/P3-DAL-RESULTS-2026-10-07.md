@@ -162,3 +162,72 @@ P4 must not assume:
 7. **that the harness is part of what ships.** `webapp/test/probe_dalmysql.*` is
    local tooling, gitignored like the other probes — the shipped verification
    harness is P7.1's sliced suite, which asserts on DB state.
+
+---
+
+## 8. Added before P4.1, where the design question forced it
+
+Three things had to be decided before the first CRUD module, and all three
+change this file rather than a controller.
+
+### 8.1 Step 0.3 lives in the schema, keyed by edge — not in the module
+
+The policy is a property of the **edge**, and the edges into one table come
+from everywhere: **15 edges point at `part_part`**, from `build_build`,
+`company_manufacturerpart`, `part_supplierpart`, `stock_stockitem`,
+`part_bomitem` (×2), `part_bomitemsubstitute`, `part_partpricing`,
+`order_salesorderlineitem`, `part_partstocktake`, `stock_stockitemtracking`
+and `part_part` itself — ten distinct tables across four modules. A master
+that deletes `part_part` would have to read the stock, build, order and bom
+modules' declarations, so the policy cannot live in a master.
+
+It is declared next to the relation, in the shipped schema's FK comment:
+
+```
+KEY `fk_stock_stockitem_part` (`part`)  /* -> part_part.id  policy=CASCADE */
+```
+
+`_DalGraph()` parses it (`_DalPolicy()` accepts only `CASCADE`, `NULL`,
+`KEEP`), and `_DalMode( cOther, cCol, hOverride )` resolves **override >
+schema > KEEP**. `Delete()` and `Cascade()` both call it, so there is one
+resolver and one source.
+
+**Open decision, deliberately not filled:** no `policy=` is present on any
+of the 78 shipped edges today, so every edge is KEEP. The per-FK values are
+not in the artefact — it records only the distribution (CASCADE 68 / SET_NULL
+69 / DO_NOTHING 3) — and the model source is not on this checkout. Filling
+them is a product decision per module (P4.2 is where it becomes observable),
+not something to guess.
+
+### 8.2 `Cascade( nId, hOverride )` — the preview `delete_confirm` needs
+
+Per referring table: the mode that applies and how many rows it touches,
+plus a `total`. This is what the confirm view shows **before** the destructive
+verb runs (SRS FR-DELETE-1…4) — with 15 edges into `part_part`, "this removes
+400 stock items" has to be visible before clicking, not after.
+
+### 8.3 `Attach( oConn )` — one slot per handler, not per table
+
+`TDalMySql:Open()` used `WDO_Get` itself, so a module touching twelve tables
+would take twelve slots from a pool of **eight** (`hix.json → pool_http.workers
+= 64`, WDO `pool_size = 8`) and block on the ninth against the pool timeout.
+`Attach( oConn )` borrows the handler's connection: `Close()` then leaves it
+alone (`::lOwn` is `.F.`), and the handler closes the slot once in its own
+`FINALLY`. The verb guards changed from `! ::lOwn .OR. ::oConn == NIL` to
+`::oConn == NIL`, which is what makes borrowed use legal.
+
+### 8.4 Verified (harness steps 11–16, `./probe_dalmysql` PASS 23 FAIL 0)
+
+| Step | Asserted on state |
+|---|---|
+| 11 | two DAL objects (`part_part`, `stock_stockitem`) on **one** slot: `WDO_PoolStats` busy = 1, free = 3 of 4 |
+| 12 | a dependent `stock_stockitem` row exists (rows 29 → 30) |
+| 13 | `Cascade( nId2, { "stock_stockitem" => "CASCADE" } )` → total 1, mode `CASCADE`, rows 1 — the preview before the delete |
+| 14 | `Delete( nId2, NIL )` with **no policy declared**: the dependent row is **kept** (30 → 30) and `Orphans()` on `stock_stockitem` grew — the default cannot silently destroy data |
+| 15 | `Delete( nId2, { "stock_stockitem" => "CASCADE" } )`: the dependent row is removed, while the row step 14 left behind stays — the override applied, the default not |
+| 16 | parts and stock rows back to the base (14 / 29), and `seed_inventree verify` answers `RESULT : ok` |
+
+The harness deletes its own rows by id and by marker (`IPN` for parts,
+`serial` for stock items) at start and at the end, so a run that stops half
+way cannot move the base — an earlier version of it did leave residue, which
+`seed_inventree verify` caught.
