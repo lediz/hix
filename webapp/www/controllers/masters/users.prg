@@ -543,8 +543,21 @@ METHOD delete_action() CLASS UsersControllers
    hRes := oDal:Delete( nId, NIL )
    oDal:Close()
 
-   //  the verb says what it did: 0 rows deleted is not a success
-   IF ValType( hRes ) != 'H' .OR. hb_HGetDef( hRes, "deleted", 0 ) == 0
+   //  the verb says what it did and what it did not do. A rolled-back
+   //  cascade is not "the account was not there": nothing was changed (D4)
+   IF ValType( hRes ) != 'H'
+      Self:FlashFail( "System temporarily unavailable. Please try again later.", ;
+        { => }, NIL )
+      RETURN Self:Finish( URedirect( URoute( 'users.grid' ) ) )
+   ENDIF
+
+   IF hb_HGetDef( hRes, "rolledback", .F. )
+      Self:FlashFail( "The delete could not be applied. Nothing was changed.", ;
+        { => }, NIL )
+      RETURN Self:Finish( URedirect( URoute( 'users.grid' ) ) )
+   ENDIF
+
+   IF hb_HGetDef( hRes, "deleted", 0 ) == 0
       Self:FlashFail( "That user is not there.", { => }, NIL )
       RETURN Self:Finish( URedirect( URoute( 'users.grid' ) ) )
    ENDIF

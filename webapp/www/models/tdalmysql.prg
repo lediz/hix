@@ -406,7 +406,7 @@ RETU cOut
 STATIC FUNCTION _DalGraph()
 
    LOCAL aLines, cLine, cTable := "", cCol, cTgt
-   LOCAL hFk := { => }, hRev := { => }, hPol := { => }, hOut
+   LOCAL hFk := { => }, hRev := { => }, hPol := { => }, hNN := { => }, hOut
    STATIC s_hGraph := NIL
 
    IF s_hGraph != NIL
@@ -450,13 +450,46 @@ STATIC FUNCTION _DalGraph()
             AADD( hRev[ cTgt ], { cTable, cCol } )
 
          ENDIF
+      ELSEIF _DalStart( _DalTrim( cLine ), "`" )
+
+         //  the column declarations, kept because the NULL policy is only
+          //  legal where the column is nullable - and the server will not
+          //  say: MariaDB coerces NULL into 0 for a NOT NULL integer, which
+          //  is a dangling FK, not a NULL (D2)
+         cCol := _DalWord( _DalTrim( cLine ) )
+         IF ! EMPTY( cCol ) .AND. ! EMPTY( cTable )
+            IF ! hb_HHasKey( hNN, cTable )
+               hNN[ cTable ] := { => }
+            ENDIF
+            hNN[ cTable ][ cCol ] := _DalHas( cLine, "NOT NULL" ) > 0
+         ENDIF
       ENDIF
 
    NEXT
 
-   s_hGraph := { "fk" => hFk, "rev" => hRev, "pol" => hPol }
+   s_hGraph := { "fk" => hFk, "rev" => hRev, "pol" => hPol, "nn" => hNN }
 
 RETU s_hGraph
+
+
+STATIC FUNCTION _DalHas( cHay, cNeedle )
+
+   LOCAL nLen := LEN( cNeedle ), nI
+
+   IF EMPTY( cNeedle )
+      RETU 1
+   ENDIF
+
+   cHay := Upper( cHay )
+   cNeedle := Upper( cNeedle )
+
+   FOR nI := 1 TO LEN( cHay ) - nLen + 1
+      IF SUBSTR( cHay, nI, nLen ) == cNeedle
+         RETU nI
+      ENDIF
+   NEXT
+
+RETU 0
 
 
 STATIC FUNCTION _DalSchemaLines()
@@ -558,6 +591,12 @@ STATIC FUNCTION _DalPrepared( oDal, cSql, aVals )
          oDal:nLastId     := oDal:oConn:Last_Insert_Id()
          oDal:nRowAffected := oStmt:Row_Count()
          aRows := oStmt:FetchAll( .T. )
+         //  a write that touched nothing returns no rows: that is not a
+         //  failure. Conflating the two would roll back a cascade that
+         //  succeeded, so only the statement saying so is a failure
+         IF aRows == NIL
+            aRows := {}
+         ENDIF
       ELSE
          _DalFail( oDal, DAL_BANNER, oStmt:cError )
       ENDIF
@@ -856,6 +895,11 @@ METHOD Update( nId, nVersion, hFields ) CLASS TDalMySql
       RETU .F.
    ENDIF
 
+   //  Errors() is the caller's channel: clear it before this verb reports
+   ::cErrSafe    := ""
+   ::cErrRaw     := ""
+   ::cLastReason := ""
+
    aCols := _DalColsOk( SELF, hFields )
 
    IF EMPTY( aCols )
@@ -984,12 +1028,19 @@ RETU hOut
 METHOD Delete( nId, hOverride ) CLASS TDalMySql
 
    LOCAL hGraph, aRev, hOut := { => }, cSql, aRows := NIL
-   LOCAL nI, cOther, cCol, cMode, nDone := 0
+   LOCAL nI, cOther, cCol, cMode, nDone := 0, lTrans, lFail := .F.
 
    IF ::oConn == NIL
       _DalFail( SELF, DAL_BANNER, "Delete() called with no slot" )
       RETU { "deleted" => 0 }
    ENDIF
+
+   //  Errors() is the caller's channel: a verb that has not failed yet
+  //  must not report the previous verb's failure, because the flash quotes
+  //  it
+   ::cErrSafe    := ""
+   ::cErrRaw     := ""
+   ::cLastReason := ""
 
    //  Step 0.3: MariaDB carries only the KEY index, so CASCADE / SET_NULL
    //  / DO_NOTHING are applied here. The mode for an edge comes from the
@@ -1000,17 +1051,34 @@ METHOD Delete( nId, hOverride ) CLASS TDalMySql
    //  guessing a policy the artefact never states per FK.
    hGraph := _DalGraph()
 
+   //  D4: the cascade is ONE transaction. A delete over part_part is up to
+   //  16 statements (the row plus one per referring edge); run loose, a verb
+   //  that fails at statement 3 of 16 leaves the store half-deleted and
+   //  answers as if nothing happened. The pool's auto-rollback does not
+   //  cover that: it fires when a slot is CLOSED mid-transaction, and this
+   //  verb returns normally. BeginTrans/Commit/Rollback is the driver's own
+   //  pattern (site-docs/en/wdo/mysql/transactions.md), and it is what makes
+   //  the Cascade() preview and the rows that changed agree (P5.2's journal
+   //  replay is the DBF machinery this replaces).
+   lTrans := ::oConn:BeginTrans()
+   IF ! lTrans
+      _DalFail( SELF, DAL_BANNER, "BeginTrans() refused" )
+      RETU { "deleted" => 0, "rolledback" => .T. }
+   ENDIF
+
    cSql := "DELETE FROM " + _DalQ( ::cTable ) + " WHERE " + _DalQ( DAL_IDCOL ) ;
      + " = ?"
 
    aRows := _DalPrepared( SELF, cSql, { { nId, "i" } } )
    IF aRows == NIL
-      RETU { "deleted" => 0 }
+      //  the server said no: nothing is committed, and the provisional
+      //  DELETE (it matched a row or not) is undone with everything else
+      lFail := .T.
+   ELSE
+      hOut[ "deleted" ] := ::nRowAffected
    ENDIF
 
-   hOut[ "deleted" ] := ::nRowAffected
-
-   IF hb_HHasKey( hGraph[ "rev" ], ::cTable )
+   IF ! lFail .AND. hb_HHasKey( hGraph[ "rev" ], ::cTable )
 
       aRev := hGraph[ "rev" ][ ::cTable ]
 
@@ -1026,12 +1094,27 @@ METHOD Delete( nId, hOverride ) CLASS TDalMySql
               + _DalQ( cCol ) + " = ?"
 
             aRows := _DalPrepared( SELF, cSql, { { nId, "i" } } )
-            IF aRows != NIL
-               hOut[ cOther ] := ::nRowAffected
-               nDone++
+            IF aRows == NIL
+               lFail := .T.
+               EXIT
             ENDIF
+            hOut[ cOther ] := ::nRowAffected
+            nDone++
 
          ELSEIF cMode == "NULL"
+
+            //  D2: the refusal is the DAL's own, not the server's. MariaDB
+            //  accepts SET <col> = NULL on a NOT NULL integer and writes 0,
+            //  which is a dangling FK rather than a NULL - so 26 of the 78
+            //  shipped edges cannot carry the NULL policy at all. Refusing
+            //  here, before the first statement of the cascade, is what
+            //  makes the rollback below observable instead of leaving a
+            //  half-applied one
+            IF hb_HGetDef( hb_HGetDef( hGraph[ "nn" ], cOther, { => } ), ;
+                           cCol, .F. )
+               lFail := .T.
+               EXIT
+            ENDIF
 
             //  the FK value becomes SQL NULL, not '' - P3.5 again
             cSql := "UPDATE " + _DalQ( cOther ) + " SET " + _DalQ( cCol ) ;
@@ -1039,10 +1122,12 @@ METHOD Delete( nId, hOverride ) CLASS TDalMySql
 
             aRows := _DalPrepared( SELF, cSql, { { NIL, "s" }, ;
                                           { nId, "i" } } )
-            IF aRows != NIL
-               hOut[ cOther ] := ::nRowAffected
-               nDone++
+            IF aRows == NIL
+               lFail := .T.
+               EXIT
             ENDIF
+            hOut[ cOther ] := ::nRowAffected
+            nDone++
 
          ELSE
             hOut[ cOther ] := 0
@@ -1050,6 +1135,23 @@ METHOD Delete( nId, hOverride ) CLASS TDalMySql
 
       NEXT
 
+   ENDIF
+
+   IF lFail
+      //  the verb says what it did and did not do: a rolled-back cascade is
+      //  not a partial one, and "deleted = 0" alone would let the caller
+      //  read a failure as "the row was not there"
+      ::oConn:Rollback()
+      ::cErrSafe    := "the cascade could not be applied"
+      ::cLastReason := "cascade refused"
+      hOut := { "deleted" => 0, "rolledback" => .T. }
+      RETU hOut
+   ENDIF
+
+   IF ! ::oConn:Commit()
+      _DalFail( SELF, DAL_BANNER, "Commit() refused" )
+      ::oConn:Rollback()
+      RETU { "deleted" => 0, "rolledback" => .T. }
    ENDIF
 
    hOut[ "edges" ] := nDone

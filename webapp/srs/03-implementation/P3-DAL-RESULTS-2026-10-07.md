@@ -231,3 +231,66 @@ The harness deletes its own rows by id and by marker (`IPN` for parts,
 `serial` for stock items) at start and at the end, so a run that stops half
 way cannot move the base — an earlier version of it did leave residue, which
 `seed_inventree verify` caught.
+
+---
+
+## 9. D4 — the cascade is one transaction (2026-10-07, after the fact)
+
+The FK-policy record left one decision answerable without the owner: **D4,
+atomicity**. It is a property of the verb, not a value per edge, so it was
+taken here.
+
+### 9.1 What was wrong
+
+`Delete()` ran the row's `DELETE` and then one statement per referring edge —
+up to 16 statements for `part_part` (15 in-edges) — loose. A cascade that
+fails at statement 3 of 16 leaves the store half-deleted and answers as if
+nothing happened. The pool's auto-rollback does not cover this: it fires when
+a slot is **closed** mid-transaction, and this verb returns normally.
+
+### 9.2 What was changed
+
+| Change | Where | Why |
+|---|---|---|
+| `BeginTrans()` before the first statement, `Commit()` after the last, `Rollback()` on any failure; the return says `{ "deleted" => 0, "rolledback" => .T. }` | `Delete()` | the driver's own pattern (`site-docs/en/wdo/mysql/transactions.md`); P5.2's journal replay is the DBF machinery this replaces |
+| `_DalPrepared()` returns `{}` instead of `NIL` when a write touched nothing | `_DalPrepared()` | a write that matched no rows is not a failure. Conflating the two would roll back a cascade that succeeded — found by running the harness, not by reading the code |
+| the NULL policy is refused **by the DAL** on a NOT NULL FK column | `Delete()` + `_DalGraph()` (a new `nn` map parsed from the shipped schema) | D2's fact, enforced: MariaDB accepts `SET <col> = NULL` on a NOT NULL integer and writes `0`, which is a dangling FK, not a NULL. 26 of the 78 shipped edges cannot carry the policy, and discovering that after the first statement ran would leave a half-applied cascade |
+| `Errors()` is cleared at the start of `Delete()` and `Update()` | both verbs | the flash quotes the reason; a verb that has not failed yet must not report the previous verb's failure. Measured before the fix: a refused cascade reported `conflict` from an earlier `Update()` test |
+| the handlers distinguish a rolled-back cascade from "the row was not there" | `part.prg`, `users.prg` `delete_action()` | "nothing was changed" is not "not there" |
+
+### 9.3 Harness steps 17–19 (`./probe_dalmysql`, bounded)
+
+| Step | Asserted on state |
+|---|---|
+| 17 | a CASCADE cascade over a fresh part + its stock item commits together: parts 14 → 15, stock 29 → 30 after, both statements landed |
+| 17b | after a committed cascade `Errors()` answers **NIL** — the channel is not sticky |
+| 18 | `Delete( nId3, { "stock_stockitem" => "NULL" } )` is refused by the DAL's D2 guard (`stock_stockitem.part` is NOT NULL): `deleted = 0`, `rolledback = .T.`, and **the part row and the stock item are both still there** — the provisional `DELETE` was undone, not committed |
+| 18c | the reason is `cascade refused`, fresh rather than the previous verb's `conflict` |
+| 19 | the rolled-back row is intact: `Show( nId3 )` returns the name that was inserted |
+| 20 | the corpus is back at its base (14 / 29), `seed_inventree verify` → `RESULT : ok` |
+
+```
+$ timeout 120 ./probe_dalmysql            PASS 29  FAIL 0     (was 23/0 before D4)
+$ timeout 600 ./test/test_part_module.sh  PASS 38  FAIL 0
+$ timeout 600 ./test/test_users_mysql.sh  PASS 39  FAIL 0
+```
+
+### 9.4 Timeouts
+
+Every network and compiler call in the suites is now time-bounded — `curl`
+carries `--connect-timeout 5 --max-time 15`, every tool call runs under
+`timeout 60`, and the suites are meant to be run as `timeout 600 ./test/<suite>.sh`
+— the same discipline `verify-users-fixes.sh` documents in its header. Without
+it a wedged HIX worker or a Harbour compile turns the suite into a hang. The
+harness hit exactly that: an unguarded `hb_HGetDef( Errors(), … )` on a NIL
+error hash raised `BASE/1123`, which opens Harbour's interactive "Quit" dialog
+and never returns. Fixed with a guard (`_Reason()`), the same trap
+`create_mysql_sql.prg` documents in its header.
+
+### 9.5 Still open after D4
+
+D1 (the per-edge values), D3 (recursion depth and the cycle guard over the
+7 self-edges), D5 (preview vs perform), D6 (orphans), D7 (the 52 FK-annotated
+columns with no `KEY`), D8 (tables with no delete surface). D2 is now enforced
+by the DAL rather than discovered at the server, but the per-edge choice
+between CASCADE and KEEP for those 26 edges is still the owner's.
