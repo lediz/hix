@@ -76,6 +76,7 @@ CLASS TDalMySql
    METHOD Delete( nId, hOverride )
    METHOD Cascade( nId, hOverride )
    METHOD Orphans()
+   METHOD OrphansEdge( cCol, cTgt )
    METHOD Attach( oConn )
    METHOD Errors()
    METHOD Destroy()
@@ -949,25 +950,27 @@ RETU .T.
 //  Only the three modes Step 0.3 names are possible.
 STATIC FUNCTION _DalMode( cOther, cCol, hOverride )
 
-   LOCAL cMode := "KEEP"
+   LOCAL cMode := ""
    LOCAL hGraph := _DalGraph()
    LOCAL hTab
 
    hTab := hb_HGetDef( hGraph[ "pol" ], cOther, NIL )
 
    IF ValType( hTab ) == 'H'
-      cMode := hb_HGetDef( hTab, cCol, "KEEP" )
-      IF EMPTY( cMode )
-         cMode := "KEEP"
-      ENDIF
+      cMode := hb_HGetDef( hTab, cCol, "" )
    ENDIF
 
    IF ValType( hOverride ) == 'H' .AND. hb_HHasKey( hOverride, cOther )
       cMode := Upper( hb_HGetDef( hOverride, cOther, cMode ) )
    ENDIF
 
-   IF cMode != "CASCADE" .AND. cMode != "NULL"
-      cMode := "KEEP"
+   IF cMode != "CASCADE" .AND. cMode != "NULL" .AND. cMode != "KEEP"
+      //  undecided: the schema says nothing and the caller said nothing.
+      //  Defaulting to KEEP here made "nobody decided" and "decided KEEP"
+      //  the same thing (D8) - the schema file is a checklist of the
+      //  decisions, and an edge missing from it is a bug that looks
+      //  correct, so the answer is a refusal the caller can see
+      RETU ""
    ENDIF
 
 RETU cMode
@@ -1010,7 +1013,8 @@ METHOD Cascade( nId, hOverride ) CLASS TDalMySql
          RETU { "total" => -1 }
       ENDIF
 
-      hEdge := { "mode" => cMode, "rows" => 0 }
+      hEdge := { "mode" => iif( EMPTY( cMode ), "UNDECIDED", cMode ), ;
+                 "rows" => 0 }
       IF ! EMPTY( aRows )
          hEdge[ "rows" ] := _DalRowNum( aRows[ 1 ] )
       ENDIF
@@ -1088,6 +1092,16 @@ METHOD Delete( nId, hOverride ) CLASS TDalMySql
          cCol   := aRev[ nI ][ 2 ]
          cMode  := _DalMode( cOther, cCol, hOverride )
 
+         IF cMode == ""
+            //  D8: an edge nobody decided is not an edge decided KEEP. The
+            //  delete is refused before any statement runs, so the store
+            //  is untouched and the answer names the edge
+            lFail := .T.
+            ::cErrSafe    := "the policy for " + cOther + " is not declared"
+            ::cLastReason := "policy undecided"
+            EXIT
+         ENDIF
+
          IF cMode == "CASCADE"
 
             cSql := "DELETE FROM " + _DalQ( cOther ) + " WHERE " ;
@@ -1142,8 +1156,10 @@ METHOD Delete( nId, hOverride ) CLASS TDalMySql
       //  not a partial one, and "deleted = 0" alone would let the caller
       //  read a failure as "the row was not there"
       ::oConn:Rollback()
-      ::cErrSafe    := "the cascade could not be applied"
-      ::cLastReason := "cascade refused"
+      IF Empty( ::cLastReason )
+         ::cErrSafe    := "the cascade could not be applied"
+         ::cLastReason := "cascade refused"
+      ENDIF
       hOut := { "deleted" => 0, "rolledback" => .T. }
       RETU hOut
    ENDIF
@@ -1159,9 +1175,34 @@ METHOD Delete( nId, hOverride ) CLASS TDalMySql
 RETU hOut
 
 
+METHOD OrphansEdge( cCol, cTgt ) CLASS TDalMySql
+
+   LOCAL cSql, aRows
+
+   IF ::oConn == NIL
+      _DalFail( SELF, DAL_BANNER, "OrphansEdge() called with no slot" )
+      RETU -1
+   ENDIF
+
+   //  a row whose FK value is set but whose target row is gone.
+  //  EXISTS is the shape MariaDB answers here; SHOW-family
+  //  introspection does not parse through this driver (P1 record)
+   cSql := "SELECT COUNT(*) FROM " + _DalQ( ::cTable ) + " WHERE " ;
+     + _DalQ( cCol ) + " IS NOT NULL AND NOT EXISTS ( SELECT 1 FROM " ;
+     + _DalQ( cTgt ) + " WHERE " + _DalQ( DAL_IDCOL ) + " = " ;
+     + _DalQ( cCol ) + " )"
+
+   aRows := _DalRun( SELF, cSql )
+   IF aRows == NIL
+      RETU -1
+   ENDIF
+
+RETU _DalRowNum( aRows[ 1 ] )
+
+
 METHOD Orphans() CLASS TDalMySql
 
-   LOCAL hGraph, hFk, cCol, cTgt, cSql, aRows, nTotal := 0, nOne
+   LOCAL hGraph, hFk, cCol, cTgt, nTotal := 0, nOne
 
    IF ::oConn == NIL
       _DalFail( SELF, DAL_BANNER, "Orphans() called with no slot" )
@@ -1179,24 +1220,12 @@ METHOD Orphans() CLASS TDalMySql
    FOR EACH cCol IN hb_HKeys( hFk )
 
       cTgt  := hFk[ cCol ]
+      nOne  := Self:OrphansEdge( cCol, cTgt )
 
-      //  a row whose FK value is set but whose target row is gone.
-      //  EXISTS is the shape MariaDB answers here; SHOW-family
-      //  introspection does not parse through this driver (P1 record).
-      cSql := "SELECT COUNT(*) FROM " + _DalQ( ::cTable ) + " WHERE " ;
-        + _DalQ( cCol ) + " IS NOT NULL AND NOT EXISTS ( SELECT 1 FROM " ;
-        + _DalQ( cTgt ) + " WHERE " + _DalQ( DAL_IDCOL ) + " = " ;
-        + _DalQ( cCol ) + " )"
-
-      aRows := _DalRun( SELF, cSql )
-      IF aRows == NIL
+      IF nOne < 0
          RETU -1
       ENDIF
 
-      nOne := 0
-      IF ! EMPTY( aRows )
-         nOne := _DalRowNum( aRows[ 1 ] )
-      ENDIF
       nTotal += nOne
 
    NEXT

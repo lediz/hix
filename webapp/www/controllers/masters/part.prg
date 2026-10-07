@@ -523,7 +523,12 @@ METHOD delete_action() CLASS PartControllers
       RETURN Self:Finish( URedirect( URoute( 'part.grid' ) ) )
    ENDIF
 
-   Self:FlashOk( 'Part ' + hb_NToS( nId ) + ' was deleted!' )
+   //  D5: the flash quotes the numbers the transaction actually applied,
+  //  not the preview's - the preview was a claim about a moment that has
+  //  already passed
+   Self:FlashOk( 'Part ' + hb_NToS( nId ) + ' was deleted (' ;
+        + hb_NToS( hb_HGetDef( hRes, "deleted", 0 ) ) + ' row, ' ;
+        + hb_NToS( hb_HGetDef( hRes, "edges", 0 ) ) + ' other table(s) touched)' )
 
 RETURN Self:Finish( URedirect( URoute( 'part.grid' ) ) )
 

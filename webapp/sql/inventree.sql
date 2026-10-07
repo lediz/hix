@@ -65,7 +65,7 @@ CREATE TABLE `stock_stocklocationtype` (
 CREATE TABLE `users_owner` (
   `id` int NOT NULL AUTO_INCREMENT,
   -- DECISION P1.2a: FK -> contenttypes_contenttype.id is not shipped -> plain int column, no index (HIX owns users, roles, scopes)
-  `owner_type` int NULL  /* FK -> contenttypes_contenttype.id */,
+  `owner_type` int NULL  /* FK -> contenttypes_contenttype.id - target not shipped (P1.2a): no KEY, no policy, inert until the target ships */,
   `owner_id` int NULL,
   -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
   `version` int NOT NULL DEFAULT 0,
@@ -99,9 +99,9 @@ CREATE TABLE `stock_stocklocation` (
   -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
   `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
-  KEY `fk_stock_stocklocation_parent` (`parent`)  /* -> stock_stocklocation.id */,
-  KEY `fk_stock_stocklocation_owner` (`owner`)  /* -> users_owner.id */,
-  KEY `fk_stock_stocklocation_location_type` (`location_type`)  /* -> stock_stocklocationtype.id */,
+  KEY `fk_stock_stocklocation_parent` (`parent`)  /* -> stock_stocklocation.id  policy=KEEP */,
+  KEY `fk_stock_stocklocation_owner` (`owner`)  /* -> users_owner.id  policy=NULL */,
+  KEY `fk_stock_stocklocation_location_type` (`location_type`)  /* -> stock_stocklocationtype.id  policy=NULL */,
   FULLTEXT KEY `ft_name` (`name`),
   FULLTEXT KEY `ft_description` (`description`),
   KEY `ix_barcode_hash` (`barcode_hash`)
@@ -130,8 +130,8 @@ CREATE TABLE `part_partcategory` (
   -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
   `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
-  KEY `fk_part_partcategory_parent` (`parent`)  /* -> part_partcategory.id */,
-  KEY `fk_part_partcategory_default_location` (`default_location`)  /* -> stock_stocklocation.id */,
+  KEY `fk_part_partcategory_parent` (`parent`)  /* -> part_partcategory.id  policy=KEEP */,
+  KEY `fk_part_partcategory_default_location` (`default_location`)  /* -> stock_stocklocation.id  policy=NULL */,
   FULLTEXT KEY `ft_name` (`name`),
   FULLTEXT KEY `ft_description` (`description`)
 );
@@ -180,11 +180,11 @@ CREATE TABLE `part_part` (
   `bom_validated` bool NOT NULL DEFAULT 0,
   `bom_checksum` varchar(128) NOT NULL DEFAULT '',
   -- DECISION P1.2a: FK -> auth_user.id is not shipped -> plain int column, no index (HIX owns users, roles, scopes)
-  `bom_checked_by` int NULL  /* FK -> auth_user.id */,
+  `bom_checked_by` int NULL  /* FK -> auth_user.id - target not shipped (P1.2a): no KEY, no policy, inert until the target ships */,
   `bom_checked_date` date NULL,
   `creation_date` date NULL  /* auto_now_add */,
   -- DECISION P1.2a: FK -> auth_user.id is not shipped -> plain int column, no index (HIX owns users, roles, scopes)
-  `creation_user` int NULL  /* FK -> auth_user.id */,
+  `creation_user` int NULL  /* FK -> auth_user.id - target not shipped (P1.2a): no KEY, no policy, inert until the target ships */,
   `responsible_owner` int NULL  /* FK -> users_owner.id */,
   `base_cost` decimal(19,6) NOT NULL DEFAULT 0,
   `multiple` int NOT NULL DEFAULT 1,
@@ -194,11 +194,11 @@ CREATE TABLE `part_part` (
   -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
   `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
-  KEY `fk_part_part_variant_of` (`variant_of`)  /* -> part_part.id */,
-  KEY `fk_part_part_category` (`category`)  /* -> part_partcategory.id */,
-  KEY `fk_part_part_revision_of` (`revision_of`)  /* -> part_part.id */,
-  KEY `fk_part_part_default_location` (`default_location`)  /* -> stock_stocklocation.id */,
-  KEY `fk_part_part_responsible_owner` (`responsible_owner`)  /* -> users_owner.id */,
+  KEY `fk_part_part_variant_of` (`variant_of`)  /* -> part_part.id  policy=NULL */,
+  KEY `fk_part_part_category` (`category`)  /* -> part_partcategory.id  policy=NULL */,
+  KEY `fk_part_part_revision_of` (`revision_of`)  /* -> part_part.id  policy=NULL */,
+  KEY `fk_part_part_default_location` (`default_location`)  /* -> stock_stocklocation.id  policy=NULL */,
+  KEY `fk_part_part_responsible_owner` (`responsible_owner`)  /* -> users_owner.id  policy=NULL */,
   FULLTEXT KEY `ft_name` (`name`),
   FULLTEXT KEY `ft_description` (`description`),
   FULLTEXT KEY `ft_keywords` (`keywords`),
@@ -216,14 +216,14 @@ CREATE TABLE `part_partparametertemplate` (
   `id` int NOT NULL AUTO_INCREMENT,
   `metadata` json NULL,
   -- DECISION P1.2a: FK -> contenttypes_contenttype.id is not shipped -> plain int column, no index (HIX owns users, roles, scopes)
-  `model_type` int NULL  /* FK -> contenttypes_contenttype.id */,
+  `model_type` int NULL  /* FK -> contenttypes_contenttype.id - target not shipped (P1.2a): no KEY, no policy, inert until the target ships */,
   `name` varchar(100) NOT NULL DEFAULT '',
   `units` varchar(25) NOT NULL DEFAULT '',
   `description` varchar(250) NOT NULL DEFAULT '',
   `checkbox` bool NOT NULL DEFAULT 0,
   `choices` varchar(5000) NOT NULL DEFAULT '',
   -- DECISION P1.2a: FK -> common_selectionlist.id is not shipped -> plain int column, no index (HIX owns users, roles, scopes)
-  `selectionlist` int NULL  /* FK -> common_selectionlist.id */,
+  `selectionlist` int NULL  /* FK -> common_selectionlist.id - target not shipped (P1.2a): no KEY, no policy, inert until the target ships */,
   `enabled` bool NOT NULL DEFAULT 1,
   `unique` int NOT NULL DEFAULT 0,
   -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
@@ -244,10 +244,10 @@ CREATE TABLE `part_partparameter` (
   `id` int NOT NULL AUTO_INCREMENT,
   `updated` datetime NULL,
   -- DECISION P1.2a: FK -> auth_user.id is not shipped -> plain int column, no index (HIX owns users, roles, scopes)
-  `updated_by` int NULL  /* FK -> auth_user.id */,
+  `updated_by` int NULL  /* FK -> auth_user.id - target not shipped (P1.2a): no KEY, no policy, inert until the target ships */,
   `metadata` json NULL,
   -- DECISION P1.2a: FK -> contenttypes_contenttype.id is not shipped -> plain int column, no index (HIX owns users, roles, scopes)
-  `model_type` int NOT NULL DEFAULT 0  /* FK -> contenttypes_contenttype.id */,
+  `model_type` int NOT NULL DEFAULT 0  /* FK -> contenttypes_contenttype.id - target not shipped (P1.2a): no KEY, no policy, inert until the target ships */,
   `model_id` int NOT NULL DEFAULT 0,
   `template` int NOT NULL DEFAULT 0  /* FK -> part_partparametertemplate.id */,
   `data` varchar(500) NOT NULL DEFAULT '',
@@ -256,7 +256,7 @@ CREATE TABLE `part_partparameter` (
   -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
   `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
-  KEY `fk_part_partparameter_template` (`template`)  /* -> part_partparametertemplate.id */
+  KEY `fk_part_partparameter_template` (`template`)  /* -> part_partparametertemplate.id  policy=CASCADE */
 );
 
 -- ============================================================
@@ -276,7 +276,7 @@ CREATE TABLE `common_projectcode` (
   `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   UNIQUE KEY `u_common_projectcode_code` (`code`),
-  KEY `fk_common_projectcode_responsible` (`responsible`)  /* -> users_owner.id */,
+  KEY `fk_common_projectcode_responsible` (`responsible`)  /* -> users_owner.id  policy=NULL */,
   FULLTEXT KEY `ft_description` (`description`)
 );
 
@@ -337,7 +337,7 @@ CREATE TABLE `company_address` (
   -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
   `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
-  KEY `fk_company_address_company` (`company`)  /* -> company_company.id */
+  KEY `fk_company_address_company` (`company`)  /* -> company_company.id  policy=CASCADE */
 );
 
 -- ============================================================
@@ -357,7 +357,7 @@ CREATE TABLE `company_contact` (
   -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
   `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
-  KEY `fk_company_contact_company` (`company`)  /* -> company_company.id */,
+  KEY `fk_company_contact_company` (`company`)  /* -> company_company.id  policy=CASCADE */,
   FULLTEXT KEY `ft_name` (`name`)
 );
 
@@ -381,7 +381,7 @@ CREATE TABLE `order_salesorder` (
   `target_date` date NULL,
   `creation_date` date NULL,
   -- DECISION P1.2a: FK -> auth_user.id is not shipped -> plain int column, no index (HIX owns users, roles, scopes)
-  `created_by` int NULL  /* FK -> auth_user.id */,
+  `created_by` int NULL  /* FK -> auth_user.id - target not shipped (P1.2a): no KEY, no policy, inert until the target ships */,
   `issue_date` date NULL,
   `updated_at` datetime NULL,
   `responsible` int NULL  /* FK -> users_owner.id */,
@@ -394,16 +394,16 @@ CREATE TABLE `order_salesorder` (
   `customer_reference` varchar(64) NOT NULL DEFAULT '',
   `shipment_date` date NULL,
   -- DECISION P1.2a: FK -> auth_user.id is not shipped -> plain int column, no index (HIX owns users, roles, scopes)
-  `shipped_by` int NULL  /* FK -> auth_user.id */,
+  `shipped_by` int NULL  /* FK -> auth_user.id - target not shipped (P1.2a): no KEY, no policy, inert until the target ships */,
   -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
   `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   UNIQUE KEY `u_order_salesorder_reference` (`reference`),
-  KEY `fk_order_salesorder_project_code` (`project_code`)  /* -> common_projectcode.id */,
-  KEY `fk_order_salesorder_responsible` (`responsible`)  /* -> users_owner.id */,
-  KEY `fk_order_salesorder_contact` (`contact`)  /* -> company_contact.id */,
-  KEY `fk_order_salesorder_address` (`address`)  /* -> company_address.id */,
-  KEY `fk_order_salesorder_customer` (`customer`)  /* -> company_company.id */,
+  KEY `fk_order_salesorder_project_code` (`project_code`)  /* -> common_projectcode.id  policy=KEEP */,
+  KEY `fk_order_salesorder_responsible` (`responsible`)  /* -> users_owner.id  policy=KEEP */,
+  KEY `fk_order_salesorder_contact` (`contact`)  /* -> company_contact.id  policy=KEEP */,
+  KEY `fk_order_salesorder_address` (`address`)  /* -> company_address.id  policy=KEEP */,
+  KEY `fk_order_salesorder_customer` (`customer`)  /* -> company_company.id  policy=KEEP */,
   FULLTEXT KEY `ft_description` (`description`),
   KEY `ix_barcode_hash` (`barcode_hash`)
 );
@@ -463,9 +463,9 @@ CREATE TABLE `build_build` (
   `target_date` date NULL,
   `completion_date` date NULL,
   -- DECISION P1.2a: FK -> auth_user.id is not shipped -> plain int column, no index (HIX owns users, roles, scopes)
-  `completed_by` int NULL  /* FK -> auth_user.id */,
+  `completed_by` int NULL  /* FK -> auth_user.id - target not shipped (P1.2a): no KEY, no policy, inert until the target ships */,
   -- DECISION P1.2a: FK -> auth_user.id is not shipped -> plain int column, no index (HIX owns users, roles, scopes)
-  `issued_by` int NULL  /* FK -> auth_user.id */,
+  `issued_by` int NULL  /* FK -> auth_user.id - target not shipped (P1.2a): no KEY, no policy, inert until the target ships */,
   `responsible` int NULL  /* FK -> users_owner.id */,
   `link` varchar(2000) NOT NULL DEFAULT '',
   `priority` int NOT NULL DEFAULT 0,
@@ -477,13 +477,13 @@ CREATE TABLE `build_build` (
   `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   UNIQUE KEY `u_build_build_reference` (`reference`),
-  KEY `fk_build_build_parent` (`parent`)  /* -> build_build.id */,
-  KEY `fk_build_build_part` (`part`)  /* -> part_part.id */,
-  KEY `fk_build_build_sales_order` (`sales_order`)  /* -> order_salesorder.id */,
-  KEY `fk_build_build_take_from` (`take_from`)  /* -> stock_stocklocation.id */,
-  KEY `fk_build_build_destination` (`destination`)  /* -> stock_stocklocation.id */,
-  KEY `fk_build_build_responsible` (`responsible`)  /* -> users_owner.id */,
-  KEY `fk_build_build_project_code` (`project_code`)  /* -> common_projectcode.id */,
+  KEY `fk_build_build_parent` (`parent`)  /* -> build_build.id  policy=KEEP */,
+  KEY `fk_build_build_part` (`part`)  /* -> part_part.id  policy=KEEP */,
+  KEY `fk_build_build_sales_order` (`sales_order`)  /* -> order_salesorder.id  policy=KEEP */,
+  KEY `fk_build_build_take_from` (`take_from`)  /* -> stock_stocklocation.id  policy=KEEP */,
+  KEY `fk_build_build_destination` (`destination`)  /* -> stock_stocklocation.id  policy=KEEP */,
+  KEY `fk_build_build_responsible` (`responsible`)  /* -> users_owner.id  policy=KEEP */,
+  KEY `fk_build_build_project_code` (`project_code`)  /* -> common_projectcode.id  policy=KEEP */,
   KEY `ix_barcode_hash` (`barcode_hash`)
 );
 
@@ -507,7 +507,7 @@ CREATE TABLE `order_purchaseorder` (
   `target_date` date NULL,
   `creation_date` date NULL,
   -- DECISION P1.2a: FK -> auth_user.id is not shipped -> plain int column, no index (HIX owns users, roles, scopes)
-  `created_by` int NULL  /* FK -> auth_user.id */,
+  `created_by` int NULL  /* FK -> auth_user.id - target not shipped (P1.2a): no KEY, no policy, inert until the target ships */,
   `issue_date` date NULL,
   `updated_at` datetime NULL,
   `responsible` int NULL  /* FK -> users_owner.id */,
@@ -519,19 +519,19 @@ CREATE TABLE `order_purchaseorder` (
   `supplier` int NULL  /* FK -> company_company.id */,
   `supplier_reference` varchar(64) NOT NULL DEFAULT '',
   -- DECISION P1.2a: FK -> auth_user.id is not shipped -> plain int column, no index (HIX owns users, roles, scopes)
-  `received_by` int NULL  /* FK -> auth_user.id */,
+  `received_by` int NULL  /* FK -> auth_user.id - target not shipped (P1.2a): no KEY, no policy, inert until the target ships */,
   `complete_date` date NULL,
   `destination` int NULL  /* FK -> stock_stocklocation.id */,
   -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
   `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   UNIQUE KEY `u_order_purchaseorder_reference` (`reference`),
-  KEY `fk_order_purchaseorder_project_code` (`project_code`)  /* -> common_projectcode.id */,
-  KEY `fk_order_purchaseorder_responsible` (`responsible`)  /* -> users_owner.id */,
-  KEY `fk_order_purchaseorder_contact` (`contact`)  /* -> company_contact.id */,
-  KEY `fk_order_purchaseorder_address` (`address`)  /* -> company_address.id */,
-  KEY `fk_order_purchaseorder_supplier` (`supplier`)  /* -> company_company.id */,
-  KEY `fk_order_purchaseorder_destination` (`destination`)  /* -> stock_stocklocation.id */,
+  KEY `fk_order_purchaseorder_project_code` (`project_code`)  /* -> common_projectcode.id  policy=KEEP */,
+  KEY `fk_order_purchaseorder_responsible` (`responsible`)  /* -> users_owner.id  policy=KEEP */,
+  KEY `fk_order_purchaseorder_contact` (`contact`)  /* -> company_contact.id  policy=KEEP */,
+  KEY `fk_order_purchaseorder_address` (`address`)  /* -> company_address.id  policy=KEEP */,
+  KEY `fk_order_purchaseorder_supplier` (`supplier`)  /* -> company_company.id  policy=KEEP */,
+  KEY `fk_order_purchaseorder_destination` (`destination`)  /* -> stock_stocklocation.id  policy=KEEP */,
   FULLTEXT KEY `ft_description` (`description`),
   KEY `ix_barcode_hash` (`barcode_hash`)
 );
@@ -556,8 +556,8 @@ CREATE TABLE `company_manufacturerpart` (
   -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
   `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
-  KEY `fk_company_manufacturerpart_part` (`part`)  /* -> part_part.id */,
-  KEY `fk_company_manufacturerpart_manufacturer` (`manufacturer`)  /* -> company_company.id */,
+  KEY `fk_company_manufacturerpart_part` (`part`)  /* -> part_part.id  policy=CASCADE */,
+  KEY `fk_company_manufacturerpart_manufacturer` (`manufacturer`)  /* -> company_company.id  policy=NULL */,
   FULLTEXT KEY `ft_description` (`description`),
   KEY `ix_barcode_hash` (`barcode_hash`)
 );
@@ -594,9 +594,9 @@ CREATE TABLE `part_supplierpart` (
   -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
   `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
-  KEY `fk_part_supplierpart_part` (`part`)  /* -> part_part.id */,
-  KEY `fk_part_supplierpart_supplier` (`supplier`)  /* -> company_company.id */,
-  KEY `fk_part_supplierpart_manufacturer_part` (`manufacturer_part`)  /* -> company_manufacturerpart.id */,
+  KEY `fk_part_supplierpart_part` (`part`)  /* -> part_part.id  policy=CASCADE */,
+  KEY `fk_part_supplierpart_supplier` (`supplier`)  /* -> company_company.id  policy=CASCADE */,
+  KEY `fk_part_supplierpart_manufacturer_part` (`manufacturer_part`)  /* -> company_manufacturerpart.id  policy=NULL */,
   FULLTEXT KEY `ft_description` (`description`),
   KEY `ix_SKU` (`SKU`),
   KEY `ix_barcode_hash` (`barcode_hash`)
@@ -635,7 +635,7 @@ CREATE TABLE `stock_stockitem` (
   `expiry_date` date NULL,
   `stocktake_date` date NULL,
   -- DECISION P1.2a: FK -> auth_user.id is not shipped -> plain int column, no index (HIX owns users, roles, scopes)
-  `stocktake_user` int NULL  /* FK -> auth_user.id */,
+  `stocktake_user` int NULL  /* FK -> auth_user.id - target not shipped (P1.2a): no KEY, no policy, inert until the target ships */,
   `creation_date` datetime NULL  /* auto_now_add */,
   `delete_on_deplete` bool NOT NULL DEFAULT 0,
   `status` int NOT NULL DEFAULT 0,
@@ -646,17 +646,17 @@ CREATE TABLE `stock_stockitem` (
   -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
   `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
-  KEY `fk_stock_stockitem_parent` (`parent`)  /* -> stock_stockitem.id */,
-  KEY `fk_stock_stockitem_part` (`part`)  /* -> part_part.id */,
-  KEY `fk_stock_stockitem_supplier_part` (`supplier_part`)  /* -> part_supplierpart.id */,
-  KEY `fk_stock_stockitem_location` (`location`)  /* -> stock_stocklocation.id */,
-  KEY `fk_stock_stockitem_belongs_to` (`belongs_to`)  /* -> stock_stockitem.id */,
-  KEY `fk_stock_stockitem_customer` (`customer`)  /* -> company_company.id */,
-  KEY `fk_stock_stockitem_build` (`build`)  /* -> build_build.id */,
-  KEY `fk_stock_stockitem_consumed_by` (`consumed_by`)  /* -> build_build.id */,
-  KEY `fk_stock_stockitem_purchase_order` (`purchase_order`)  /* -> order_purchaseorder.id */,
-  KEY `fk_stock_stockitem_sales_order` (`sales_order`)  /* -> order_salesorder.id */,
-  KEY `fk_stock_stockitem_owner` (`owner`)  /* -> users_owner.id */,
+  KEY `fk_stock_stockitem_parent` (`parent`)  /* -> stock_stockitem.id  policy=KEEP */,
+  KEY `fk_stock_stockitem_part` (`part`)  /* -> part_part.id  policy=CASCADE */,
+  KEY `fk_stock_stockitem_supplier_part` (`supplier_part`)  /* -> part_supplierpart.id  policy=NULL */,
+  KEY `fk_stock_stockitem_location` (`location`)  /* -> stock_stocklocation.id  policy=NULL */,
+  KEY `fk_stock_stockitem_belongs_to` (`belongs_to`)  /* -> stock_stockitem.id  policy=KEEP */,
+  KEY `fk_stock_stockitem_customer` (`customer`)  /* -> company_company.id  policy=NULL */,
+  KEY `fk_stock_stockitem_build` (`build`)  /* -> build_build.id  policy=NULL */,
+  KEY `fk_stock_stockitem_consumed_by` (`consumed_by`)  /* -> build_build.id  policy=NULL */,
+  KEY `fk_stock_stockitem_purchase_order` (`purchase_order`)  /* -> order_purchaseorder.id  policy=NULL */,
+  KEY `fk_stock_stockitem_sales_order` (`sales_order`)  /* -> order_salesorder.id  policy=NULL */,
+  KEY `fk_stock_stockitem_owner` (`owner`)  /* -> users_owner.id  policy=NULL */,
   KEY `ix_barcode_hash` (`barcode_hash`)
 );
 
@@ -676,7 +676,7 @@ CREATE TABLE `part_supplierpricebreak` (
   -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
   `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
-  KEY `fk_part_supplierpricebreak_part` (`part`)  /* -> part_supplierpart.id */
+  KEY `fk_part_supplierpricebreak_part` (`part`)  /* -> part_supplierpart.id  policy=CASCADE */
 );
 
 -- ============================================================
@@ -707,8 +707,8 @@ CREATE TABLE `part_bomitem` (
   -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
   `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
-  KEY `fk_part_bomitem_part` (`part`)  /* -> part_part.id */,
-  KEY `fk_part_bomitem_sub_part` (`sub_part`)  /* -> part_part.id */
+  KEY `fk_part_bomitem_part` (`part`)  /* -> part_part.id  policy=CASCADE */,
+  KEY `fk_part_bomitem_sub_part` (`sub_part`)  /* -> part_part.id  policy=CASCADE */
 );
 
 -- ============================================================
@@ -725,8 +725,8 @@ CREATE TABLE `part_bomitemsubstitute` (
   -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
   `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
-  KEY `fk_part_bomitemsubstitute_bom_item` (`bom_item`)  /* -> part_bomitem.id */,
-  KEY `fk_part_bomitemsubstitute_part` (`part`)  /* -> part_part.id */
+  KEY `fk_part_bomitemsubstitute_bom_item` (`bom_item`)  /* -> part_bomitem.id  policy=CASCADE */,
+  KEY `fk_part_bomitemsubstitute_part` (`part`)  /* -> part_part.id  policy=CASCADE */
 );
 
 -- ============================================================
@@ -744,8 +744,8 @@ CREATE TABLE `part_partrelated` (
   -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
   `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
-  KEY `fk_part_partrelated_part_1` (`part_1`)  /* -> part_part.id */,
-  KEY `fk_part_partrelated_part_2` (`part_2`)  /* -> part_part.id */
+  KEY `fk_part_partrelated_part_1` (`part_1`)  /* -> part_part.id  policy=KEEP */,
+  KEY `fk_part_partrelated_part_2` (`part_2`)  /* -> part_part.id  policy=KEEP */
 );
 
 -- ============================================================
@@ -799,7 +799,7 @@ CREATE TABLE `part_partpricing` (
   -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
   `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
-  KEY `fk_part_partpricing_part` (`part`)  /* -> part_part.id */
+  KEY `fk_part_partpricing_part` (`part`)  /* -> part_part.id  policy=CASCADE */
 );
 
 -- ============================================================
@@ -830,11 +830,11 @@ CREATE TABLE `order_purchaseorderlineitem` (
   -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
   `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
-  KEY `fk_order_purchaseorderlineitem_project_code` (`project_code`)  /* -> common_projectcode.id */,
-  KEY `fk_order_purchaseorderlineitem_order` (`order`)  /* -> order_purchaseorder.id */,
-  KEY `fk_order_purchaseorderlineitem_part` (`part`)  /* -> part_supplierpart.id */,
-  KEY `fk_order_purchaseorderlineitem_build_order` (`build_order`)  /* -> build_build.id */,
-  KEY `fk_order_purchaseorderlineitem_destination` (`destination`)  /* -> stock_stocklocation.id */
+  KEY `fk_order_purchaseorderlineitem_project_code` (`project_code`)  /* -> common_projectcode.id  policy=KEEP */,
+  KEY `fk_order_purchaseorderlineitem_order` (`order`)  /* -> order_purchaseorder.id  policy=KEEP */,
+  KEY `fk_order_purchaseorderlineitem_part` (`part`)  /* -> part_supplierpart.id  policy=KEEP */,
+  KEY `fk_order_purchaseorderlineitem_build_order` (`build_order`)  /* -> build_build.id  policy=KEEP */,
+  KEY `fk_order_purchaseorderlineitem_destination` (`destination`)  /* -> stock_stocklocation.id  policy=KEEP */
 );
 
 -- ============================================================
@@ -863,9 +863,9 @@ CREATE TABLE `order_salesorderlineitem` (
   -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
   `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
-  KEY `fk_order_salesorderlineitem_project_code` (`project_code`)  /* -> common_projectcode.id */,
-  KEY `fk_order_salesorderlineitem_order` (`order`)  /* -> order_salesorder.id */,
-  KEY `fk_order_salesorderlineitem_part` (`part`)  /* -> part_part.id */
+  KEY `fk_order_salesorderlineitem_project_code` (`project_code`)  /* -> common_projectcode.id  policy=KEEP */,
+  KEY `fk_order_salesorderlineitem_order` (`order`)  /* -> order_salesorder.id  policy=KEEP */,
+  KEY `fk_order_salesorderlineitem_part` (`part`)  /* -> part_part.id  policy=KEEP */
 );
 
 -- ============================================================
@@ -885,7 +885,7 @@ CREATE TABLE `order_salesordershipment` (
   `shipment_date` date NULL,
   `delivery_date` date NULL,
   -- DECISION P1.2a: FK -> auth_user.id is not shipped -> plain int column, no index (HIX owns users, roles, scopes)
-  `checked_by` int NULL  /* FK -> auth_user.id */,
+  `checked_by` int NULL  /* FK -> auth_user.id - target not shipped (P1.2a): no KEY, no policy, inert until the target ships */,
   `reference` varchar(100) NOT NULL DEFAULT '1',
   `tracking_number` varchar(100) NOT NULL DEFAULT '',
   `invoice_number` varchar(100) NOT NULL DEFAULT '',
@@ -893,8 +893,8 @@ CREATE TABLE `order_salesordershipment` (
   -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
   `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
-  KEY `fk_order_salesordershipment_order` (`order`)  /* -> order_salesorder.id */,
-  KEY `fk_order_salesordershipment_shipment_address` (`shipment_address`)  /* -> company_address.id */,
+  KEY `fk_order_salesordershipment_order` (`order`)  /* -> order_salesorder.id  policy=KEEP */,
+  KEY `fk_order_salesordershipment_shipment_address` (`shipment_address`)  /* -> company_address.id  policy=KEEP */,
   KEY `ix_barcode_hash` (`barcode_hash`)
 );
 
@@ -913,9 +913,9 @@ CREATE TABLE `order_salesorderallocation` (
   -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
   `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
-  KEY `fk_order_salesorderallocation_line` (`line`)  /* -> order_salesorderlineitem.id */,
-  KEY `fk_order_salesorderallocation_shipment` (`shipment`)  /* -> order_salesordershipment.id */,
-  KEY `fk_order_salesorderallocation_item` (`item`)  /* -> stock_stockitem.id */
+  KEY `fk_order_salesorderallocation_line` (`line`)  /* -> order_salesorderlineitem.id  policy=KEEP */,
+  KEY `fk_order_salesorderallocation_shipment` (`shipment`)  /* -> order_salesordershipment.id  policy=KEEP */,
+  KEY `fk_order_salesorderallocation_item` (`item`)  /* -> stock_stockitem.id  policy=KEEP */
 );
 
 -- ============================================================
@@ -934,8 +934,8 @@ CREATE TABLE `build_buildline` (
   `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   UNIQUE KEY `u_build_buildline_build_bom_item` (`build`, `bom_item`),
-  KEY `fk_build_buildline_build` (`build`)  /* -> build_build.id */,
-  KEY `fk_build_buildline_bom_item` (`bom_item`)  /* -> part_bomitem.id */
+  KEY `fk_build_buildline_build` (`build`)  /* -> build_build.id  policy=KEEP */,
+  KEY `fk_build_buildline_bom_item` (`bom_item`)  /* -> part_bomitem.id  policy=KEEP */
 );
 
 -- ============================================================
@@ -955,9 +955,9 @@ CREATE TABLE `build_builditem` (
   `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   UNIQUE KEY `u_build_builditem_build_line_stock_item_install_into` (`build_line`, `stock_item`, `install_into`),
-  KEY `fk_build_builditem_build_line` (`build_line`)  /* -> build_buildline.id */,
-  KEY `fk_build_builditem_stock_item` (`stock_item`)  /* -> stock_stockitem.id */,
-  KEY `fk_build_builditem_install_into` (`install_into`)  /* -> stock_stockitem.id */
+  KEY `fk_build_builditem_build_line` (`build_line`)  /* -> build_buildline.id  policy=KEEP */,
+  KEY `fk_build_builditem_stock_item` (`stock_item`)  /* -> stock_stockitem.id  policy=KEEP */,
+  KEY `fk_build_builditem_install_into` (`install_into`)  /* -> stock_stockitem.id  policy=KEEP */
 );
 
 -- ============================================================
@@ -980,7 +980,7 @@ CREATE TABLE `part_partstocktake` (
   -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
   `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
-  KEY `fk_part_partstocktake_part` (`part`)  /* -> part_part.id */
+  KEY `fk_part_partstocktake_part` (`part`)  /* -> part_part.id  policy=KEEP */
 );
 
 -- ============================================================
@@ -994,13 +994,13 @@ CREATE TABLE `stock_stockitemtestresult` (
   `metadata` json NULL,
   `stock_item` int NOT NULL DEFAULT 0  /* FK -> stock_stockitem.id */,
   -- DECISION P1.2a: FK -> part_parttesttemplate.id is not shipped -> plain int column, no index (HIX owns users, roles, scopes)
-  `template` int NOT NULL DEFAULT 0  /* FK -> part_parttesttemplate.id */,
+  `template` int NOT NULL DEFAULT 0  /* FK -> part_parttesttemplate.id - target not shipped (P1.2a): no KEY, no policy, inert until the target ships */,
   `result` bool NOT NULL DEFAULT 0,
   `value` varchar(500) NOT NULL DEFAULT '',
   `attachment` varchar(100) NULL,
   `notes` varchar(500) NOT NULL DEFAULT '',
   -- DECISION P1.2a: FK -> auth_user.id is not shipped -> plain int column, no index (HIX owns users, roles, scopes)
-  `user` int NULL  /* FK -> auth_user.id */,
+  `user` int NULL  /* FK -> auth_user.id - target not shipped (P1.2a): no KEY, no policy, inert until the target ships */,
   `test_station` varchar(500) NOT NULL DEFAULT '',
   `started_datetime` datetime NULL,
   `finished_datetime` datetime NULL,
@@ -1009,7 +1009,7 @@ CREATE TABLE `stock_stockitemtestresult` (
   -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
   `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
-  KEY `fk_stock_stockitemtestresult_stock_item` (`stock_item`)  /* -> stock_stockitem.id */
+  KEY `fk_stock_stockitemtestresult_stock_item` (`stock_item`)  /* -> stock_stockitem.id  policy=KEEP */
 );
 
 -- ============================================================
@@ -1027,13 +1027,13 @@ CREATE TABLE `stock_stockitemtracking` (
   `date` datetime NOT NULL  /* auto_now_add */,
   `notes` varchar(512) NULL,
   -- DECISION P1.2a: FK -> auth_user.id is not shipped -> plain int column, no index (HIX owns users, roles, scopes)
-  `user` int NULL  /* FK -> auth_user.id */,
+  `user` int NULL  /* FK -> auth_user.id - target not shipped (P1.2a): no KEY, no policy, inert until the target ships */,
   `deltas` json NULL,
   -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
   `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
-  KEY `fk_stock_stockitemtracking_item` (`item`)  /* -> stock_stockitem.id */,
-  KEY `fk_stock_stockitemtracking_part` (`part`)  /* -> part_part.id */
+  KEY `fk_stock_stockitemtracking_item` (`item`)  /* -> stock_stockitem.id  policy=KEEP */,
+  KEY `fk_stock_stockitemtracking_part` (`part`)  /* -> part_part.id  policy=KEEP */
 );
 
 -- ============================================================
@@ -1063,7 +1063,7 @@ CREATE TABLE `common_inventreeusersetting` (
   `key` varchar(50) NOT NULL DEFAULT '',
   `value` varchar(2000) NOT NULL DEFAULT '',
   -- DECISION P1.2a: FK -> auth_user.id is not shipped -> plain int column, no index (HIX owns users, roles, scopes)
-  `user` int NULL  /* FK -> auth_user.id */,
+  `user` int NULL  /* FK -> auth_user.id - target not shipped (P1.2a): no KEY, no policy, inert until the target ships */,
   -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
   `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`)
@@ -1079,11 +1079,11 @@ CREATE TABLE `common_note` (
   `id` int NOT NULL AUTO_INCREMENT,
   `updated` datetime NULL,
   -- DECISION P1.2a: FK -> auth_user.id is not shipped -> plain int column, no index (HIX owns users, roles, scopes)
-  `updated_by` int NULL  /* FK -> auth_user.id */,
+  `updated_by` int NULL  /* FK -> auth_user.id - target not shipped (P1.2a): no KEY, no policy, inert until the target ships */,
   `metadata` json NULL,
   `template` bool NOT NULL DEFAULT 0,
   -- DECISION P1.2a: FK -> contenttypes_contenttype.id is not shipped -> plain int column, no index (HIX owns users, roles, scopes)
-  `model_type` int NULL  /* FK -> contenttypes_contenttype.id */,
+  `model_type` int NULL  /* FK -> contenttypes_contenttype.id - target not shipped (P1.2a): no KEY, no policy, inert until the target ships */,
   `model_id` int NULL,
   `primary` bool NOT NULL DEFAULT 0,
   `title` varchar(100) NOT NULL DEFAULT '',
@@ -1112,7 +1112,7 @@ CREATE TABLE `common_attachment` (
   `link` varchar(2000) NULL,
   `comment` varchar(250) NOT NULL DEFAULT '',
   -- DECISION P1.2a: FK -> auth_user.id is not shipped -> plain int column, no index (HIX owns users, roles, scopes)
-  `upload_user` int NULL  /* FK -> auth_user.id */,
+  `upload_user` int NULL  /* FK -> auth_user.id - target not shipped (P1.2a): no KEY, no policy, inert until the target ships */,
   `upload_date` date NULL  /* auto_now_add */,
   `is_image` bool NOT NULL DEFAULT 0,
   `file_size` int NOT NULL DEFAULT 0,
@@ -1131,7 +1131,7 @@ CREATE TABLE `common_barcodescanresult` (
   `id` int NOT NULL AUTO_INCREMENT,
   `data` varchar(255) NOT NULL DEFAULT '',
   -- DECISION P1.2a: FK -> auth_user.id is not shipped -> plain int column, no index (HIX owns users, roles, scopes)
-  `user` int NULL  /* FK -> auth_user.id */,
+  `user` int NULL  /* FK -> auth_user.id - target not shipped (P1.2a): no KEY, no policy, inert until the target ships */,
   -- DECISION P1.1: NOT NULL date, no DEFAULT invented - the DAL must always supply it
   `timestamp` datetime NOT NULL  /* auto_now_add */,
   `endpoint` varchar(250) NULL,
@@ -1153,7 +1153,7 @@ CREATE TABLE `users_userprofile` (
   `id` int NOT NULL AUTO_INCREMENT,
   `metadata` json NULL,
   -- DECISION P1.2a: FK -> auth_user.id is not shipped -> plain int column, no index (HIX owns users, roles, scopes)
-  `user` int NOT NULL DEFAULT 0  /* FK -> auth_user.id */,
+  `user` int NOT NULL DEFAULT 0  /* FK -> auth_user.id - target not shipped (P1.2a): no KEY, no policy, inert until the target ships */,
   `language` varchar(10) NULL,
   `theme` json NULL,
   `widgets` json NULL,
@@ -1166,7 +1166,7 @@ CREATE TABLE `users_userprofile` (
   `type` varchar(10) NOT NULL DEFAULT '',
   `organisation` varchar(255) NULL,
   -- DECISION P1.2a: FK -> auth_group.id is not shipped -> plain int column, no index (HIX owns users, roles, scopes)
-  `primary_group` int NULL  /* FK -> auth_group.id */,
+  `primary_group` int NULL  /* FK -> auth_group.id - target not shipped (P1.2a): no KEY, no policy, inert until the target ships */,
   -- DECISION P3.7: optimistic concurrency (SRS 5.2) - not in the artefact
   `version` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`)
@@ -1182,7 +1182,7 @@ CREATE TABLE `users_ruleset` (
   `id` int NOT NULL AUTO_INCREMENT,
   `name` varchar(50) NOT NULL DEFAULT '',
   -- DECISION P1.2a: FK -> auth_group.id is not shipped -> plain int column, no index (HIX owns users, roles, scopes)
-  `group` int NOT NULL DEFAULT 0  /* FK -> auth_group.id */,
+  `group` int NOT NULL DEFAULT 0  /* FK -> auth_group.id - target not shipped (P1.2a): no KEY, no policy, inert until the target ships */,
   `can_view` bool NOT NULL DEFAULT 0,
   `can_add` bool NOT NULL DEFAULT 0,
   `can_change` bool NOT NULL DEFAULT 0,

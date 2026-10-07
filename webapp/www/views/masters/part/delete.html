@@ -36,7 +36,7 @@
     @endforeach
    </tbody>
   </table>
-  <p>Total rows other tables would lose: <strong>{{ HB_HGetDef( hPrev, 'total', 0 ) }}</strong>.
+  <p>Total rows other tables would lose, as of this page load: <strong>{{ HB_HGetDef( hPrev, 'total', 0 ) }}</strong>.
      A policy of KEEP leaves the dependent row pointing at a part that is gone.</p>
 
   <form method="POST" action="{{ URoute( 'part.delete', nId ) }}">

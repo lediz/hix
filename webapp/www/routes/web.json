@@ -5,6 +5,7 @@
   { "name": "sys.logout",     "url": "/logout",                        "action": "controllers/logout.prg",                   "method": "GET",  "middleware": "MyAppAuth" },
   { "name": "sys.auth",       "url": "/auth",                          "action": "controllers/auth.prg" ,                    "method": "POST", "middleware": "MyAppLogin" },
   { "name": "sys.health_db",  "url": "/health/db",                     "action": "controllers/healthdb.prg",                 "method": "GET",  "middleware": "MyAppAuth" },
+  { "name": "sys.fk_check",   "url": "/hix-fk-check",                  "action": "controllers/fkcheck.prg",                    "method": "GET",  "middleware": "MyAppAuthRole"    , "scope": "sys:fkcheck" },
 
   { "name": "module_a",       "url": "/module_a",                      "action": "views/masters/modules/module_a.html", "method": "GET",  "middleware": "MyAppAuth" },
   { "name": "module_b",       "url": "/module_b",                      "action": "views/masters/modules/module_b.html", "method": "GET",  "middleware": "MyAppAuth" },

@@ -111,3 +111,31 @@ implied by omission.
 
 Recorded where it belongs — the FK comment in `sql/inventree.sql`. The DAL
 needs no change: `_DalMode()` already reads it.
+
+---
+
+## Taken on 2026-10-07 (the same day, after the report)
+
+The rule was applied mechanically to all 78 edges and written into
+`sql/inventree.sql` as `policy=` comments: **CASCADE 13 · NULL 19 · KEEP 46**.
+The rule: history tables (`build_*`, `order_*`, `part_partstocktake`,
+`stock_stockitemtestresult`, `stock_stockitemtracking`) → KEEP; tree edges
+(`parent`, `belongs_to`) → KEEP; `variant_of`/`revision_of` → NULL; otherwise
+CASCADE where the FK column is NOT NULL, NULL where it is nullable. Two
+overrides: `part_partrelated.part_1/2` → KEEP (a related-part pointer is a
+suggestion, not an ownership).
+
+| Decision | What was done |
+|---|---|
+| **D1** | authored per the rule above, in the schema comment — not fetched from InvenTree's model source |
+| **D2** | the 26 NOT NULL edges carry CASCADE or KEEP only; the DAL refuses a `NULL` policy on them before the first statement runs |
+| **D3** | **not taken as recursion.** The tree edges carry `policy=KEEP`; a subtree delete is a different user intent and belongs to a module verb with an explicit depth. `Delete()` and `Cascade()` stay one level |
+| **D5** | the preview is advisory: `delete.html` says "as of this page load", and the delete's flash quotes the transaction's own numbers — "Part 12 was deleted (1 row, 3 other table(s) touched)" |
+| **D6** | `/hix-fk-check` added (P7.2): `GET`, middleware `MyAppAuthRole`, scope `sys:fkcheck`, granted to the admin account only by `seed_users_mysql`. One slot for the whole route, 27 DAL objects borrowing it; the answer names each edge — `{ table, column, target, rows }`. Measured on the seeded corpus: **27 tables, 78 edges, 21 orphans**, all on self-edges (`stock_stocklocation.parent` 5, `part_partcategory.parent` 6, `part_part.variant_of` 4, …) — the seeded fixtures point at targets the 38-table subset does not carry. No repair verb |
+| **D7** | the 26 FK-annotated columns with no `KEY` now say why in the schema comment: `target not shipped (P1.2a): no KEY, no policy, inert until the target ships` |
+| **D8** | **absent is no longer KEEP.** `_DalMode()` answers `""` for an edge the schema did not decide; `Delete()` refuses it (`rolledback`, reason `policy undecided`) and `Cascade()` renders `UNDECIDED`. The schema file is now a checklist: 78 edges, 78 answers |
+
+Verification after the change: `probe_dalmysql` **29/0** (step 14 now passes an
+explicit `KEEP` and step 15 relies on the schema's `policy=CASCADE`, which is
+what proves the schema is the source), `test_part_module` **38/0**,
+`test_users_mysql` **39/0**, corpus back at its seeded base.
