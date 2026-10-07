@@ -1,0 +1,12 @@
+@args cMode := 'edit', lFound := .F., hRow := {=>}, hFlash := {=>}, nVersion := 0
+@view 'common/header.html'
+<h1>{{ if( cMode == 'create', 'Create', 'Edit' ) }} supplier listing</h1>
+<p class="flash">{{ HB_HGetDef( hFlash, 'message', '' ) }} version {{ nVersion }}</p>
+<form method="POST" action="{{ if( cMode == 'create', '/supplier/store', '/supplier/' + HB_HGetDef( hRow, 'id', 0 ) + '/update' ) }}">
+@CSRF
+<input type="text" name="part" value="{{ HB_HGetDef( hRow, 'part', '' ) }}">
+<input type="text" name="supplier" value="{{ HB_HGetDef( hRow, 'supplier', '' ) }}">
+<input type="text" name="SKU" value="{{ HB_HGetDef( hRow, 'SKU', '' ) }}">
+<input type="hidden" name="version" value="{{ nVersion }}">
+<input type="hidden" name="id" value="{{ HB_HGetDef( hRow, 'id', 0 ) }}">
+</form>

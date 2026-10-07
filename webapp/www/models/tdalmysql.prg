@@ -68,6 +68,8 @@ CLASS TDalMySql
    METHOD Open()
    METHOD Close()
    METHOD Count( hFilter, hLike )
+   METHOD SumOf( cCol, hFilter, hLike )
+   METHOD AvgOf( cCol, hFilter, hLike )
    METHOD FetchAll( hFilter, hLike )
    METHOD FetchPaged( nLimit, nOffset, hFilter, hLike )
    METHOD Show( nId )
@@ -493,6 +495,21 @@ STATIC FUNCTION _DalHas( cHay, cNeedle )
 RETU 0
 
 
+//  the aggregate's column must be one the module declared, so a caller
+//  cannot ask the DAL to sum an arbitrary column
+STATIC FUNCTION _DalInList( aCols, cCol )
+
+   LOCAL nI
+
+   FOR nI := 1 TO LEN( aCols )
+      IF aCols[ nI ] == cCol
+         RETU .T.
+      ENDIF
+   NEXT
+
+RETU .F.
+
+
 STATIC FUNCTION _DalSchemaLines()
 
    LOCAL cText := hb_MemoRead( DAL_SCHEMA )
@@ -677,6 +694,107 @@ RETU "conflict"
 // -------------------------------------------------------------- //
 //  The verbs.
 // -------------------------------------------------------------- //
+
+//  P5.1 of INVENTREE-MYSQL-PLAN.md: the aggregates the DBF plan kept in
+//  maintained counter tables come from SQL instead, over the FK indexes the
+//  shipped schema already carries. There is nothing to reconcile against
+//  any more (no cache), which is why P7.3 exists as a check that the two
+//  ways of reading an aggregate agree, not as a repair.
+METHOD SumOf( cCol, hFilter, hLike ) CLASS TDalMySql
+
+   LOCAL aKeys, aLikeKeys, cSql, aRows := NIL, aVals := {}
+   LOCAL cWhere := ""
+
+   IF ::oConn == NIL
+      _DalFail( SELF, DAL_BANNER, "SumOf() called with no slot" )
+      RETU -1
+   ENDIF
+
+   //  the column is this module's declaration, never the caller's text
+   IF ! _DalInList( ::aCols, cCol )
+      _DalFail( SELF, DAL_BANNER, "SumOf() on a column outside the whitelist" )
+      RETU -1
+   ENDIF
+
+   aKeys     := _DalFilterKeys( SELF, hFilter )
+   aLikeKeys := _DalFilterKeys( SELF, hLike )
+   cSql      := "SELECT COALESCE(SUM(" + _DalQ( cCol ) + "), 0) FROM " ;
+     + _DalQ( ::cTable )
+
+   IF ! EMPTY( aKeys )
+      cWhere := _DalSqlFilter( SELF, aKeys )
+      aVals  := _DalFilterVals( SELF, aKeys, hFilter )
+   ENDIF
+
+   IF ! EMPTY( aLikeKeys )
+      IF ! EMPTY( cWhere )
+         cWhere += " AND "
+      ENDIF
+      cWhere += _DalSqlLike( SELF, aLikeKeys )
+      aVals  := _DalAppend( aVals, _DalLikeVals( SELF, aLikeKeys, hLike ) )
+   ENDIF
+
+   IF ! EMPTY( cWhere )
+      cSql += " WHERE " + cWhere
+      aRows := _DalPrepared( SELF, cSql, aVals )
+   ELSE
+      aRows := _DalRun( SELF, cSql )
+   ENDIF
+
+   IF aRows == NIL .OR. EMPTY( aRows )
+      RETU -1
+   ENDIF
+
+RETU _DalRowNum( aRows[ 1 ] )
+
+
+METHOD AvgOf( cCol, hFilter, hLike ) CLASS TDalMySql
+
+   LOCAL cSql, aRows := NIL, aVals := {}
+   LOCAL cWhere := ""
+   LOCAL aKeys, aLikeKeys
+
+   IF ::oConn == NIL
+      _DalFail( SELF, DAL_BANNER, "AvgOf() called with no slot" )
+      RETU -1
+   ENDIF
+
+   IF ! _DalInList( ::aCols, cCol )
+      _DalFail( SELF, DAL_BANNER, "AvgOf() on a column outside the whitelist" )
+      RETU -1
+   ENDIF
+
+   aKeys     := _DalFilterKeys( SELF, hFilter )
+   aLikeKeys := _DalFilterKeys( SELF, hLike )
+   cSql      := "SELECT COALESCE(AVG(" + _DalQ( cCol ) + "), 0) FROM " ;
+     + _DalQ( ::cTable )
+
+   IF ! EMPTY( aKeys )
+      cWhere := _DalSqlFilter( SELF, aKeys )
+      aVals  := _DalFilterVals( SELF, aKeys, hFilter )
+   ENDIF
+
+   IF ! EMPTY( aLikeKeys )
+      IF ! EMPTY( cWhere )
+         cWhere += " AND "
+      ENDIF
+      cWhere += _DalSqlLike( SELF, aLikeKeys )
+      aVals  := _DalAppend( aVals, _DalLikeVals( SELF, aLikeKeys, hLike ) )
+   ENDIF
+
+   IF ! EMPTY( cWhere )
+      cSql += " WHERE " + cWhere
+      aRows := _DalPrepared( SELF, cSql, aVals )
+   ELSE
+      aRows := _DalRun( SELF, cSql )
+   ENDIF
+
+   IF aRows == NIL .OR. EMPTY( aRows )
+      RETU -1
+   ENDIF
+
+RETU _DalRowNum( aRows[ 1 ] )
+
 
 METHOD Count( hFilter, hLike ) CLASS TDalMySql
 

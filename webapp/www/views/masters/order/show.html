@@ -1,0 +1,18 @@
+@args lFound := .F., hRow := {=>}, hFlash := {=>}
+@view 'common/header.html'
+<h1>Order #{{ HB_HGetDef( hRow, 'id', '' ) }}</h1>
+<p class="flash">{{ HB_HGetDef( hFlash, 'message', '' ) }}</p>
+@if lFound
+<dl>
+  <dt>id</dt><dd>{{ HB_HGetDef( hRow, 'id', '' ) }}</dd>
+  <dt>customer</dt><dd>{{ HB_HGetDef( hRow, 'customer', '' ) }}</dd>
+  <dt>reference</dt><dd>{{ HB_HGetDef( hRow, 'reference', '' ) }}</dd>
+  <dt>status</dt><dd>{{ HB_HGetDef( hRow, 'status', '' ) }}</dd>
+  <dt>start_date</dt><dd>{{ HB_HGetDef( hRow, 'start_date', '' ) }}</dd>
+  <dt>version</dt><dd>{{ HB_HGetDef( hRow, 'version', '' ) }}</dd>
+</dl>
+<p><a href="/order/{{ HB_HGetDef( hRow, 'id', '' ) }}/edit">edit</a> &middot;
+   <a href="/order/{{ HB_HGetDef( hRow, 'id', '' ) }}/delete_confirm">delete</a></p>
+@else
+<p class="flash danger">That sales order is not there.</p>
+@endif

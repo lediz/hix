@@ -1,0 +1,22 @@
+@args aGrid := {=>}, aPages := {=>}, nPage := 1, nTotalPages := 1, nTotal := 0, cQ := '', hFlash := {=>}
+@view 'common/header.html'
+<h1>Supplier (Grid)</h1>
+<p class="flash">{{ HB_HGetDef( hFlash, 'message', '' ) }} - {{ nTotal }} record(s), page {{ nPage }} of {{ nTotalPages }}. Filter: {{ cQ }}</p>
+<table border="1">
+  <thead><tr><th>id</th><th>part</th><th>supplier</th><th>SKU</th><th>manufacturer_part</th><th>link</th><th>version</th><th>actions</th></tr></thead>
+  <tbody>
+    @foreach hRow IN aGrid
+    <tr>
+      <td>{{ HB_HGetDef( hRow, 'id', '' ) }}</td>
+      <td>{{ HB_HGetDef( hRow, 'part', '' ) }}</td>
+      <td>{{ HB_HGetDef( hRow, 'supplier', '' ) }}</td>
+      <td>{{ HB_HGetDef( hRow, 'SKU', '' ) }}</td>
+      <td>{{ HB_HGetDef( hRow, 'manufacturer_part', '' ) }}</td>
+      <td>{{ HB_HGetDef( hRow, 'link', '' ) }}</td>
+
+      <td>{{ HB_HGetDef( hRow, 'version', '' ) }}</td>
+      <td><a href="/supplier/{{ HB_HGetDef( hRow, 'id', '' ) }}/edit">edit</a></td>
+    </tr>
+    @endforeach
+  </tbody>
+</table>

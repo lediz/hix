@@ -1,0 +1,19 @@
+@args lFound := .F., hRow := {=>}, hPrev := {=>}, hFlash := {=>}, nId := 0
+@view 'common/header.html'
+<h1>Deleting setting {{ nId }}</h1>
+<p class="flash">{{ HB_HGetDef( hFlash, 'message', '' ) }}</p>
+<table border="1">
+  <thead><tr><th>table</th><th>policy</th><th>rows</th></tr></thead>
+  <tbody>
+    @foreach cKey IN hb_HKeys( hPrev )
+    @if cKey != 'total'
+    <tr><td>{{ cKey }}</td><td>{{ HB_HGetDef( hPrev[ cKey ], 'mode', 'KEEP' ) }}</td><td>{{ HB_HGetDef( hPrev[ cKey ], 'rows', 0 ) }}</td></tr>
+    @endif
+    @endforeach
+  </tbody>
+</table>
+<p>Total rows other tables would lose, as of this page load: {{ HB_HGetDef( hPrev, 'total', 0 ) }}.</p>
+<form method="POST" action="/settings/{{ nId }}/delete">
+@CSRF
+<input type="hidden" name="id" value="{{ nId }}">
+</form>

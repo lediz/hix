@@ -80,6 +80,7 @@ and only the nine renames below (§ *Formerly*) changed any name.  The plan behi
 | `P4-PART-RESULTS-2026-10-07.md` | What P4.1 actually did — and §7, which **closes** it: the six defects found by running the two unproven verbs, the fixes, and the 38/0 state run |
 | `P4-2-STOCK-RESULTS-2026-10-07.md` | What P4.2 actually did: the `stock` module on the DAL, the FK policy made observable, and the four things a template-based module had to be written by hand |
 | `P4-8-USERS-RESULTS-2026-10-07.md` | What P4.8 actually did: `users` and the login path on the MySQL DAL, the credential table, the runtime-hashing seeder, the retirement of the DBF users store, and the 39/0 re-proving of D-05…D-16 over the new store |
+| `P4-3-7-MODULES-RESULTS-2026-10-08.md` | What P4.3–P4.7 and P7.3/P7.4/P7.5 actually did: the ten remaining CRUD modules on the DAL, the schema facts that invalidated the guessed column names, and the sliced-suite wiring |
 | `P7-2-FKCHECK-RESULTS-2026-10-07.md` | What P7.2 actually did: the `/hix-fk-check` route, the 78 `policy=` declarations, the self-edge `EXISTS` aliasing bug that made a green corpus look orphaned, the proof that the check detects rather than answers 0, and the owner answers to the three open FK questions |
 
 ## `04-verification/`
@@ -88,6 +89,7 @@ and only the nine renames below (§ *Formerly*) changed any name.  The plan behi
 |---|---|
 | `TEST-REPORT-2026-10-06.md` | What `../../tests/run.sh` found, cluster by cluster (C1…C9), with the fix recommendations and a §14 addendum for the suite-side fixes that landed after it. Produced by the suite, never the other way round |
 | `TEST-REPORT-USERS-MODULE.md` · `TEST-REPORT-CUSTOMER-MODULE.md` | End-to-end functional test results |
+| `FR-RESCORE-PART-2026-10-08.md` | The SRS's FR-* checklist re-scored against `part` and the MySQL module surface: 13 met, 6 met with a recorded wording deviation, 1 that does not apply to this app's shape |
 | `PRODUCTION-BLOCKERS-2026-10-07.md` | The same findings ranked by what blocks shipping (B1…B7): two suites that verify nothing, and the session-store mode being a launcher obligation. Report-only |
 | `FIX-RECOMMENDATIONS-DEV-COMPLIANT.md` | Report: every fix recommendation in the corpus graded against the eight clauses of `DEV-compliance.md` (✅ / ⚠️ host-scope / ❌ with the compliant substitute). Report only — it applies nothing |
 

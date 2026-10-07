@@ -1,0 +1,18 @@
+@args lFound := .F., hRow := {=>}, hFlash := {=>}
+@view 'common/header.html'
+<h1>Orderline #{{ HB_HGetDef( hRow, 'id', '' ) }}</h1>
+<p class="flash">{{ HB_HGetDef( hFlash, 'message', '' ) }}</p>
+@if lFound
+<dl>
+  <dt>id</dt><dd>{{ HB_HGetDef( hRow, 'id', '' ) }}</dd>
+  <dt>order</dt><dd>{{ HB_HGetDef( hRow, 'order', '' ) }}</dd>
+  <dt>part</dt><dd>{{ HB_HGetDef( hRow, 'part', '' ) }}</dd>
+  <dt>quantity</dt><dd>{{ HB_HGetDef( hRow, 'quantity', '' ) }}</dd>
+  <dt>reference</dt><dd>{{ HB_HGetDef( hRow, 'reference', '' ) }}</dd>
+  <dt>version</dt><dd>{{ HB_HGetDef( hRow, 'version', '' ) }}</dd>
+</dl>
+<p><a href="/orderline/{{ HB_HGetDef( hRow, 'id', '' ) }}/edit">edit</a> &middot;
+   <a href="/orderline/{{ HB_HGetDef( hRow, 'id', '' ) }}/delete_confirm">delete</a></p>
+@else
+<p class="flash danger">That order line is not there.</p>
+@endif

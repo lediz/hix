@@ -1,0 +1,11 @@
+@args cMode := 'edit', lFound := .F., hRow := {=>}, hFlash := {=>}, nVersion := 0
+@view 'common/header.html'
+<h1>{{ if( cMode == 'create', 'Create', 'Edit' ) }} company</h1>
+<p class="flash">{{ HB_HGetDef( hFlash, 'message', '' ) }} version {{ nVersion }}</p>
+<form method="POST" action="{{ if( cMode == 'create', '/company/store', '/company/' + HB_HGetDef( hRow, 'id', 0 ) + '/update' ) }}">
+@CSRF
+<input type="text" name="name" value="{{ HB_HGetDef( hRow, 'name', '' ) }}">
+<input type="text" name="description" value="{{ HB_HGetDef( hRow, 'description', '' ) }}">
+<input type="hidden" name="version" value="{{ nVersion }}">
+<input type="hidden" name="id" value="{{ HB_HGetDef( hRow, 'id', 0 ) }}">
+</form>
