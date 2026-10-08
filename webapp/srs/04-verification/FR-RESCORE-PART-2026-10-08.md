@@ -1,5 +1,12 @@
 # FR re-score — the DAL SRS's functional requirements against `part` (and the module surface)
 
+> **Superseded 2026-10-08.** The module surface scored here — `part`, `stock`,
+> `company`, `supplier`, `bom`, `order`, `orderline`, `build`, `testresult`,
+> `settings`, `note`, `projectcode` — and the MySQL DAL they ran on were **deleted**
+> the same day. The scoring is kept as the record of the shape it scored, not of
+> what ships. The shape that ships is `customer` + `users` on the RDDCDX RDD; its
+> record is `03-implementation/P0-DBFCDX-STORE-RESULTS-2026-10-08.md`.
+
 Report only. Scored on this checkout, 2026-10-08. The SRS's FR-* checklist was
 originally scored against `customer` (`02-design/DAL-CHECKLIST.md` §2); this pass
 re-scores it against **`part`**, the module that runs on the MySQL DAL, and notes

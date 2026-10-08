@@ -1,19 +1,19 @@
 # Comparative analysis: `origin/enhance` vs `origin/main`
 
-Generated: 2026-10-06T15:04:31+08:00 · by `compare-branches.sh`
+Generated: 2026-10-08T18:11:59+08:00 · by `compare-branches.sh`
 
 | Ref | SHA | Commits | Files | Tree size |
 |---|---|---|---|---|
-| `origin/enhance` | `4e15981` | 120 | 826 | 39217148 B |
+| `origin/enhance` | `c115250` | 144 | 737 | 38393132 B |
 | `origin/main` | `ab31bb4` | 65 | 692 | 38177445 B |
 
 ## 1. Topology
 
 | Metric | Value |
 |---|---|
-| Relationship | **fast-forward: origin/enhance is ahead of origin/main by 55** |
+| Relationship | **fast-forward: origin/enhance is ahead of origin/main by 79** |
 | Merge base | `ab31bb4 — 2.3.10 Move /dll to /resources/dll (2026-10-05)` |
-| Unique to `origin/enhance` | 55 |
+| Unique to `origin/enhance` | 79 |
 | Unique to `origin/main` | 0 |
 | `origin/main` ⊆ `origin/enhance` | yes |
 | `origin/enhance` ⊆ `origin/main` | no |
@@ -22,41 +22,42 @@ Generated: 2026-10-06T15:04:31+08:00 · by `compare-branches.sh`
 
 | Metric | Value |
 |---|---|
-| Files added / modified / deleted / renamed | 133 / 10 / 0 / 0 |
-| Lines inserted / deleted | +19583 / -34 |
+| Files added / modified / deleted / renamed | 131 / 10 / 87 / 3 |
+| Lines inserted / deleted | +20242 / -22597 |
 | Binary files changed | 7 |
-| Shortstat | 143 files changed, 19583 insertions(+), 34 deletions(-) |
-| Excluded from the delta | webapp/srs/COMPARISON-enhance-vs-main.md |
+| Shortstat | 231 files changed, 20242 insertions(+), 22597 deletions(-) |
+| Excluded from the delta | webapp/srs/06-release/COMPARISON-enhance-vs-main.md |
 
 ### Top-level entries only in one side
 
 - only in `origin/enhance`: compare-branches.sh ENHANCE.md 
-- only in `origin/main`: —
+- only in `origin/main`: tests 
 
 ### Largest content changes
 
 ```
-900	0	webapp/srs/SRS-Harbour-HIX.md
-887	0	webapp/srs/SRS-Harbour.md
-751	0	webapp/test/test_customer_module.prg
-735	0	webapp/www/controllers/masters/users.prg
-646	0	webapp/test/bf_harness.sh
+900	0	webapp/srs/01-requirements/SRS-Harbour-HIX.md
+887	0	webapp/srs/01-requirements/SRS-Harbour.md
+883	0	webapp/www/controllers/masters/users.prg
+707	0	webapp/srs/04-verification/TEST-REPORT-2026-10-06.md
 638	0	webapp/www/controllers/masters/customer.prg
-608	0	webapp/test/verify-users-fixes.sh
-589	0	webapp/srs/PNT-Harbour-HIX.md.MOE.3.6
-570	0	webapp/srs/PNT-Harbour-HIX.md.MOE.3.9
-510	0	webapp/srs/PNT-Harbour-HIX.md.MOE.3.8
-469	0	webapp/srs/BRUTE-FORCE-PENTEST-PLAN.md
+589	0	webapp/srs/05-audit/PNT-Harbour-HIX--MOE-3.6.md
+570	0	webapp/srs/05-audit/PNT-Harbour-HIX--MOE-3.9.md
+510	0	webapp/srs/05-audit/PNT-Harbour-HIX--MOE-3.8.md
+469	0	webapp/srs/02-design/BRUTE-FORCE-PENTEST-PLAN.md
 445	0	webapp/www/test/index.html
-445	0	webapp/test/test_customer_module.sh
-434	0	webapp/src/app.prg
-433	0	webapp/srs/PNT-Harbour-HIX.md
+439	0	webapp/src/app.prg
+433	0	webapp/srs/05-audit/PNT-Harbour-HIX.md
+427	0	webapp/srs/02-design/VIGOLIUM-SCAN-PLAN.md
+412	0	webapp/srs/05-audit/PENTEST-REPORT.md
+400	0	webapp/srs/02-design/COMPARATIVE-ANALYSIS.md
 ```
 
 ### Changes by top-level directory
 
 ```
-131 webapp/
+132 webapp/
+87 tests/
 7 src/
 5 (root)
 ```
@@ -64,15 +65,41 @@ Generated: 2026-10-06T15:04:31+08:00 · by `compare-branches.sh`
 ### Renames
 
 ```
-(none)
+R088	tests/unit/hix.json	webapp/hix.json
+R100	tests/unit/www/img/hix.ico	webapp/resources/images/hix.ico
+R100	tests/unit/www/img/logo240.png	webapp/resources/images/logo240.png
 ```
 
 ## 3. Unique commits
 
-### Only in `origin/enhance` (55)
+### Only in `origin/enhance` (79)
 
 | Date | Author | Subject |
 |---|---|---|
+| 2026-10-08 | lediz | webapp: drop the MySQL DAL and the InvenTree module set, back on RDDCDX |
+| 2026-10-08 | lediz | webapp: the module grids carry the audited page chrome |
+| 2026-10-08 | lediz | webapp: the left-pane menu lists every module, and every module page carries it |
+| 2026-10-08 | lediz | webapp: the remaining CRUD modules on the DAL, and the verification that reaches M3-M5 |
+| 2026-10-08 | lediz | webapp: the stock module on the DAL, which is where the FK policy becomes observable |
+| 2026-10-07 | lediz | srs: the P7.2 record — the FK surface, the alias bug, and the owner answers |
+| 2026-10-07 | lediz | webapp: the orphan check aliases both sides of EXISTS, and the corpus is FK-closed |
+| 2026-10-07 | lediz | webapp: the FK policies are declared, undecided is visible, and the orphans have a route |
+| 2026-10-07 | lediz | srs: the FK-policy decisions, measured on the shipped schema, with D4 taken |
+| 2026-10-07 | lediz | webapp: the cascade is one transaction, and the refusal that proves it is the DAL's own |
+| 2026-10-07 | lediz | webapp: users and the login path move onto the MySQL DAL, customer stays the RDDCDX POC |
+| 2026-10-07 | lediz | webapp: the part module on the MySQL DAL - reads proven, writes half-proven |
+| 2026-10-07 | lediz | webapp: the delete policy moves to the schema edge, and the DAL gains a preview and a borrowed slot |
+| 2026-10-07 | lediz | srs: the corpus under the lifecycle folders, and the documents that were never tracked |
+| 2026-10-07 | lediz | webapp: the MySQL DAL - the SRS's verbs over the pool, with the version column it needs |
+| 2026-10-07 | lediz | webapp: the MySQL/MariaDB pool the app starts with, and the route that reads it |
+| 2026-10-07 | lediz | webapp: the shipped MySQL/MariaDB schema, and the tools that load and seed it |
+| 2026-10-07 | lediz | tests: untrack webapp/test/ the same way tests/ was untracked |
+| 2026-10-07 | lediz | docs: what must be fixed before shipping, ranked webapp/srs/PRODUCTION-BLOCKERS-2026-10-07.md files the same findings the sliced suite reports, ranked by what blocks shipping instead of by cluster: B1 two of the three functional suites verify nothing (test_users_module.sh aborts with rc=2 and runs 0 of 46; test_customer_module.sh throws away the session it authenticated, 28 of 50 fail), B2 the session store's mode is a launcher obligation rather than a guarantee - Harbour links no chmod, so 0666 & ~umask of whoever exec'd ./app decides it, and only go_gcc.sh sets the mask. B3 the A0116 contract is the only thing still counted; B4 the latent mutex initialization is not a production runtime failure today, verified along webapp/src/app.prg:105 -> src/hix_server.prg:268,485. |
+| 2026-10-07 | lediz | tests: local tooling, not part of what ships 112 paths under tests/ are untracked with `git rm -r --cached tests/` and the root .gitignore gains `tests/`: the sliced suite (run.sh, slice.sh, index.sh, clean.sh, lib/, slices/) and the unit-test harness (tests/unit: app.hbp, the build scripts, 67 .prg test sources, its www/ views and assets). Nothing was deleted from disk - the suite still runs here and still reports - but a fresh clone has no tests until they are added back. |
+| 2026-10-06 | lediz | docs: the numbers as recorded on the tree they were recorded on |
+| 2026-10-06 | lediz | docs: what the sliced suite found, cluster by cluster |
+| 2026-10-06 | lediz | tests: one entry point, many slices, bounded output |
+| 2026-10-06 | lediz | tools: refresh the enhance-vs-main report (UNIFIED.md moved, ENHANCE.md added) |
 | 2026-10-06 | lediz | docs: move UNIFIED.md into webapp/srs/, replace it at root with ENHANCE.md |
 | 2026-10-06 | lediz | tools: refresh the enhance-vs-main report |
 | 2026-10-06 | lediz | paths: nothing in the repo names this machine |
@@ -109,25 +136,6 @@ Generated: 2026-10-06T15:04:31+08:00 · by `compare-branches.sh`
 | 2026-10-05 | lediz | app: one search entry per grid column, in both modules; D-13 in customer |
 | 2026-10-05 | lediz | security: private session store - the launcher sets umask 077 (PENTEST-REPORT.md §7) |
 | 2026-10-05 | lediz | security: pentest remediation - keys out of the docroot, framework surface closed |
-| 2026-10-05 | lediz | chore: delete www/config.json.bak - it still carried the old signing keys |
-| 2026-10-05 | lediz | app: refuse to start without the TLS certificate; make go_gcc.sh usable here |
-| 2026-10-05 | lediz | docs: add the remediation addendum to the users-module status report |
-| 2026-10-05 | lediz | test: suite runs over TLS and verifies the keys/salt fixes |
-| 2026-10-05 | lediz | security: enable TLS, generate signing keys per install, CSPRNG password salts |
-| 2026-10-05 | lediz | chore: stop tracking build artifacts, widen .gitignore, add the status report |
-| 2026-10-05 | lediz | test: users suite is now idempotent, CSRF-aware and rate-limit aware |
-| 2026-10-05 | lediz | views: N-01 - every write form now carries a CSRF token |
-| 2026-10-05 | lediz | users module: close D-05..D-14, tune login limit and password work factor |
-| 2026-10-04 | lediz | users module: fix D-16 — login case handling and loose RDD comparisons |
-| 2026-10-04 | lediz | users module: fix D-15 — views 500'd on raw hash subscript |
-| 2026-10-04 | lediz | users module: close defects D-01..D-04 |
-| 2026-10-03 | lediz | fix: roles from numeric to hash — users.dbf ROLES C(255), ModelUser _ParseRoles, ALLTRIM, test creds admin/1234 |
-| 2026-10-03 | lediz | auth: migrate to users.dbf with RDDCDX index |
-| 2026-10-02 | lediz | Fix: single search input for First name, per-field AND logic, session ttl 60→3600, cPath fix, whitelist customer dir, edit view quote fix, autocomplete prevention |
-| 2026-10-02 | lediz | Fix UParam to read query params (o:hQueryParams fallback); pass cPath to HIX_MwSessionSetup from paths.session config |
-| 2026-10-02 | lediz | Fixes: per-field grid search, session persistence (ttl + path), whitelist, edit view quote fix |
-| 2026-10-02 | lediz | Fix customer grid pagination: DbGoTo→DbSkip for CDX index navigation, add .gitignore |
-| 2026-10-02 | lediz | Migrate customer DBF: combine street+city+state into address, add country, remove hiredate/married/dummy |
 
 ### Only in `origin/main` (0)
 
@@ -139,8 +147,8 @@ _(none)_
 
 ### Authors — `origin/enhance`
 ```
+79 lediz <14312216+lediz@users.noreply.github.com>
 60 Carles Aubia <carles9000@gmail.com>
-55 lediz <14312216+lediz@users.noreply.github.com>
 4 Charly <carles9000@gmail.com>
 1 Giuseppe Bogetti <orangesocks@users.noreply.github.com>
 ```
@@ -154,8 +162,8 @@ _(none)_
 
 ### Committers — `origin/enhance`
 ```
+79 lediz <14312216+lediz@users.noreply.github.com>
 60 Carles Aubia <carles9000@gmail.com>
-55 lediz <14312216+lediz@users.noreply.github.com>
 5 GitHub <noreply@github.com>
 ```
 
@@ -182,26 +190,26 @@ v2.2 -> d8d66d9
 
 ## 6. Findings
 
-- fast-forward: origin/enhance is ahead of origin/main by 55
+- fast-forward: origin/enhance is ahead of origin/main by 79
 - `origin/enhance` can be merged into `origin/main` as a **fast-forward**.
 - Shared history below the merge base is common to both; commits there keep identical SHAs unless history is rewritten.
-- The content delta excludes webapp/srs/COMPARISON-enhance-vs-main.md. The unique-commit count still includes the commit that carries this report — that one is unavoidable while the report is tracked.
+- The content delta excludes webapp/srs/06-release/COMPARISON-enhance-vs-main.md. The unique-commit count still includes the commit that carries this report — that one is unavoidable while the report is tracked.
 
 ## 7. Machine-readable summary
 
 ```json
 {
   "left": "origin/enhance",
-  "left_sha": "4e15981644565fb1938678184ff64acf0fcd86e8",
+  "left_sha": "c115250e65c4e96ca5ba21d1c9175d502bc5348a",
   "right": "origin/main",
   "right_sha": "ab31bb4d407204245adb2af62f1232a8b67e5b8a",
   "merge_base": "ab31bb4d407204245adb2af62f1232a8b67e5b8a",
-  "left_only": 55,
+  "left_only": 79,
   "right_only": 0,
   "fast_forward_possible": true,
   "diverged": false,
-  "excluded": ["webapp/srs/COMPARISON-enhance-vs-main.md"],
-  "files": {"added": 133, "modified": 10, "deleted": 0, "renamed": 0, "binary": 7},
-  "lines": {"insertions": 19583, "deletions": 34}
+  "excluded": ["webapp/srs/06-release/COMPARISON-enhance-vs-main.md"],
+  "files": {"added": 131, "modified": 10, "deleted": 87, "renamed": 3, "binary": 7},
+  "lines": {"insertions": 20242, "deletions": 22597}
 }
 ```

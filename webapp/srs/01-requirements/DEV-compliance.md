@@ -53,5 +53,5 @@ Allowed form of the exception, and nothing wider:
   and T8 (port 9090) are unchanged
 
 Recorded because the plan that P1 implements grades itself against these
-clauses; see @webapp/srs/03-implementation/P0-MYSQL-HOST-RESULTS-2026-10-07.md
-for what P0 did against them.
+clauses; the records that graded themselves against it were deleted with the DAL
+they described - git log is the record of them.

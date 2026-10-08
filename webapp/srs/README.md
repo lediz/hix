@@ -76,7 +76,7 @@ and only the nine renames below (§ *Formerly*) changed any name.  The plan behi
 |---|---|
 | `TEST-REPORT-2026-10-06.md` | What `../../tests/run.sh` found, cluster by cluster (C1…C9), with the fix recommendations and a §14 addendum for the suite-side fixes that landed after it. Produced by the suite, never the other way round |
 | `TEST-REPORT-USERS-MODULE.md` · `TEST-REPORT-CUSTOMER-MODULE.md` | End-to-end functional test results |
-| `FR-RESCORE-PART-2026-10-08.md` | The SRS's FR-* checklist re-scored against `part` and the MySQL module surface: 13 met, 6 met with a recorded wording deviation, 1 that does not apply to this app's shape |
+| `FR-RESCORE-PART-2026-10-08.md` | The SRS's FR-* checklist re-scored against `part` and the MySQL module surface — **that surface was deleted 2026-10-08**; the scoring is kept as history of the shape it scored, not of what ships |
 | `PRODUCTION-BLOCKERS-2026-10-07.md` | The same findings ranked by what blocks shipping (B1…B7): two suites that verify nothing, and the session-store mode being a launcher obligation. Report-only |
 | `FIX-RECOMMENDATIONS-DEV-COMPLIANT.md` | Report: every fix recommendation in the corpus graded against the eight clauses of `DEV-compliance.md` (✅ / ⚠️ host-scope / ❌ with the compliant substitute). Report only — it applies nothing |
 
