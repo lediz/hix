@@ -97,6 +97,28 @@ These are read off the code, not guessed. Each is a hypothesis the tests settle.
 | # | Hypothesis | Evidence | Why it matters |
 |---|---|---|---|
 | **C-1** | `UFlash('users')` is a **per-module singleton**. `Edit()` reads it, `Store()` writes it. Two sessions failing validation "at once" can read each other's `input`/`errors` | `www/controllers/masters/users.prg` reads `UFlash('users'):Get('input')`; the suite's D-10b/D-10c assert the flash is drained | a validation error from session B can render into session A's form. **Cross-session leak** |
+
+### C-1 measured 2026-10-08: the hypothesis is FALSE
+
+The flash is **not** a cross-session channel. `src/hix_flash.prg:56` loads the bag
+from `::oSess:Get(FLASH_SESSION_KEY)` — the state is **inside the session**, keyed
+by form id, not process-global. Confirmed empirically:
+
+| Step | Result |
+|---|---|
+| Two sessions, distinct `FENIXSID` | `admin` (recno 1) and `jane` (recno 5), both authenticated, sids differ |
+| Session A fails `POST /customer/store` with empty fields | 302 |
+| Session B then GETs `/customer/create` | **0** `is-invalid`, **0** "Error validacion" — clean |
+| Session A GETs `/customer/create` | **5** `is-invalid`, **1** "Error validacion" — sees its own error |
+
+The test is meaningful, not vacuous: A sees its own failure and B sees nothing.
+**C-1 is closed as not-a-defect.** The same shape holds for `users` (verified
+there too, 0 markers in B).
+
+One correction to the plan's own reasoning: `UFlash('users')` is per-**session**,
+not per-process. The drain discipline (D-10b/D-10c) is still needed — it stops a
+session's own stale error re-rendering into its next form — but it was never a
+channel between sessions.
 | **C-2** | `pool_hix.workers = 4` while `pool_http.workers = 64` — the app's ceiling is 1/16th of what the config suggests | `hix.json`; `hixstyle.enabled: true` | throughput expectations set against 64 are wrong by an order of magnitude |
 | **C-3** | `login_max: 5` per 60 s **per IP** makes any concurrency test that logs in fail spuriously | `www/middlewares/config.json`; already observed — the suites need it widened to complete | every B-test needs either one session reused or the limiter widened for the run |
 | **C-4** | `lExclusive = .F.` means the DBF is opened SHARED; two handlers can hold the same table at once, and only `Rlock` separates them | `src/dbf/hix_dbf.prg:37`, `:168` | the lock is the only guard; a path that writes without it is unprotected |
@@ -162,7 +184,30 @@ Two traps the plan must not fall into:
    aesthetics plan changes markup, and these suites grep it. The B-tests assert
    against `dbf_dump.py` output instead, which is markup-independent.
 
-## 8. Open decisions (owner, before any harness is built)
+## 8. Limiter handling, measured
+
+Widening `setup.ratelimit.login_max` and `ip_per_min` **for the run only** and
+restoring the production values afterwards is what the suites need. Measured both
+ways on 2026-10-08:
+
+| Config | `test_users_module.sh` | Cause |
+|---|---|---|
+| `login_max: 500`, `ip_per_min: 5000` (run) | **60/60** | — |
+| `login_max: 5`, `ip_per_min: 300` (production) | **57/60** | T13/T14/T15 hit **429** on `/auth`, which cascades into every route needing a session |
+
+`test_customer_module.sh` is **50/50 at production values** — it makes fewer
+`/auth` calls and stays inside the window.
+
+**The users suite cannot pass at the shipped limiter.** That is a real mismatch
+between the app's configuration and its test suite, not an app defect. Either the
+suite waits per `/auth` attempt, or the run widens the limiter and says so.
+
+Separately, `verify-users-fixes.sh` H-05c (session files 0600) fails when the
+app is launched **without** `umask 077`. Launched through `go_gcc.sh` (which sets
+it at line 26) the new session files are 0600 and the check passes. The launch,
+not the code, decides it.
+
+## 9. Open decisions (owner, before any harness is built)
 
 | # | Decision | Why it blocks | Recommendation |
 |---|---|---|---|
