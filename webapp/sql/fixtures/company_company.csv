@@ -1,9 +1,0 @@
-id,name,description,is_customer,is_supplier,is_manufacturer
-1,ACME,A Cool Military Enterprise,0,1,0
-2,Appel Computers,Think more differenter,0,1,0
-3,Zerg Corp,We eat the competition,0,1,0
-4,A customer,A company that we sell things to!,1,1,0
-5,Another customer!,Yet another company,1,1,0
-6,A manufacturer,A company that makes parts!,0,1,1
-7,Another manufacturer,They build things and sell it to us,0,1,1
-8,Customer only,Just a customer,1,0,0

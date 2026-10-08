@@ -46,7 +46,7 @@ and only the nine renames below (§ *Formerly*) changed any name.  The plan behi
 | `SRS-Harbour-HIX.md` | The master SRS for the Harbour + HIX web application (73 KB) |
 | `SRS-Harbour.md` | SRS for the Harbour console applications side (55 KB) |
 | `SRS-DAL-CRUD-WEB-UI.md` | SRS for the CRUD data-access-layer / web-UI flow |
-| `DEV-compliance.md` | **The binding constraints**: HIX style only, no SQL, no 3rd-party web UI, tools inside the project folder, port 9090. Cited by the test suites' headers. Carries a scoped **Exception (2026-10-07)** to the "No SQL" clause for P1 and later of `02-design/INVENTREE-MYSQL-PLAN.md` (WDO MySQL pool only) — the clause still binds everywhere else |
+| `DEV-compliance.md` | **The binding constraints**: HIX style only, no SQL, no 3rd-party web UI, tools inside the project folder, port 9090. Cited by the test suites' headers. It carried a scoped exception to the "No SQL" clause for the MySQL DAL phases; that exception is **retired 2026-10-08** — the MySQL DAL is gone and the clause now binds everywhere, with no exception |
 
 ## `02-design/`
 
@@ -59,12 +59,6 @@ and only the nine renames below (§ *Formerly*) changed any name.  The plan behi
 | `COMPARATIVE-ANALYSIS.md` | Analysis of this app against the framework's own `examples/web/crud/` baseline |
 | `BRUTE-FORCE-PENTEST-PLAN.md` | Brute-force / timing probe plan; `test/bf_harness.sh` implements it against the local app only |
 | `VIGOLIUM-SCAN-PLAN.md` | Plan: automate the audit with the vigolium scanner (native + agentic), local target only; plan only |
-| `INVENTREE-RESEARCH.md` | Research: what it would take to build <https://github.com/inventree/InvenTree> on Harbour + `DBFCDX` + HIX only — measured surface of both sides, feasibility matrix, hard blockers, work packages; **report only** |
-| `INVENTREE-MYSQL-SCHEMA.sql` | InvenTree's database as MySQL 8 — 79 tables / 895 columns / 165 foreign keys, derived from its Django models (InvenTree ships no schema file). Reference artefact, never loaded by anything here; regenerate with `gen-inventree-mysql-schema.py` |
-| `INVENTREE-MYSQL-SCHEMA.md` | Provenance for that `.sql`: how it was derived, the Django→MySQL mapping, the companion columns, and the gaps it does not paper over |
-| `INVENTREE-MYSQL-PLAN.md` | Plan: put that schema into `webapp/` as a MySQL-backed DAL carrying InvenTree's functional flow — phases, steps, the T1…T8 grading of each, and the three DBF blockers MySQL actually removes; **plan only, applies nothing** |
-| `FK-POLICY-DECISIONS.md` | The decisions the delete policy actually requires, measured on the shipped schema (78 edges, 26 with a NOT NULL FK column, 7 self-edges), with the one already taken (D4, atomicity) and the minimum set that blocks P4.2; **report only** |
-| `gen-inventree-mysql-schema.py` | The generator behind `INVENTREE-MYSQL-SCHEMA.sql` — reads InvenTree's model source with `ast`, no Django and no database |
 
 ## `03-implementation/`
 
@@ -73,15 +67,8 @@ and only the nine renames below (§ *Formerly*) changed any name.  The plan behi
 | `CHANGELOG-CUSTOMER-FIXES.md` | Customer-module fix log |
 | `BUG-UPDATE-FLASH-ERROR.md` | Single-defect report: the update flash error |
 | `STATUS-USERS-MODULE.md` | Users-module status report (D-01…D-16), report-only |
-| `P0-MYSQL-HOST-RESULTS-2026-10-07.md` | What P0 of `INVENTREE-MYSQL-PLAN.md` actually did: MariaDB 13.0.2 running inside `webapp/.mysql/`, the probe gate green, and the plan's wrong assumptions found by running it (`--datadir` not `--data-dir`, `TRY` is a `hix_const.ch` macro, `Exec()` fails for account statements, account host is `localhost` not `%`) |
-| `P1-MYSQL-SCHEMA-RESULTS-2026-10-07.md` | What P1 actually did: the shipped 38-table schema loaded and seeded, and the gaps the artefact left open resolved in the file |
-| `P2-POOL-RESULTS-2026-10-07.md` | What P2 actually did: the pool, the app starting with it, and the framework's two `Inkey( 0 )` abort paths that hang a non-interactive start |
-| `P3-DAL-RESULTS-2026-10-07.md` | What P3 actually did: the DAL, its verbs, the FK graph read from the shipped schema, the delete policy at the schema edge, and the borrowed slot |
-| `P4-PART-RESULTS-2026-10-07.md` | What P4.1 actually did — and §7, which **closes** it: the six defects found by running the two unproven verbs, the fixes, and the 38/0 state run |
-| `P4-2-STOCK-RESULTS-2026-10-07.md` | What P4.2 actually did: the `stock` module on the DAL, the FK policy made observable, and the four things a template-based module had to be written by hand |
-| `P4-8-USERS-RESULTS-2026-10-07.md` | What P4.8 actually did: `users` and the login path on the MySQL DAL, the credential table, the runtime-hashing seeder, the retirement of the DBF users store, and the 39/0 re-proving of D-05…D-16 over the new store |
-| `P4-3-7-MODULES-RESULTS-2026-10-08.md` | What P4.3–P4.7 and P7.3/P7.4/P7.5 actually did: the ten remaining CRUD modules on the DAL, the schema facts that invalidated the guessed column names, and the sliced-suite wiring |
-| `P7-2-FKCHECK-RESULTS-2026-10-07.md` | What P7.2 actually did: the `/hix-fk-check` route, the 78 `policy=` declarations, the self-edge `EXISTS` aliasing bug that made a green corpus look orphaned, the proof that the check detects rather than answers 0, and the owner answers to the three open FK questions |
+| `P0-DBFCDX-STORE-RESULTS-2026-10-08.md` | What the removal and the DBFCDX shape actually did: what was deleted, what replaced it, what was measured (link clean, login 302 → `/main`, `probe_seek`, `probe_pw`), and what was **not** proven (the customer suite is 21/50 because the login limiter is 5 per 60 s and the suite makes 7 `/auth` calls) |
+| *(removed 2026-10-08)* | The MySQL-era plans, generators and result records were **deleted** with the MySQL DAL they described — 17 documents. They are not in the tree; `git log` is the record of them |
 
 ## `04-verification/`
 

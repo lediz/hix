@@ -1,8 +1,0 @@
-id,reference_int,description,reference,status,supplier
-1,1,Ordering some screws,PO-0001,10,1
-2,2,Ordering some more screws,PO-0002,10,3
-3,3,Another PO,PO-0003,20,3
-4,4,Another PO,PO-0004,20,3
-5,5,Another PO,PO-0005,30,3
-6,6,Another PO,PO-0006,40,3
-7,7,Another PO,PO-0007,10,2

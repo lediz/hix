@@ -37,15 +37,13 @@
                script execution unless app.env == "dev".
 
                Credentials: admin/1234  carles/1234  maria/1234
-                            John/5678    jane/9012abcd   (seeded into users_users by
-                            ./seed_users_mysql - the store is the MySQL table in
-                            sql/hix_users.sql, not data/users.dbf)
+                            John/5678    jane/9012abcd   (in data/users.dbf, the RDDCDX
+                            store the login path opens through the framework's UDbf();
+                            passwords are salted SHA-256 digests, never the clear, and
+                            no database engine is started anywhere in this app)
  -----------------------------------------------------------*/
 
 #include "hbclass.ch"
-//  hbsocket.ch is for the P2.4 reachability probe (hb_socketOpen /
-//  hb_socketConnect / HB_SOCKET_AF_INET), not for anything else here.
-#include "hbsocket.ch"
 
 #DEFINE HIX_APP_CONFIG      "www/config.json"
 #DEFINE HIX_MW_CONFIG       "www/middlewares/config.json"
@@ -56,17 +54,9 @@
 // it with 0600; gitignored.
 #DEFINE HIX_KEY_STORE       "hix.keys.json"
 
-// P2 of webapp/srs/02-design/INVENTREE-MYSQL-PLAN.md: the MySQL/MariaDB
-// pool key. www/config.json's "databases" block stays EMPTY on purpose -
-// that file sits inside paths.root (www/), so a password declared there is
-// a document-root file (PENTEST-REPORT.md section 1 is the same finding for
-// the signing keys). The pool is built here, from the environment.
-#DEFINE HIX_DB_POOL_KEY     "mysql"
-
 FUNCTION Main()
 
    LOCAL oServer
-   LOCAL lDbPool := .F.
 
    // Signing keys must be in the HIX key store before Start() loads
    // www/config.json and before HIX_MwSessionSetup() resolves keys.session.
@@ -115,23 +105,13 @@ FUNCTION Main()
 
    _GuardSurface()
 
-   // P2: the MySQL/MariaDB pool. Credentials come from the environment
-   // (DB_PWD / DB_USER / DB_NAME / DB_HOST / DB_PORT), never from
-   // www/config.json. Absent DB_PWD there is no pool and the app keeps
-   // running on its DBF state - Step 0.2 (Option A: MySQL replaces DBFCDX)
-   // has not been taken, so the DBF DAL is still what ships.
-   lDbPool := _DbPoolEnsure()
+   // No database engine is started here, and none is needed: the store is
+   // the RDDCDX RDD (DBF + CDX) the framework opens through UDbf() with the
+   // driver www/config.json names ("dbf" -> "rddname"). That block carries no
+   // secret, so the document-root rule that governs the signing keys has
+   // nothing else to guard here.
 
    oServer:Start()
-
-   // P2.4: nothing here aborts. HIX's own abort path for a declared pool
-   // (src/wdo/wdo_config.prg) prints "==> Fatal ..." and then waits on
-   // Inkey( 0 ) before QUIT - a non-interactive start hangs there. The
-   // pool is closed on exit instead, and a handler that needs it answers
-   // 503 with WDO_PoolStats diagnostics (P3.6's error mapping).
-   IF lDbPool
-      WDO_EndPoolMySql()
-   ENDIF
 
 RETURN NIL
 
@@ -162,230 +142,6 @@ STATIC PROCEDURE _GuardSurface()
 RETURN
 
 
-// ============================================================
-// APP_MYSQL_BERROR - P3.6: the pool's error handler, reached through
-// hParams["berror"] (a NAME, resolved by _WdoResolveBErrorFromName).
-// Non-STATIC on purpose: hb_isFunction() has to find it in the symbol
-// table. It logs the server's words and returns nothing usable to the
-// client - the response text is the SRS banner, decided by the DAL
-// (www/models/tdalmysql.prg Errors()), never by the server (SRS 5.3).
-// ============================================================
-FUNCTION APP_MYSQL_BERROR( oErr, oConn )
-
-   LOCAL cMsg := ""
-
-   IF ValType( oErr ) == 'O'
-      cMsg := hb_defaultValue( oErr:description, "" )
-   ELSE
-      cMsg := hb_defaultValue( oErr, "" )
-   ENDIF
-
-   _l( "mysql berror: " + cMsg, 4, "mysql" )
-
-RETURN NIL
-
-
-// ============================================================
-// _EnvOr - an environment value with a default. hb_getEnv() answers
-// "" (an empty string, not NIL) for a variable that is not in the
-// environment, and hb_defaultValue() only substitutes through a by-
-// reference argument, so hb_defaultValue( hb_getEnv( ... ), d ) hands
-// back the empty string: DB_POOL came out as Val( "" ) = 0 and the
-// driver got dll="" -> "Cannot load MySql DLL". Explicit here.
-// ============================================================
-STATIC FUNCTION _EnvOr( cName, cDefault )
-
-   LOCAL cVal := hb_getEnv( cName )
-
-   IF cVal == NIL .OR. Empty( cVal )
-      RETURN cDefault
-   ENDIF
-
-RETURN cVal
-
-
-// ============================================================
-// _DbReachable - P2.4: is anything listening on that host:port, before
-// the pool is built.
-//
-//  The WDO MySQL driver has its own TCP preflight (src/wdo/mysql/
-//  wdo_mysql.prg, _WdoMySqlTcpProbe -> _WdoMySqlReportDown). When it
-//  fails the driver prints "==> Error: Mysql not running", then
-//  Inkey( 0 ) and QUIT - so a pool built against a dead server does not
-//  fail, it BLOCKS the start forever and the accept loop is never
-//  reached (observed: the app printed the message and never bound 9090).
-//  Probing here means the driver is never asked, and the app starts with
-//  no pool: /health/db answers 503 and a handler that needs the pool
-//  answers 503 with WDO_PoolStats diagnostics. That is the plan's
-//  dev-friendly branch of P2.4, reached without touching the framework.
-//
-//  Same shape as the driver's probe, including the localhost remap: on
-//  Windows "localhost" often resolves to ::1 and AF_INET would block
-//  instead of failing fast.
-// ============================================================
-STATIC FUNCTION _DbReachable( cHost, nPort )
-
-   LOCAL hSock, lOk
-   LOCAL cResolved := hb_defaultValue( cHost, "" )
-
-   IF Empty( cResolved )
-      RETURN .F.
-   ENDIF
-
-   IF Lower( AllTrim( cResolved ) ) == "localhost"
-      cResolved := "127.0.0.1"
-   ENDIF
-
-   hSock := hb_socketOpen()
-   IF hSock == NIL
-      RETURN .F.
-   ENDIF
-
-   lOk := hb_socketConnect( hSock, ;
-          { HB_SOCKET_AF_INET, cResolved, nPort }, 1500 )
-   hb_socketClose( hSock )
-
-RETURN lOk
-
-
-// ============================================================
-// _DbDllDefault - the client library to pin. The driver's compiled-in
-// default names a Debian multiarch path (/usr/lib/x86_64-linux-gnu/)
-// that does not exist on this distro, so the pool is pinned explicitly
-// exactly as ./probe_mysql and ./create_mysql_sql do (DllSource() must
-// report "override"). Windows needs no pin: the DLL ships in the repo
-// (resources/wdo/mysql/dll/).
-// ============================================================
-STATIC FUNCTION _DbDllDefault()
-
-   LOCAL aTry := { "/usr/lib/libmysqlclient.so", ;
-                   "/usr/lib/libmariadb.so",     ;
-                   "/usr/lib/libmariadb.so.3" }
-   LOCAL nI
-
-   FOR nI := 1 TO Len( aTry )
-      IF File( aTry[ nI ] )
-         RETURN aTry[ nI ]
-      ENDIF
-   NEXT
-
-RETURN NIL
-
-
-// ============================================================
-// _DbPoolEnsure - P2.1..P2.3 + P2.5 of INVENTREE-MYSQL-PLAN.md.
-//
-//  P2.1 the pool the plan says to declare in www/config.json is built
-//       here instead, with the same fields, because P2.5 says the
-//       credentials must not live in a document-root file. WDO_InitPool
-//       MySqlEx( cKey, hParams ) takes exactly the config.json entry as
-//       a hash (src/wdo/mysql/wdo_mysql_pool.prg:88), so the two paths
-//       differ only in where the values come from.
-//  P2.2 read_timeout_s 45 > hix.json -> server.exec_timeout_ms 30000 ms.
-//       Left at the 30 s default, MySQL kills a 30 s query before the
-//       dispatcher does and the slot never returns to the pool.
-//  P2.3 pool_size 8 against hix.json -> pool_http.workers 64; Little's
-//       Law says 500 req/s x 10 ms = 5 slots, so 8 is the margin. The
-//       server side of the cascade (max_connections = pool + 30) is set
-//       by ./gen_mysql_db.sh on the host under .mysql/.
-//  P2.5 DB_PWD / DB_USER / DB_NAME / DB_HOST / DB_PORT / DB_DLL from the
-//       environment, the same precedence HIX_KEY_* already has.
-//
-//  No password is ever printed. Absent DB_PWD, no pool is started and
-//  the app runs as it did before P1.
-//
-//  TRUE = a pool with at least one connection is registered.
-// ============================================================
-STATIC FUNCTION _DbPoolEnsure()
-
-   LOCAL cHost, cUser, cPwd, cDb, cDll, cDriver
-   LOCAL hParams
-   LOCAL nPort, nPool, nRead, nConnect, nOk
-
-   cPwd := hb_getEnv( "DB_PWD" )
-
-   IF Empty( cPwd )
-      ? "app.prg: DB_PWD is not set - no MySQL/MariaDB pool is started."
-      ? "app.prg: the app runs on its DBF state; a handler that needs the"
-      ? "app.prg: pool answers 503 with WDO_PoolStats diagnostics."
-      RETURN .F.
-   ENDIF
-
-   cHost    := _EnvOr( "DB_HOST",              "127.0.0.1" )
-   nPort    := Val( _EnvOr( "DB_PORT",         "3306" ) )
-   cUser    := _EnvOr( "DB_USER",              "harbour" )
-   cDb      := _EnvOr( "DB_NAME",              "inventree" )
-   cDriver  := Lower( _EnvOr( "DB_DRIVER",     "mariadb" ) )
-   nPool    := Val( _EnvOr( "DB_POOL",         "8" ) )
-   nRead    := Val( _EnvOr( "DB_READ_TIMEOUT_S",   "45" ) )
-   nConnect := Val( _EnvOr( "DB_CONNECT_TIMEOUT_S", "10" ) )
-   cDll     := _EnvOr( "DB_DLL",              NIL )
-
-   IF cDll == NIL
-      cDll := _DbDllDefault()
-   ENDIF
-
-   //  P2.4, decided here rather than discovered by watching the app
-   //  refuse to start: no abort, no Inkey. Dead server -> no pool.
-   IF ! _DbReachable( cHost, nPort )
-      ? "app.prg: nothing is listening on " + cHost + ":" + hb_NToS( nPort ) ;
-        + " - no pool is started."
-      ? "app.prg: the app starts anyway; /health/db answers 503 and any"
-      ? "app.prg: handler that needs the pool answers 503 too."
-      ? "app.prg: start the host (./gen_mysql_db.sh start) and restart the"
-      ? "app.prg: app to get the pool."
-      RETURN .F.
-   ENDIF
-
-   hParams := { => }
-   hParams[ "driver" ]           := cDriver
-   hParams[ "host" ]             := cHost
-   hParams[ "user" ]             := cUser
-   hParams[ "pwd" ]              := cPwd
-   hParams[ "db" ]               := cDb
-   hParams[ "port" ]             := nPort
-   hParams[ "pool_size" ]        := nPool
-   hParams[ "timeout_ms" ]       := 5000
-   hParams[ "ping" ]             := .T.
-   hParams[ "read_timeout_s" ]   := nRead
-   hParams[ "connect_timeout_s" ] := nConnect
-   hParams[ "dll" ]              := cDll
-   //  P3.6: the pool's error handler. berror is a Harbour function NAME -
-   //  _WdoResolveBErrorFromName (src/wdo/wdo_config.prg) builds
-   //  {|oErr, oConn| NAME( oErr, oConn ) } and hb_isFunction() probes the
-   //  symbol table first, so the function has to be statically linked and
-   //  NOT static in this file. Absent this, a MySQL error surfaces
-   //  wherever the driver puts it, and the server's words name tables.
-   hParams[ "berror" ]           := "APP_MYSQL_BERROR"
-
-   //  P2.2, stated where it is set: the read timeout has to exceed the
-   //  dispatcher's exec_timeout_ms or the slot becomes a zombie.
-   IF nRead * 1000 <= 30000
-      ? "app.prg: DB_READ_TIMEOUT_S is not above exec_timeout_ms (30000) -"
-      ? "app.prg: a long query would be killed server-side and the slot"
-      ? "app.prg: would never return to the pool. Raising it to 45."
-      nRead := 45
-      hParams[ "read_timeout_s" ] := nRead
-   ENDIF
-
-   ? "app.prg: MySQL/MariaDB pool '" + HIX_DB_POOL_KEY + "'"
-   ? "app.prg:   " + cUser + "@" + cHost + ":" + hb_NToS( nPort ) + "/" + cDb ;
-     + " driver=" + cDriver
-   ? "app.prg:   pool_size=" + hb_NToS( nPool ) + " read_timeout_s=" ;
-     + hb_NToS( nRead ) + " connect_timeout_s=" + hb_NToS( nConnect )
-   IF cDll != NIL
-      ? "app.prg:   client library pinned: " + cDll
-   ENDIF
-
-   nOk := WDO_InitPoolMySqlEx( HIX_DB_POOL_KEY, hParams )
-
-   IF ! nOk
-      ? "app.prg: the pool opened no connection - the app still starts,"
-      ? "app.prg: and every handler that needs it answers 503."
-      RETURN .F.
-   ENDIF
-
-RETURN .T.
 STATIC FUNCTION _AppEnv()
 
    LOCAL hCfg := _JsonRead( HIX_SERVER_CONFIG )

@@ -60,7 +60,7 @@ METHOD Show() CLASS Customer
    IF ! oVal:Make() .or. oVal:Get( 'id' ) == 0
 
       UFlash( "customer" ):Set( { "errors" => oVal:GetErrors(), "message" => "Error validacion",  "input" => oVal:Resume(), "type" => 'danger' } )
-      RETURN URedirect( URoute( 'customer.search' ) )      
+      RETURN URedirect( URoute( 'customer.grid' ) )      
    ENDIF
 
    oCustomers := TCustomers()   
@@ -93,7 +93,7 @@ METHOD Edit() CLASS Customer
    oVal := UValidateParams( { "id" => { "required|number|min:0", "Id" }  })   
 
    IF ! oVal:Make()     
-      RETU URedirect( URoute( 'customer.search' ) )      
+      RETU URedirect( URoute( 'customer.grid' ) )      
    ENDIF
 
    
@@ -174,7 +174,7 @@ METHOD Update() CLASS Customer
    } )
    
    IF ! oVal:Make() .or. oVal:Get( 'id' ) == 0
-      retu URedirect( URoute( 'customer.search' ) )
+      retu URedirect( URoute( 'customer.grid' ) )
    ENDIF
    
    nId := oVal:Get( 'id' )     // D-13: always name the field

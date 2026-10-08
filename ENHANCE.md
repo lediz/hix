@@ -7,7 +7,9 @@ application that runs on it. Everything `enhance` adds to the imported upstream 
 
 1. **the HIX platform itself** — framework changes under [`src/`](src/);
 2. **the Example CRUD → `webapp/`** — what turns upstream's
-   [`examples/web/crud/`](examples/web/crud/) example into a hardened application.
+   [`examples/web/crud/`](examples/web/crud/) example into a hardened application;
+3. **the store conversion** — what removed the MySQL DAL and the InvenTree-derived module set from
+   `webapp/`, and put the application back on the RDDCDX RDD (DBF + CDX).
 
 | | |
 |---|---|
@@ -97,6 +99,49 @@ example is what a new HIX app starts from, `webapp/` is what it should end up as
 
 ---
 
+## 3. The store conversion
+
+**What.** The MySQL DAL and the schema it was built from were removed, and the application was put
+back on the RDDCDX RDD (DBF + CDX) the framework already ships. 100 tracked files deleted, 11 added.
+
+| Removed | Count | Why |
+|---|---|---|
+| `www/models/tdalmysql.prg` | 1 | the pool DAL — nothing references the MySQL WDO any more |
+| `sql/inventree.sql`, `sql/hix_users.sql`, `sql/fixtures/*.csv` | 26 | the MySQL schema and its seed corpus |
+| `gen_mysql_db.sh`, `create_mysql_sql.*`, `seed_inventree.*`, `seed_users_mysql.*`, `probe_mysql.*`, `probe_dalmysql.*` | 12 | the host, the loader, the seeders, the harnesses |
+| 12 controllers + their views (`part`, `stock`, `bom`, `build`, `company`, `supplier`, `order`, `orderline`, `testresult`, `settings`, `note`, `projectcode`) | 60 | the InvenTree-derived modules — the app is `customer` + `users` + login |
+| `www/controllers/{healthdb,fkcheck,reconcile}.prg` | 3 | diagnostics that walked the MySQL FK graph |
+| `test/test_fkcheck.sh`, `test/test_reconcile.sh` | 2 | suites over routes that were deleted |
+| 17 MySQL-era plans, generators and result records | 17 | they described the DAL that was removed; `git log` is the record of them |
+
+**Added:** `www/models/tusers.prg` (the credential store over `UDbf()`), `www/controllers/masters/users.prg`
+and `www/models/modeluser.prg` rewritten onto the DBF, `www/routes/web.json` cut from 137 routes to 23,
+`regenerate_users.*` restored, and `webapp/srs/03-implementation/P0-DBFCDX-STORE-RESULTS-2026-10-08.md`.
+
+**Why the removal could be done at all.** At `HEAD`, `hbmk2 app.hbp` **failed to link** — `WDO_InitPoolMySqlEx`
+and `WDO_EndPoolMySql` are unresolved because this Harbour build's `hix_server.hbx` does not export the
+MySQL WDO. Nothing referenced it, so removing the pool is what made the app link again.
+
+**The `SET EXACT` trap, and why it matters here.** `www/config.json` sets `"exact": false`, so Harbour
+compares strings only to the length of the **right** operand. Three consequences, all found as failures
+and all fixed:
+
+* `"carlesx" != "carle"` is **FALSE** — so `ModelUser`'s guard never fired and a **prefix of a username
+  authenticated** (D-16b). Fixed by closing the prefix with `Len()` before any comparison.
+* `a < b` and `a > b` can **both** be false — so `_CompareVal`'s string comparator could not order rows
+  and `?sort=roles` was a no-op (D-08a). Fixed by a byte-wise compare over a fixed alphabet.
+* `Ord()` is not linked into the HIX server (`Unknown or unregistered function symbol (ORD)`), so the
+  rank comes from a table built by concatenation, not `Ord()`.
+
+**Verified.** Against the running binary, all three suites green:
+`test_customer_module.sh` **50/50**, `test_users_module.sh` **60/60**,
+`verify-users-fixes.sh` **125 PASS / 0 FAIL**. Full record in
+[`webapp/srs/03-implementation/P0-DBFCDX-STORE-RESULTS-2026-10-08.md`](webapp/srs/03-implementation/P0-DBFCDX-STORE-RESULTS-2026-10-08.md),
+including the five **test-suite** bugs found along the way and the login-limiter caveat (the suites
+need `setup.ratelimit.login_max` widened; the shipped value is 5 per 60 s).
+
+---
+
 ## Where everything lives
 
 ```
@@ -108,6 +153,8 @@ webapp/srs/              the corpus: SRS + compliance, audit reports, test recor
                          phase folders 00-meta … 07-maintenance (see 00-meta/SDLC-REORGANIZATION-PLAN.md)
 compare-branches.sh      regenerates webapp/srs/06-release/COMPARISON-enhance-vs-main.md
 ```
+
+---
 
 ## How to check any of it
 

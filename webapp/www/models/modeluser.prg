@@ -1,34 +1,47 @@
-// --------------------------------------------------------------------------------
-// ModelUser — the login identity, read from the MySQL credential store
-//
-// P4.8 of webapp/srs/02-design/INVENTREE-MYSQL-PLAN.md (Step 0.2, Option A for
-// `users`): the store that owns the login identity is users_users, shipped in
-// webapp/sql/hix_users.sql and seeded by ./seed_users_mysql. The DBF store this
-// replaces (data/users.dbf, CDX tag keyed on Lower(NAME)) is gone; the customer
-// module keeps its RDDCDX store on purpose, as the proof-of-concept.
-//
-// What is preserved from the audited DBF module, and how it is done now:
-//   D-05  the session entry carries NO credentials - id, name, roles only
-//   D-07  the store holds a salted, iterated SHA-256 digest (hpassword.prg),
-//         never the password; the submitted password is re-hashed with the
-//         stored salt and compared with _PwMatch
-//   D-16  the submitted name is normalised once and reused; the match is
-//         confirmed exactly, case-insensitively. The CDX tag keyed on
-//         Lower(name) is replaced by the server's utf8mb4_unicode_ci
-//         collation (P0.4) plus the confirmation below, which is what a
-//         collated equality can get wrong (a longer key matching a prefix)
-//   D-17  the full work factor is paid even when the name does not exist, so
-//         response time is not a user-enumeration oracle
-//   +     ROLES is parsed into a hash (the middlewares read scopes from it)
-//
-// One pool slot per login (P3.4): acquired here and closed here, on every path.
-// Complies with DEV-compliance.md: HIX framework only (SQL under the exception
-// recorded 2026-10-07 for the MySQL DAL phases), tools inside the project folder.
-// --------------------------------------------------------------------------------
+/* ---------------------------------------------------------
+ File.......: modeluser.prg
+ Description: The login identity, read from the RDDCDX credential
+              store (data/users.dbf, www/models/tusers.prg).
+
+              What is preserved from the audited module, and how it
+              is done now:
+
+                D-05  the session entry carries NO credentials - id,
+                      name, roles only. The session hash is readable
+                      from every authenticated view and middleware, so
+                      the digest and the salt stop at this function:
+                      the entry is built field by field below, never
+                      copied from the row.
+                D-07  the store holds a salted, iterated SHA-256
+                      digest, never the password. The submitted
+                      password is re-hashed with the STORED salt and
+                      compared with _PwMatch, so a wrong password and
+                      a wrong salt both fail the same way.
+                D-16  the submitted name is normalised once and reused
+                      for the seek and for the exact-match confirmation
+                      below. The CDX tag keyed on Lower(NAME) is what
+                      makes the lookup case-insensitive by construction;
+                      the confirmation is what a PREFIX key can still
+                      get wrong - CDX is prefix-key only, so a longer
+                      name would match a shorter key.
+                D-17  the full work factor is paid even when the name
+                      does not exist, so response time is not a
+                      user-enumeration oracle. The error message is
+                      generic; the timing is the only other channel.
+                +     ROLES is parsed into a hash - the middlewares
+                      read scopes from it.
+
+              One store per login: opened here and closed here, on
+              every path. hix.json's auto_close_dbf logs a handle this
+              function forgot rather than leaking it.
+
+              Complies with DEV-compliance.md: HIX framework and Harbour
+              only. No SQL, no engine - the store is a DBF.
+ -----------------------------------------------------------*/
 
 #include "hbclass.ch"
 #include "models/hpassword.prg"
-#include "models/tdalmysql.prg"
+#include "models/tusers.prg"
 
 // Parse ROLES string into hash matching the CRUD example's format
 // Input:  "customers:search;show|users:search"
@@ -52,7 +65,7 @@ STATIC FUNCTION _ParseRoles( cRolesStr )
       IF Len( aParts ) >= 2
          cRole := ALLTRIM( aParts[1] )
          cOps  := ALLTRIM( aParts[2] )
-         IF !empty( cRole ) .AND. !empty( cOps )
+         IF !Empty( cRole ) .AND. !Empty( cOps )
             hRoles[ cRole ] := cOps
          ENDIF
       ENDIF
@@ -60,80 +73,76 @@ STATIC FUNCTION _ParseRoles( cRolesStr )
 
 RETURN hRoles
 
-//  The columns the login needs. `pass` and `salt` are in here because
-//  verifying a digest needs them - and they stop at this function: the
-//  session entry is built field by field below, never from the row.
-#DEFINE LOGIN_COLS  { "name", "pass", "salt", "roles" }
-
 FUNCTION ModelUser( cUser, cPass )
    LOCAL hRow, hEntry, hRoles
    LOCAL cSeek, cFound, cStored, cSalt
-   LOCAL oConn, oDal, aRows
+   LOCAL oUsers, lFound
 
-   // D-16: the submitted name is normalised once and reused for the seek and
-   // for the exact-match confirmation below.
+   // D-16: the submitted name is normalised once and reused for the seek
+   // and for the exact-match confirmation below.
    cSeek := Lower( AllTrim( cUser ) )
 
-   //  one slot per login (P3.4). Absent the pool there is no store to
-   //  check, and the answer must not be distinguishable from a wrong
-   //  password - so the work factor is paid and NIL is returned.
-   oConn := WDO_Get( "mysql" )
-   IF oConn == NIL
+   //  one store per login. Absent the store there is nothing to check, and
+   //  the answer must not be distinguishable from a wrong password - so the
+   //  work factor is paid and NIL is returned.
+   oUsers := TUsers()
+   IF ! oUsers:lConnect
       _PwHash( cPass, PW_DUMMY_SALT )
       RETURN NIL
    ENDIF
 
-   oDal := TDalMySql():New( "users_users", LOGIN_COLS )
-   oDal:Attach( oConn )
+   //  the seek lands on the CDX tag keyed on Lower(NAME): that is what makes
+   //  the match case-insensitive by construction, and it is a prefix key, so
+   //  the confirmation below is what closes the prefix
+   lFound := oUsers:GetId( cSeek, @hRow, NIL, .F. )
 
-   //  the name is bound, never concatenated (P3.2); the collation makes the
-   //  equality case-insensitive, which is what the CDX tag on Lower(NAME)
-   //  used to do
-   aRows := oDal:FetchAll( { "name" => cSeek }, NIL )
-
-   oDal:Close()
-   //  ModelUser owns the slot: the DAL only borrowed it (Attach), so the
-   //  connection is returned here, once, before anything is answered
-   oConn:Close()
-
-   IF EMPTY( aRows )
+   IF ! lFound
       // D-17 (PENTEST-REPORT.md §6): pay the full work factor even when the
       // name does not exist. Skipping it made an unknown username ~4 ms
       // cheaper than a real one, which is a user-enumeration oracle even
       // though the error message is generic.
       _PwHash( cPass, PW_DUMMY_SALT )
+      oUsers:Close()
       RETURN NIL
    ENDIF
 
-   //  a collated equality can answer for a longer key, so the match is
-   //  confirmed here - the same confirmation the DBF path needed because
-   //  SET EXACT is .F. in www/config.json
-   hRow   := aRows[ 1 ]
-   cFound := AllTrim( hb_HGetDef( hRow, "name", "" ) )
+   //  a prefix key answers for a longer name too, so the match is confirmed
+   //  here. The confirmation must NOT use = or !=: www/config.json sets
+   //  "exact": false, and with SET EXACT OFF Harbour compares strings only to
+   //  the length of the RIGHT operand - so "carlesx" != "carle" is FALSE, which
+   //  would let a PREFIX of a username authenticate. That is a real security
+   //  defect (D-16), not a style choice. Len() closes the prefix; the
+   //  case-insensitive compare then does the rest.
+   cFound := AllTrim( hb_HGetDef( hRow, "NAME", "" ) )
 
-   IF Lower( cFound ) != cSeek
+   IF Len( cFound ) != Len( cSeek ) .OR. Upper( cFound ) <> Upper( cSeek )
       _PwHash( cPass, PW_DUMMY_SALT )
+      oUsers:Close()
       RETURN NIL
    ENDIF
 
    // Read the stored digest + salt before anything is exposed (D-07)
-   cStored := AllTrim( hb_HGetDef( hRow, "pass", "" ) )
-   cSalt   := AllTrim( hb_HGetDef( hRow, "salt", "" ) )
+   cStored := AllTrim( hb_HGetDef( hRow, "PASS", "" ) )
+   cSalt   := AllTrim( hb_HGetDef( hRow, "SALT", "" ) )
 
    // D-07: the store holds an iterated, salted SHA-256 digest, never the
-   // password.  Re-hash the submitted password with the stored salt.
+   // password. Re-hash the submitted password with the stored salt.
    IF ! _PwMatch( cStored, _PwHash( cPass, cSalt ) )
+      oUsers:Close()
       RETURN NIL
    ENDIF
 
+   oUsers:Close()
+
    // Build the session entry WITHOUT credentials (D-05): the session hash is
-   // readable from every authenticated view and middleware.
+   // readable from every authenticated view and middleware, so the digest and
+   // the salt never leave this function.
    hEntry := hb_Hash()
-   hEntry[ "id" ]    := hb_HGetDef( hRow, "id", 0 )
+   hEntry[ "id" ]    := hb_HGetDef( hRow, "ID", 0 )
    hEntry[ "name" ]  := cFound
 
    // Parse ROLES string into hash matching CRUD example format
    // ROLES format: "role:op1;op2;op3|role2:op1;op2"
-   hEntry[ "roles" ] := _ParseRoles( hb_HGetDef( hRow, "roles", "" ) )
+   hEntry[ "roles" ] := _ParseRoles( hb_HGetDef( hRow, "ROLES", "" ) )
 
 RETURN hEntry

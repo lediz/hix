@@ -1,6 +1,0 @@
-id,reference,title,part,quantity,status,batch,creation_date,link,tree_id,lft,rght
-1,BO-0001,Building 7 parts,100,7,10,B1,2019-03-16,http://www.google.com,1,1,2
-2,BO-0002,Making things,50,21,40,B2,2019-03-16,,2,1,2
-3,BO-003,Making things,50,21,40,B2,2019-03-16,,4,1,2
-4,BO-4,Making things,50,21,40,B4,2019-03-16,,5,1,2
-5,BO-0005,Building some Widgets,25,10,40,B10,2019-03-16,,3,1,2

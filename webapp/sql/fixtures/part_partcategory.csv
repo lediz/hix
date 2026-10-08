@@ -1,9 +1,0 @@
-id,name,description,parent,default_location,tree_id,lft,rght
-1,Electronics,Electronic components,\N,1,1,1,12
-2,Resistors,Resistors,1,\N,1,10,11
-3,Capacitors,Capacitors,1,\N,1,2,3
-4,IC,Integrated Circuits,1,\N,1,4,9
-5,MCU,Microcontrollers,4,\N,1,5,6
-6,Transceivers,Communication interfaces,4,\N,1,7,8
-7,Mechanical,Mechanical components,\N,\N,2,1,4
-8,Fasteners,"Screws, bolts, etc",7,5,2,2,3
