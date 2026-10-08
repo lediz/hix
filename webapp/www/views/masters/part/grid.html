@@ -1,4 +1,4 @@
-@args aGrid := {=>}, aPages := {=>}, nPage := 1, nTotalPages := 1, nTotal := 0, cSort := 'name', cDir := 'ASC', cQ := '', hFlash := {=>}
+@args aGrid := {=>}, aPages := {=>}, nPage := 1, nTotalPages := 1, nTotal := 0, cSort := 'name', cDir := 'ASC', cQ := '', hFlash := {=>}, n := 0
 
 <!DOCTYPE html>
 <html lang="en">
@@ -12,6 +12,18 @@
 	<!-- Offcanvas Sidebar -->
 
 @view 'common/sidebar.html', 'part'
+
+	<main class="container-fluid">
+		<div class="row w-100 mt-5">
+			<nav aria-label="breadcrumb">
+				<ol class="breadcrumb fs-5">
+					<li class="breadcrumb-item"><a href="/main"><i class="bi bi-house-door-fill"></i></a></li>
+					<li class="breadcrumb-item"><a href="/part/grid">Parts</a></li>
+					<li class="breadcrumb-item active" aria-current="page">Data Grid</li>
+				</ol>
+			</nav>
+		</div>
+
 
 <main>
 
@@ -40,7 +52,7 @@
     <tr><td colspan="5">No records found</td></tr>
     @endif
    </tbody>
-  </table>
+  </table></div></div><div class="card-footer d-flex justify-content-between align-items-center"><span class="text-muted">Page {{ nPage }} of {{ nTotalPages }}</span><nav><ul class="pagination mb-0">@foreach n IN aPages<li class="page-item {{ if( n == nPage, 'active', '' ) }}"><a class="page-link" href="/part/grid?page={{ n }}">{{ n }}</a></li>@endforeach</ul></nav></div></div>
 
   @if nPage < nTotalPages
   <a href="/part/grid?page={{ nPage + 1 }}&q={{ cQ }}">next page</a>
@@ -50,3 +62,4 @@
 
 </body>
 </html>
+	</main>

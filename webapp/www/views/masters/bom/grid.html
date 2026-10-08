@@ -1,13 +1,26 @@
-@args aGrid := {=>}, aPages := {=>}, nPage := 1, nTotalPages := 1, nTotal := 0, cQ := '', hFlash := {=>}
+@args aGrid := {=>}, aPages := {=>}, nPage := 1, nTotalPages := 1, nTotal := 0, cQ := '', hFlash := {=>}, n := 0
 @view 'common/header.html'
 @view 'common/navbar.html'
 
 	<!-- Offcanvas Sidebar -->
 
 @view 'common/sidebar.html', 'bom'
+
+	<main class="container-fluid">
+		<div class="row w-100 mt-5">
+			<nav aria-label="breadcrumb">
+				<ol class="breadcrumb fs-5">
+					<li class="breadcrumb-item"><a href="/main"><i class="bi bi-house-door-fill"></i></a></li>
+					<li class="breadcrumb-item"><a href="/bom/grid">Bill of Materials</a></li>
+					<li class="breadcrumb-item active" aria-current="page">Data Grid</li>
+				</ol>
+			</nav>
+		</div>
+
 <h1>Bom (Grid)</h1>
 <p class="flash">{{ HB_HGetDef( hFlash, 'message', '' ) }} - {{ nTotal }} record(s), page {{ nPage }} of {{ nTotalPages }}. Filter: {{ cQ }}</p>
-<table border="1">
+<div class="card"><div class="card-body p-0"><div class="table-responsive">
+<table class="table table-striped table-hover">
   <thead><tr><th>id</th><th>part</th><th>sub_part</th><th>quantity</th><th>raw_amount</th><th>version</th><th>actions</th></tr></thead>
   <tbody>
     @foreach hRow IN aGrid
@@ -23,4 +36,5 @@
     </tr>
     @endforeach
   </tbody>
-</table>
+</table></div></div><div class="card-footer d-flex justify-content-between align-items-center"><span class="text-muted">Page {{ nPage }} of {{ nTotalPages }}</span><nav><ul class="pagination mb-0">@foreach n IN aPages<li class="page-item {{ if( n == nPage, 'active', '' ) }}"><a class="page-link" href="/bom/grid?page={{ n }}">{{ n }}</a></li>@endforeach</ul></nav></div></div>
+	</main>
