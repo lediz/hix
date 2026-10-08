@@ -72,6 +72,7 @@ and only the nine renames below (§ *Formerly*) changed any name.  The plan behi
 | `STATUS-USERS-MODULE.md` | Users-module status report (D-01…D-16), report-only |
 | `P0-DBFCDX-STORE-RESULTS-2026-10-08.md` | What the removal and the DBFCDX shape actually did: what was deleted, what replaced it, what was measured (link clean, login 302 → `/main`, `probe_seek`, `probe_pw`), the app defects found and fixed (incl. the `SET EXACT` prefix-authentication hole), the five **test-suite** bugs fixed along the way, and the limiter caveat. Final: customer **50/50**, users **60/60**, verify **125 PASS / 0 FAIL** |
 | *(removed 2026-10-08)* | The MySQL-era plans, generators and result records were **deleted** with the MySQL DAL they described — 17 documents. They are not in the tree; `git log` is the record of them |
+| `P7-CONCURRENCY-RESULTS-2026-10-08.md` | What the concurrency run actually measured: store read/write **all PASS** (8 reads → 1 md5; 6 distinct-record writes all land; 8 same-record writes → one winner, record intact; 12 reads during 4 writes → every read complete; delete during 8 scans → 21 rows each; 10 logins → 10 files mode 600; flash race → each session its own). Connections: 12 handlers queue in waves, 300 simultaneous → 300/300 on repeat (one 500 did not reproduce), keep-alive reused, pool monitor fires at 82–84 %. C-1 **FALSE**, C-2 **CONFIRMED** (ceiling is `pool_hix.workers = 4`), C-5 **NOT REACHED**. Not exercised: B-5, B-8, A-5/A-6/A-7 |
 
 ## `04-verification/`
 
