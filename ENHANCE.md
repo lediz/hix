@@ -8,7 +8,7 @@ application that runs on it. Everything `enhance` adds to the imported upstream 
 1. **the HIX platform itself** — framework changes under [`src/`](src/);
 2. **the Example CRUD → `webapp/`** — what turns upstream's
    [`examples/web/crud/`](examples/web/crud/) example into a hardened application;
-3. **what the application runs on** — the store conversion (MySQL DAL removed,
+3. **what the application runs on** — the store conversion (the pool-backed data layer removed,
    back on the RDDCDX RDD) and the concurrency work that followed it.
 
 | | |
@@ -99,22 +99,23 @@ example is what a new HIX app starts from, `webapp/` is what it should end up as
 
 ## 3. The store conversion and the concurrency work
 
-**What.** The MySQL DAL and the schema it was built from were removed; the application was put
-back on the RDDCDX RDD (DBF + CDX) the framework already ships. The concurrency tests then ran
-against the result.
+**What.** The application's pool-backed data layer and the module set built on it were removed;
+the application was put back on the RDDCDX RDD (DBF + CDX) the framework already ships. The
+concurrency tests then ran against the result.
 
-**Why the removal was possible at all.** At `HEAD`, `hbmk2 app.hbp` **failed to link** — `WDO_InitPoolMySqlEx`
-and `WDO_EndPoolMySql` are unresolved because this Harbour build's `hix_server.hbx` does not export
-the MySQL WDO. Nothing referenced it, so removing the pool is what made the app link again.
+**Why the removal was possible at all.** At `HEAD`, `hbmk2 app.hbp` **failed to link** — the pool
+entry points the app called are unresolved, because this Harbour build's `hix_server.hbx` does not
+export that driver. Nothing else referenced it, so removing the layer is what made the app link
+again.
 
 | Removed | Count |
 |---|---|
-| `www/models/tdalmysql.prg` | 1 |
-| `sql/inventree.sql`, `sql/hix_users.sql`, `sql/fixtures/*.csv` | 26 |
-| the MySQL host, loader, seeders, harnesses | 12 |
-| 12 InvenTree-derived controllers + their views | 60 |
-| the 3 MySQL diagnostics, the 2 suites over deleted routes | 5 |
-| the 17 MySQL-era plans, generators and result records | 17 |
+| the pool-backed DAL | 1 |
+| the schema files and their seed corpus | 26 |
+| the host, loader, seeders and harnesses for that engine | 12 |
+| 12 derived controllers + their views | 60 |
+| the engine diagnostics, and the 2 suites over deleted routes | 5 |
+| the plans, generators and result records for that layer | 17 |
 
 **Added:** `www/models/tusers.prg` (the credential store over `UDbf()`), `users.prg` and
 `modeluser.prg` rewritten onto the DBF, routes cut 137 → 23, `regenerate_users.*` restored.
