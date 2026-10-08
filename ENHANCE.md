@@ -7,7 +7,9 @@ application that runs on it. Everything `enhance` adds to the imported upstream 
 
 1. **the HIX platform itself** — framework changes under [`src/`](src/);
 2. **the Example CRUD → `webapp/`** — what turns upstream's
-   [`examples/web/crud/`](examples/web/crud/) example into a hardened application.
+   [`examples/web/crud/`](examples/web/crud/) example into a hardened application;
+3. **what the application runs on** — the store conversion (MySQL DAL removed,
+   back on the RDDCDX RDD) and the concurrency work that followed it.
 
 | | |
 |---|---|
@@ -95,6 +97,67 @@ Counted over tracked files at `HEAD` — the example has 64 of them:
 framework's own docs; `webapp/` is the audited application. They are deliberately not merged — the
 example is what a new HIX app starts from, `webapp/` is what it should end up as.
 
+## 3. The store conversion and the concurrency work
+
+**What.** The MySQL DAL and the schema it was built from were removed; the application was put
+back on the RDDCDX RDD (DBF + CDX) the framework already ships. The concurrency tests then ran
+against the result.
+
+**Why the removal was possible at all.** At `HEAD`, `hbmk2 app.hbp` **failed to link** — `WDO_InitPoolMySqlEx`
+and `WDO_EndPoolMySql` are unresolved because this Harbour build's `hix_server.hbx` does not export
+the MySQL WDO. Nothing referenced it, so removing the pool is what made the app link again.
+
+| Removed | Count |
+|---|---|
+| `www/models/tdalmysql.prg` | 1 |
+| `sql/inventree.sql`, `sql/hix_users.sql`, `sql/fixtures/*.csv` | 26 |
+| the MySQL host, loader, seeders, harnesses | 12 |
+| 12 InvenTree-derived controllers + their views | 60 |
+| the 3 MySQL diagnostics, the 2 suites over deleted routes | 5 |
+| the 17 MySQL-era plans, generators and result records | 17 |
+
+**Added:** `www/models/tusers.prg` (the credential store over `UDbf()`), `users.prg` and
+`modeluser.prg` rewritten onto the DBF, routes cut 137 → 23, `regenerate_users.*` restored.
+
+### The `SET EXACT` trap — and why it is the whole story here
+
+`www/config.json` sets `"exact": false`, so Harbour compares strings only to the length of the
+**right** operand. Three consequences, all found as failures and all fixed:
+
+* `"carlesx" != "carle"` is **FALSE** — so `ModelUser`'s guard never fired and a **prefix of a
+  username authenticated**. Closed by comparing `Len()` before the strings.
+* `a < b` and `a > b` can **both** be false — so the sort comparator could not order rows and
+  `?sort=roles` was a no-op. Fixed byte-wise.
+* `Ord()` is **not linked** into the HIX server (`Unknown or unregistered function symbol (ORD)`),
+  so the rank comes from a table, not `Ord()`.
+
+### Concurrency: measured, not assumed
+
+The binding ceiling is **`pool_hix.workers = 4`**, not `pool_http.workers = 64` — the app runs in
+HIXSTYLE mode, so handlers come off the 4-worker pool.
+
+| Axis | Measured |
+|---|---|
+| Store read/write | **all PASS** — 8 concurrent reads → 1 distinct md5; 6 writes to distinct records all land; 8 writes to the **same** record → exactly one winner, record intact; 12 reads during 4 writes → every read complete; delete during 8 scans → 21 rows each; 10 simultaneous logins → 10 session files, all mode 600 |
+| Connections | 12 handlers **queue in waves** (0.013–0.058 s), none lost; 300 simultaneous → 300/300 on repeat; keep-alive reused; pool monitor fires at 82–84 % |
+| Hypotheses | the flash is **session-scoped, not a cross-session channel** (C-1 FALSE); the ceiling of 4 is **CONFIRMED**; the lock-failure path (C-5) was **NOT REACHED** — 8-way contention serialised rather than failed |
+
+**Not proven:** the lock-failure path, per-IP isolation, queue overflow past 256, idle-connection
+behaviour, and the timeout interaction. Contention peaked at 8–12 writers, below the 3 s `Rlock`
+budget.
+
+**Limiter discipline:** `setup.ratelimit.login_max` / `ip_per_min` were widened **for the run only**
+and restored to the shipped values (5 / 300) afterwards. `hix.json` was never touched. The users
+suite cannot pass at the shipped limiter (57/60 vs 60/60 widened) — a real mismatch between app
+config and test suite, not an app defect.
+
+### Still open
+
+The **aesthetics plan is unexecuted** — no CSS or view has been touched. Its measured surface and
+12 ranked defects are recorded in `webapp/srs/02-design/AESTHETICS-PLAN.md`; the markup-coupling
+risk (the suites grep rendered markup, so a restyle breaks 110 passing assertions) is the thing
+that has to be handled before any restyle.
+
 ---
 
 ## Where everything lives
@@ -108,6 +171,13 @@ webapp/srs/              the corpus: SRS + compliance, audit reports, test recor
                          phase folders 00-meta … 07-maintenance (see 00-meta/SDLC-REORGANIZATION-PLAN.md)
 compare-branches.sh      regenerates webapp/srs/06-release/COMPARISON-enhance-vs-main.md
 ```
+
+The two records that describe this branch's own work:
+
+| File | What it is |
+|---|---|
+| `webapp/srs/03-implementation/P0-DBFCDX-STORE-RESULTS-2026-10-08.md` | the store conversion — what was deleted, what replaced it, the defects found and fixed, the five **test-suite** bugs fixed along the way |
+| `webapp/srs/03-implementation/P7-CONCURRENCY-RESULTS-2026-10-08.md` | the concurrency run — what was measured, and explicitly what was not exercised |
 
 ---
 
