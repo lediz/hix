@@ -59,6 +59,9 @@ and only the nine renames below (§ *Formerly*) changed any name.  The plan behi
 | `COMPARATIVE-ANALYSIS.md` | Analysis of this app against the framework's own `examples/web/crud/` baseline |
 | `BRUTE-FORCE-PENTEST-PLAN.md` | Brute-force / timing probe plan; `test/bf_harness.sh` implements it against the local app only |
 | `VIGOLIUM-SCAN-PLAN.md` | Plan: automate the audit with the vigolium scanner (native + agentic), local target only; plan only |
+| `AESTHETICS-PLAN.md` | Plan: improve `webapp/` view and CSS aesthetics — measured surface (15 views, 3 stylesheets, Bootstrap 5 from a CDN), 12 ranked defects, what is in scope and what T3 forbids, and the markup-coupling risk to the suites; **report only** |
+| `CONCURRENCY-PLAN.md` | Plan: test connections and store read/write under load — the real ceiling (`pool_hix.workers = 4`, not 64), 8 connection tests + 9 store tests, 6 hypotheses read off the code (incl. a cross-session flash leak), the harness shape, and the limiter trap; **report only** |
+| `WEBPAGE-beautify.md` | Four-line tasking note that seeded `AESTHETICS-PLAN.md` |
 
 ## `03-implementation/`
 
@@ -67,7 +70,7 @@ and only the nine renames below (§ *Formerly*) changed any name.  The plan behi
 | `CHANGELOG-CUSTOMER-FIXES.md` | Customer-module fix log |
 | `BUG-UPDATE-FLASH-ERROR.md` | Single-defect report: the update flash error |
 | `STATUS-USERS-MODULE.md` | Users-module status report (D-01…D-16), report-only |
-| `P0-DBFCDX-STORE-RESULTS-2026-10-08.md` | What the removal and the DBFCDX shape actually did: what was deleted, what replaced it, what was measured (link clean, login 302 → `/main`, `probe_seek`, `probe_pw`), and what was **not** proven (the customer suite is 21/50 because the login limiter is 5 per 60 s and the suite makes 7 `/auth` calls) |
+| `P0-DBFCDX-STORE-RESULTS-2026-10-08.md` | What the removal and the DBFCDX shape actually did: what was deleted, what replaced it, what was measured (link clean, login 302 → `/main`, `probe_seek`, `probe_pw`), the app defects found and fixed (incl. the `SET EXACT` prefix-authentication hole), the five **test-suite** bugs fixed along the way, and the limiter caveat. Final: customer **50/50**, users **60/60**, verify **125 PASS / 0 FAIL** |
 | *(removed 2026-10-08)* | The MySQL-era plans, generators and result records were **deleted** with the MySQL DAL they described — 17 documents. They are not in the tree; `git log` is the record of them |
 
 ## `04-verification/`
