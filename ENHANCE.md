@@ -7,9 +7,11 @@ application that runs on it. Everything `enhance` adds to the imported upstream 
 
 1. **the HIX platform itself** — framework changes under [`src/`](src/);
 2. **the Example CRUD → `webapp/`** — what turns upstream's
-   [`examples/web/crud/`](examples/web/crud/) example into a hardened application;
-3. **what the application runs on** — the store conversion (the pool-backed data layer removed,
-   back on the RDDCDX RDD) and the concurrency work that followed it.
+   [`examples/web/crud/`](examples/web/crud/) example into a hardened application.
+
+The application's store is the **RDDCDX RDD (DBF + CDX)**: one `.dbf` per table with one CDX tag
+per indexed column, opened through the framework's `UDbf()` with the driver `www/config.json`
+names. No database engine is started anywhere in the app.
 
 | | |
 |---|---|
@@ -97,28 +99,23 @@ Counted over tracked files at `HEAD` — the example has 64 of them:
 framework's own docs; `webapp/` is the audited application. They are deliberately not merged — the
 example is what a new HIX app starts from, `webapp/` is what it should end up as.
 
-## 3. The store conversion and the concurrency work
+## 3. The store and the concurrency work
 
-**What.** The application's pool-backed data layer and the module set built on it were removed;
-the application was put back on the RDDCDX RDD (DBF + CDX) the framework already ships. The
-concurrency tests then ran against the result.
+**What the application runs on.** The store is the **RDDCDX RDD (DBF + CDX)**: one `.dbf` per
+table, one CDX tag per indexed column, opened through the framework's `UDbf()` with the driver
+`www/config.json` names (`"dbf" -> "rddname": DBFCDX`). The server banner prints **RDD Default:
+DBFCDX** at startup.
 
-**Why the removal was possible at all.** At `HEAD`, `hbmk2 app.hbp` **failed to link** — the pool
-entry points the app called are unresolved, because this Harbour build's `hix_server.hbx` does not
-export that driver. Nothing else referenced it, so removing the layer is what made the app link
-again.
-
-| Removed | Count |
+| Surface | What it is |
 |---|---|
-| the pool-backed DAL | 1 |
-| the schema files and their seed corpus | 26 |
-| the host, loader, seeders and harnesses for that engine | 12 |
-| 12 derived controllers + their views | 60 |
-| the engine diagnostics, and the 2 suites over deleted routes | 5 |
-| the plans, generators and result records for that layer | 17 |
+| `data/customers.dbf` + `customers.cdx` | the audited proof-of-concept store, tag `name` keyed on `Lower(field->name)` |
+| `data/users.dbf` + `users.cdx` | the credential store — `ID N(10)` `NAME C(40)` `PASS C(128)` `SALT C(32)` `ROLES C(255)`, tag `name` |
+| `data/states.dbf` | the lookup table the customer views read |
+| `www/models/tusers.prg`, `www/models/tcustomers.prg` | the models that open them, the same shape |
 
-**Added:** `www/models/tusers.prg` (the credential store over `UDbf()`), `users.prg` and
-`modeluser.prg` rewritten onto the DBF, routes cut 137 → 23, `regenerate_users.*` restored.
+**No database engine is started anywhere in the app**, and `hbmk2 app.hbp` links without one —
+which is what it needed to be: at `HEAD` the build failed because the app called data-layer entry
+points this Harbour build does not export.
 
 ### The `SET EXACT` trap — and why it is the whole story here
 
@@ -177,7 +174,7 @@ The two records that describe this branch's own work:
 
 | File | What it is |
 |---|---|
-| `webapp/srs/03-implementation/P0-DBFCDX-STORE-RESULTS-2026-10-08.md` | the store conversion — what was deleted, what replaced it, the defects found and fixed, the five **test-suite** bugs fixed along the way |
+| `webapp/srs/03-implementation/P0-DBFCDX-STORE-RESULTS-2026-10-08.md` | the record of the store work — what was measured, the defects found and fixed, and the five **test-suite** bugs fixed along the way |
 | `webapp/srs/03-implementation/P7-CONCURRENCY-RESULTS-2026-10-08.md` | the concurrency run — what was measured, and explicitly what was not exercised |
 
 ---
